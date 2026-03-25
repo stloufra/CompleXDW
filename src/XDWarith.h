@@ -1,10 +1,3 @@
-#ifndef XDWARITH_H
-#define XDWARITH_H
-
-#include "XDWbasicOP.h"
-#include "XDWerrorFree.h"
-
-namespace XDW_ARTH{
 
 // SloppyDWPlusDW — 11 flops
 // Relative error <= 1
@@ -152,18 +145,32 @@ DWMulAdd_Fast(const T ah, const T al, const T bh, const T bl, const T ch, const 
    SloppyDWPlusDW(ph, pl, qh, ql, rh, rl);
 }
 
-// ComplexDWMul — computes (a + i*b) * (c + i*d) where each of a, b, c, d is a DW number.
+// ComplexDWMulnorm — computes (a + i*b) * (c + i*d) where each of a, b, c, d is a DW number with normalization.
 // Inputs: (ah, al, bh, bl, ch, cl, dh, dl)
 // Output: (reh, rel, imh, iml)
 FLOAT_TEMPLATE_GUARD
 __cuda_callable__
 static constexpr __xdw_inline__ void
-ComplexDWMul(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
+ComplexDWMulnorm(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
 {
    // Real part = ac - bd: DWMulAdd_Norm(ah, al, ch, cl, bh, bl, -dh, -dl)
    DWMulAdd_Norm(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
    // Imaginary part = ad + bc: DWMulAdd_Norm(ah, al, dh, dl, bh, bl, ch, cl)
    DWMulAdd_Norm(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
+}
+
+// ComplexDWMulfast — computes (a + i*b) * (c + i*d) where each of a, b, c, d is a DW number without normalization.
+// Inputs: (ah, al, bh, bl, ch, cl, dh, dl)
+// Output: (reh, rel, imh, iml)
+FLOAT_TEMPLATE_GUARD
+__cuda_callable__
+static constexpr __xdw_inline__ void
+ComplexDWMulfast(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
+{
+   // Real part = ac - bd: DWMulAdd_Norm(ah, al, ch, cl, bh, bl, -dh, -dl)
+   DWMulAdd_Fast(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
+   // Imaginary part = ad + bc: DWMulAdd_Norm(ah, al, dh, dl, bh, bl, ch, cl)
+   DWMulAdd_Fast(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
 }
 
 }

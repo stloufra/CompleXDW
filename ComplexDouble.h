@@ -81,7 +81,11 @@ class alignas( 4 * sizeof( T ) ) ComplexDouble
 
   __cuda_callable__
   constexpr static ComplexDouble< T >
-  mul( const ComplexDouble< T >& a, const ComplexDouble< T >& b );
+  mulnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b );
+
+  __cuda_callable__
+  constexpr static ComplexDouble< T >
+  mulfast( const ComplexDouble< T >& a, const ComplexDouble< T >& b );
 };
 
 template< typename T >
@@ -153,14 +157,27 @@ ComplexDouble< T >::sub( const ComplexDouble< T >& a, const ComplexDouble< T >& 
 template< typename T >
 __cuda_callable__
 constexpr ComplexDouble< T >
-ComplexDouble< T >::mul( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
+ComplexDouble< T >::mulnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    T reh, rel, imh, iml;
-   ComplexDWMul( a.data[ 0 ], a.data[ 1 ], a.data[ 2 ], a.data[ 3 ],
+   ComplexDWMulnorm( a.data[ 0 ], a.data[ 1 ], a.data[ 2 ], a.data[ 3 ],
                  b.data[ 0 ], b.data[ 1 ], b.data[ 2 ], b.data[ 3 ],
                  &reh, &rel, &imh, &iml );
    return ComplexDouble< T >( reh, rel, imh, iml );
 }
+
+template< typename T >
+__cuda_callable__
+constexpr ComplexDouble< T >
+ComplexDouble< T >::mulfast( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
+{
+   T reh, rel, imh, iml;
+   ComplexDWMulfast( a.data[ 0 ], a.data[ 1 ], a.data[ 2 ], a.data[ 3 ],
+                 b.data[ 0 ], b.data[ 1 ], b.data[ 2 ], b.data[ 3 ],
+                 &reh, &rel, &imh, &iml );
+   return ComplexDouble< T >( reh, rel, imh, iml );
+}
+
 
 template< typename T >
 __cuda_callable__
@@ -183,7 +200,16 @@ __cuda_callable__
 constexpr ComplexDouble< T >
 operator*( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
-   return ComplexDouble< T >::mul( a, b );
+   return ComplexDouble< T >::mulnorm( a, b );
 }
+
+template< typename T >
+__cuda_callable__
+constexpr ComplexDouble< T >
+operator**( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
+{
+   return ComplexDouble< T >::mulfast( a, b );
+}
+
 
 #endif //ComplexDouble
