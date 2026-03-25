@@ -1,3 +1,10 @@
+#ifndef XDWARITH_H
+#define XDWARITH_H
+
+#include "XDWerrorFree.h"
+#include "XDWbasicOP.h"
+
+namespace XDW_ARTH{
 
 // SloppyDWPlusDW — 11 flops
 // Relative error <= 1
@@ -167,9 +174,9 @@ __cuda_callable__
 static constexpr __xdw_inline__ void
 ComplexDWMulfast(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
 {
-   // Real part = ac - bd: DWMulAdd_Norm(ah, al, ch, cl, bh, bl, -dh, -dl)
+   // Real part = ac - bd: DWMulAdd_Fast(ah, al, ch, cl, bh, bl, -dh, -dl)
    DWMulAdd_Fast(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
-   // Imaginary part = ad + bc: DWMulAdd_Norm(ah, al, dh, dl, bh, bl, ch, cl)
+   // Imaginary part = ad + bc: DWMulAdd_Fast(ah, al, dh, dl, bh, bl, ch, cl)
    DWMulAdd_Fast(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
 }
 

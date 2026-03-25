@@ -1,7 +1,7 @@
 #ifndef COMPLEX_DOUBLE_H
 #define COMPLEX_DOUBLE_H
 
-#include "src/errorFreeOPs.h"
+#include "src/XDWerrorFree.h"
 #include "src/XDWArith.h"
 #include <complex>
 
@@ -26,6 +26,12 @@ class alignas( 4 * sizeof( T ) ) ComplexDouble
 
   __cuda_callable__
   constexpr ComplexDouble( ComplexDouble&& other ) noexcept = default;
+
+  __cuda_callable__
+  constexpr ComplexDouble& operator=( const ComplexDouble& other ) = default;
+
+  __cuda_callable__
+  constexpr ComplexDouble& operator=( ComplexDouble&& other ) noexcept = default;
 
   __cuda_callable__
   constexpr ComplexDouble( const std::complex< T >& c );
@@ -138,8 +144,8 @@ constexpr ComplexDouble< T >
 ComplexDouble< T >::add( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    T reh, rel, imh, iml;
-   maddDWPlusDW( a.data[ 0 ], a.data[ 1 ], b.data[ 0 ], b.data[ 1 ], &reh, &rel );
-   maddDWPlusDW( a.data[ 2 ], a.data[ 3 ], b.data[ 2 ], b.data[ 3 ], &imh, &iml );
+   XDW_ARTH::maddDWPlusDW( a.data[ 0 ], a.data[ 1 ], b.data[ 0 ], b.data[ 1 ], &reh, &rel );
+   XDW_ARTH::maddDWPlusDW( a.data[ 2 ], a.data[ 3 ], b.data[ 2 ], b.data[ 3 ], &imh, &iml );
    return ComplexDouble< T >( reh, rel, imh, iml );
 }
 
@@ -149,8 +155,8 @@ constexpr ComplexDouble< T >
 ComplexDouble< T >::sub( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    T reh, rel, imh, iml;
-   maddDWPlusDW( a.data[ 0 ], a.data[ 1 ], -b.data[ 0 ], -b.data[ 1 ], &reh, &rel );
-   maddDWPlusDW( a.data[ 2 ], a.data[ 3 ], -b.data[ 2 ], -b.data[ 3 ], &imh, &iml );
+   XDW_ARTH::maddDWPlusDW( a.data[ 0 ], a.data[ 1 ], -b.data[ 0 ], -b.data[ 1 ], &reh, &rel );
+   XDW_ARTH::maddDWPlusDW( a.data[ 2 ], a.data[ 3 ], -b.data[ 2 ], -b.data[ 3 ], &imh, &iml );
    return ComplexDouble< T >( reh, rel, imh, iml );
 }
 
@@ -160,9 +166,9 @@ constexpr ComplexDouble< T >
 ComplexDouble< T >::mulnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    T reh, rel, imh, iml;
-   ComplexDWMulnorm( a.data[ 0 ], a.data[ 1 ], a.data[ 2 ], a.data[ 3 ],
-                 b.data[ 0 ], b.data[ 1 ], b.data[ 2 ], b.data[ 3 ],
-                 &reh, &rel, &imh, &iml );
+   XDW_ARTH::ComplexDWMulnorm( a.data[ 0 ], a.data[ 1 ], a.data[ 2 ], a.data[ 3 ],
+                     b.data[ 0 ], b.data[ 1 ], b.data[ 2 ], b.data[ 3 ],
+                     &reh, &rel, &imh, &iml );
    return ComplexDouble< T >( reh, rel, imh, iml );
 }
 
@@ -172,9 +178,9 @@ constexpr ComplexDouble< T >
 ComplexDouble< T >::mulfast( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    T reh, rel, imh, iml;
-   ComplexDWMulfast( a.data[ 0 ], a.data[ 1 ], a.data[ 2 ], a.data[ 3 ],
-                 b.data[ 0 ], b.data[ 1 ], b.data[ 2 ], b.data[ 3 ],
-                 &reh, &rel, &imh, &iml );
+   XDW_ARTH::ComplexDWMulfast( a.data[ 0 ], a.data[ 1 ], a.data[ 2 ], a.data[ 3 ],
+                     b.data[ 0 ], b.data[ 1 ], b.data[ 2 ], b.data[ 3 ],
+                     &reh, &rel, &imh, &iml );
    return ComplexDouble< T >( reh, rel, imh, iml );
 }
 
@@ -206,10 +212,10 @@ operator*( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 template< typename T >
 __cuda_callable__
 constexpr ComplexDouble< T >
-operator**( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
+mul_fast( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    return ComplexDouble< T >::mulfast( a, b );
 }
 
 
-#endif //ComplexDouble
+#endif
