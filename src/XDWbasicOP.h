@@ -1,5 +1,5 @@
-#ifndef BASICOPS_H
-#define BASICOPS_H
+#ifndef XDW_BASIC_OPS_H
+#define XDW_BASIC_OPS_H
 
 #pragma once
 
@@ -100,10 +100,10 @@ fma_rn( const T x, const T y, const T z )
       return __fmaf_rn( x, y, z );
    }
 #else
-   #ifdef FP_FAST_FMA
+   #ifdef XDW_FAST_FMA
    return fma( x, y, z );
    #else
-   printf( "There is no FMA. Do not enable FP_FAST_FMA e.g. with -mfma." );
+   throw( "There is no FMA. Do not enable FP_FAST_FMA e.g. with -mfma." );
    return std::numeric_limits< T >::quiet_NaN();
    #endif
 #endif
@@ -111,4 +111,4 @@ fma_rn( const T x, const T y, const T z )
 
 }
 
-#endif  //BASICOPS_H
+#endif  //XDW_BASIC_OPS_H

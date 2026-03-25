@@ -1,10 +1,10 @@
 
-#ifndef ERRORFREEOPS_H
-#define ERRORFREEOPS_H
+#ifndef XDW_ERROR_FREE_OPS_H
+#define XDW_ERROR_FREE_OPS_H
 
 #pragma once
 
-#include "basicOPs.h"
+#include "XDWbasicOP.h"
 
 namespace XDW_ARTH{
 
@@ -15,9 +15,6 @@ struct rne
    T error;
 };
 
-
-
-/*
 namespace spliting_detail {
 
 // double precision
@@ -75,7 +72,7 @@ split( T value )
       }
       return { static_cast< U >( high ), static_cast< U >( low ) };
    }
-}*/
+}
 
 FLOAT_TEMPLATE_GUARD
 __cuda_callable__
@@ -140,7 +137,7 @@ two_prod( const T a, const T b )
    return { p, err };
 
 #else
-   #ifdef FP_FAST_FMA
+   #ifdef XDW_FAST_FMA
 
    const T p = mul_rn( a, b );
    const T err = fma_rn( a, b, -p );
@@ -168,57 +165,6 @@ two_prod( const T a, const T b )
 
 #endif
 }
-
-/*template< typename T, std::enable_if_t< std::is_floating_point_v< T >, int > = 0 >
-__cuda_callable__
-constexpr rne< T >
-two_sqr( const T a )
-{
-#ifdef __CUDA_ARCH__
-   const T p = mul_rn( a, a );
-   const T err = fma_rn( a, a, -p );
-   return { p, err };
-
-#else
-   #ifdef FP_FAST_FMA
-
-   const T p = mul_rn( a, a );
-   const T err = fma_rn( a, a, -p );
-   return { p, err };
-
-   #else
-
-   const T q = mul_rn( a, a );
-   auto sp = split< T, T >( a );
-   T temp = mul_rn( sp.sum, sp.sum );
-   temp = add_rn( temp, -q );
-   T err = mul_rn( static_cast<T>(2.0), mul_rn( sp.sum, sp.error ) );
-   err = add_rn( err, temp );
-   err = add_rn(mul_rn( sp.error, sp.error), err);
-   // ( ( hi * hi - q ) + 2.0F * hi * lo ) + lo * lo;
-   return { q, err };
-   #endif
-#endif
-}*/
-
-/*template< typename T, std::enable_if_t< std::is_floating_point_v< T >, int > = 0 >
-__cuda_callable__
-__xdw_inline__ constexpr T
-nint( const T d )
-{
-   if( d == std::floor( d ) )
-      return d;
-   return std::floor( d + 0.5F );
-}
-
-template< typename T, std::enable_if_t< std::is_floating_point_v< T >, int > = 0 >
-__cuda_callable__
-__xdw_inline__ constexpr T
-aint( const T d )
-{
-   return ( d >= 0.0F ) ? std::floor( d ) : std::ceil( d );
-}*/
-
 
 }
 

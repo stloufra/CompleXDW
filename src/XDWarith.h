@@ -1,8 +1,8 @@
 #ifndef XDWARITH_H
 #define XDWARITH_H
 
-#include "basicOPs.h"
-#include "errorFreeOPs.h"
+#include "XDWbasicOP.h"
+#include "XDWerrorFree.h"
 
 namespace XDW_ARTH{
 
