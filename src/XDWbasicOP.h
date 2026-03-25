@@ -100,12 +100,7 @@ fma_rn( const T x, const T y, const T z )
       return __fmaf_rn( x, y, z );
    }
 #else
-   #ifdef XDW_FAST_FMA
-   return fma( x, y, z );
-   #else
-   throw( "There is no FMA. Do not enable FP_FAST_FMA e.g. with -mfma." );
-   return std::numeric_limits< T >::quiet_NaN();
-   #endif
+    return fma( x, y, z );
 #endif
 }
 
