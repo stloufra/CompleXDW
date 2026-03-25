@@ -6,7 +6,7 @@
 
 #include "basicOPs.h"
 
-namespace MG_ARITHM{
+namespace XDW_ARTH{
 
 template< typename T >
 struct rne
@@ -35,7 +35,7 @@ static constexpr float FLOAT_SPLIT_THRESH = 0x1p115f;    // 2^115 ≈ 4.15383748
 }
 
 template< typename T, typename U, std::enable_if_t< std::is_floating_point_v< T >, int > = 0 >
-__tnl_inline__ __cuda_callable__
+__xdw_inline__ __cuda_callable__
 constexpr rne< U >
 split( T value )
 {
@@ -79,7 +79,7 @@ split( T value )
 
 FLOAT_TEMPLATE_GUARD
 __cuda_callable__
-constexpr __tnl_inline__ rne< T >
+constexpr __xdw_inline__ rne< T >
 quick_two_sum( const T a, const T b )
 {
   const T s = add_rn(a, b);
@@ -90,7 +90,7 @@ quick_two_sum( const T a, const T b )
 
 FLOAT_TEMPLATE_GUARD
 __cuda_callable__
-constexpr __tnl_inline__ rne< T >
+constexpr __xdw_inline__ rne< T >
 quick_two_diff( const T a, const T b )
 {
   const T s = add_rn(a, -b);
@@ -102,7 +102,7 @@ quick_two_diff( const T a, const T b )
 
 FLOAT_TEMPLATE_GUARD
 __cuda_callable__
-constexpr __tnl_inline__ rne< T >
+constexpr __xdw_inline__ rne< T >
 two_sum( const T a, const T b )
 {
   const T s = add_rn(a, b);
@@ -117,7 +117,7 @@ two_sum( const T a, const T b )
 
 FLOAT_TEMPLATE_GUARD
 __cuda_callable__
-constexpr __tnl_inline__ rne< T >
+constexpr __xdw_inline__ rne< T >
 two_diff( const T a, const T b )
 {
    const T s  = add_rn(a, -b);
@@ -131,7 +131,7 @@ two_diff( const T a, const T b )
 
 FLOAT_TEMPLATE_GUARD
 __cuda_callable__
-constexpr __tnl_inline__ rne< T >
+constexpr __xdw_inline__ rne< T >
 two_prod( const T a, const T b )
 {
 #ifdef __CUDA_ARCH__
@@ -203,7 +203,7 @@ two_sqr( const T a )
 
 /*template< typename T, std::enable_if_t< std::is_floating_point_v< T >, int > = 0 >
 __cuda_callable__
-__tnl_inline__ constexpr T
+__xdw_inline__ constexpr T
 nint( const T d )
 {
    if( d == std::floor( d ) )
@@ -213,7 +213,7 @@ nint( const T d )
 
 template< typename T, std::enable_if_t< std::is_floating_point_v< T >, int > = 0 >
 __cuda_callable__
-__tnl_inline__ constexpr T
+__xdw_inline__ constexpr T
 aint( const T d )
 {
    return ( d >= 0.0F ) ? std::floor( d ) : std::ceil( d );
