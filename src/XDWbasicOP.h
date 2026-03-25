@@ -4,6 +4,7 @@
 #pragma once
 
 #include <limits>
+#include <cmath>
 
 #if defined( __CUDACC__ )
 #include <cuda_runtime.h>
@@ -100,7 +101,7 @@ fma_rn( const T x, const T y, const T z )
       return __fmaf_rn( x, y, z );
    }
 #else
-    return fma( x, y, z );
+    return std::fma( x, y, z );
 #endif
 }
 
