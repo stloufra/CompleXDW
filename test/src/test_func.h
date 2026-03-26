@@ -1,0 +1,56 @@
+#ifndef TEST_FUNC_H
+#define TEST_FUNC_H
+
+#include <iostream>
+#include <iomanip>
+#include <vector>
+#include <string>
+#include <fstream>
+
+#include <mpfr.h>
+
+constexpr int MPFR_PREC = 128;
+constexpr int N_ITERATIONS = 10000000;
+constexpr int MPFR_DISPLAY_PREC = 40;
+
+struct TestResult {
+    double rel_err_norm;
+    double rel_err_fast;
+    double a_re_high;
+    double a_re_low;
+    double a_im_high;
+    double a_im_low;
+    double b_re_high;
+    double b_re_low;
+    double b_im_high;
+    double b_im_low;
+    double res_norm_re_high;
+    double res_norm_re_low;
+    double res_norm_im_high;
+    double res_norm_im_low;
+    double res_fast_re_high;
+    double res_fast_re_low;
+    double res_fast_im_high;
+    double res_fast_im_low;
+    double re_ref_high;
+    double re_ref_low;
+    double im_ref_high;
+    double im_ref_low;
+};
+
+void mpfr_to_dw(mpfr_t x, mpfr_rnd_t rnd, double* high, double* low);
+
+void mpfr_complex_mul(mpfr_t ar, mpfr_t ai, mpfr_t br, mpfr_t bi, 
+                      mpfr_t cr, mpfr_t ci, mpfr_rnd_t rnd);
+
+double relative_error(mpfr_t exact, double approx_high, double approx_low, mpfr_t approx_mpfr, mpfr_rnd_t rnd);
+
+void print_separator();
+
+void print_header();
+
+void print_statistics(const std::vector<TestResult>& results);
+
+void save_results(const std::vector<TestResult>& results, const std::string& filename);
+
+#endif

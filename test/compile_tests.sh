@@ -19,7 +19,8 @@ $CXX -std=c++17 -O3 -march=native -I.. \
 
 # Compile full test
 $CXX -std=c++17 -O3 -march=native -I.. \
-    test_complex_dw.cpp \
+    test_complex_dw_random.cpp \
+    src/test_func.cpp \
     -I/opt/homebrew/include \
     -L/opt/homebrew/lib -lmpfr -lgmp -lm \
     -o test_complex_dw
