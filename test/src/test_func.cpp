@@ -149,15 +149,11 @@ void save_results(const std::vector<TestResult>& results, const std::string& fil
     file << "# Complex DW Multiplication Test Results\n";
     file << "# Iterations: " << N_ITERATIONS << "\n";
     file << "# MPFR Precision: " << MPFR_PREC << " bits\n";
-    file << "# Format: a_re_h,a_re_l,a_im_h,a_im_l,b_re_h,b_re_l,b_im_h,b_im_l,ref_re_h,ref_re_l,ref_im_h,ref_im_l,rel_err_norm,rel_err_fast\n";
+    file << "# Format: ref_re_h,ref_re_l,ref_im_h,ref_im_l,rel_err_norm,rel_err_fast\n";
     
     file << std::scientific << std::setprecision(MPFR_DISPLAY_PREC);
     for (const auto& r : results) {
-        file << r.a_re_high << "," << r.a_re_low << ","
-             << r.a_im_high << "," << r.a_im_low << ","
-             << r.b_re_high << "," << r.b_re_low << ","
-             << r.b_im_high << "," << r.b_im_low << ","
-             << r.re_ref_high << "," << r.re_ref_low << ","
+        file << r.re_ref_high << "," << r.re_ref_low << ","
              << r.im_ref_high << "," << r.im_ref_low << ","
              << r.rel_err_norm << "," << r.rel_err_fast << "\n";
     }

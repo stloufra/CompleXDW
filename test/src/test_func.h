@@ -9,9 +9,9 @@
 
 #include <mpfr.h>
 
-constexpr int MPFR_PREC = 128;
+constexpr int MPFR_PREC = 256;
 constexpr int N_ITERATIONS = 10000000;
-constexpr int MPFR_DISPLAY_PREC = 40;
+constexpr int MPFR_DISPLAY_PREC = 10;
 
 struct TestResult {
     double rel_err_norm;
