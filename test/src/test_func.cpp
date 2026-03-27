@@ -275,3 +275,17 @@ bool generate_abcd_mp(mpfr_t K, mpfr_t a, mpfr_t b, mpfr_t c, mpfr_t d, mpfr_t K
     gmp_randclear(state);
     return false;
 }
+
+void print_mpfr(const char* name, mpfr_t x) {
+    char* str = mpfr_get_str(NULL, NULL, 10, 0, x, MPFR_RNDN);
+    std::cout << name << " = " << str << std::endl;
+    mpfr_free_str(str);
+}
+
+void print_mpfr_complex(const char* name, mpfr_t re, mpfr_t im) {
+    char* re_str = mpfr_get_str(NULL, NULL, 10, 0, re, MPFR_RNDN);
+    char* im_str = mpfr_get_str(NULL, NULL, 10, 0, im, MPFR_RNDN);
+    std::cout << name << " = " << re_str << " + i(" << im_str << ")" << std::endl;
+    mpfr_free_str(re_str);
+    mpfr_free_str(im_str);
+}
