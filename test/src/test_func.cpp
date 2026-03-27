@@ -1,4 +1,7 @@
 #include "test_func.h"
+#include <random>
+#include <algorithm>
+#include <gmp.h>
 
 void mpfr_to_dw(mpfr_t x, mpfr_rnd_t rnd, double* high, double* low) {
     mpfr_t hi, lo;
@@ -43,8 +46,8 @@ double relative_error(mpfr_t exact, double approx_high, double approx_low, mpfr_
     mpfr_init2(abs_exact, MPFR_PREC);
     mpfr_init2(rel_err, MPFR_PREC);
 
-    mpfr_set_d(abs_err, approx_low, rnd);
-    mpfr_add_d(abs_err, abs_err, approx_high, rnd);
+    mpfr_set_d(abs_err, approx_high, rnd);
+    mpfr_add_d(abs_err, abs_err, approx_low, rnd);
     mpfr_sub(abs_err, abs_err, exact, rnd);
     mpfr_abs(abs_err, abs_err, rnd);
 
@@ -147,16 +150,128 @@ void print_statistics(const std::vector<TestResult>& results) {
 void save_results(const std::vector<TestResult>& results, const std::string& filename) {
     std::ofstream file(filename);
     file << "# Complex DW Multiplication Test Results\n";
-    file << "# Iterations: " << N_ITERATIONS << "\n";
+    file << "# Iterations: " << results.size() << "\n";
     file << "# MPFR Precision: " << MPFR_PREC << " bits\n";
-    file << "# Format: ref_re_h,ref_re_l,ref_im_h,ref_im_l,rel_err_norm,rel_err_fast\n";
+    file << "# Format: ref_re_h,ref_re_l,ref_im_h,ref_im_l,rel_err_norm,rel_err_fast,K\n";
     
     file << std::scientific << std::setprecision(MPFR_DISPLAY_PREC);
     for (const auto& r : results) {
         file << r.re_ref_high << "," << r.re_ref_low << ","
              << r.im_ref_high << "," << r.im_ref_low << ","
-             << r.rel_err_norm << "," << r.rel_err_fast << "\n";
+             << r.rel_err_norm << "," << r.rel_err_fast << ","
+             << r.K << "\n";
     }
     file.close();
     std::cout << "\nResults saved to: " << filename << "\n";
+}
+
+bool generate_abcd_mp(mpfr_t K, mpfr_t a, mpfr_t b, mpfr_t c, mpfr_t d, mpfr_t K_check, 
+                      std::mt19937_64& rng, int max_tries) {
+    gmp_randstate_t state;
+    gmp_randinit_mt(state);
+    gmp_randseed_ui(state, rng());
+
+    mpfr_t q, p, denom, fabs_q, K_calc, tmp;
+    mpfr_inits2(MPFR_PREC, q, p, denom, fabs_q, K_calc, tmp, (mpfr_ptr)0);
+
+    mpfr_t K_minus_1, K_plus_1;
+    mpfr_init2(K_minus_1, MPFR_PREC);
+    mpfr_init2(K_plus_1, MPFR_PREC);
+    mpfr_sub_ui(K_minus_1, K, 1, MPFR_RNDN);
+    mpfr_add_ui(K_plus_1, K, 1, MPFR_RNDN);
+
+    for (int attempt = 0; attempt < max_tries; ++attempt) {
+        mpfr_t N;
+        mpfr_init2(N, MPFR_PREC);
+
+        mpfr_urandom(a, state, MPFR_RNDN);
+        mpfr_urandom(b, state, MPFR_RNDN);
+        mpfr_urandom(c, state, MPFR_RNDN);
+
+        if (mpfr_zero_p(b) || mpfr_zero_p(a) || mpfr_zero_p(c)) {
+            continue;
+        }
+
+        mpfr_mul(q, a, c, MPFR_RNDN);
+        mpfr_abs(fabs_q, q, MPFR_RNDN);
+
+        int i = rng() % 4;
+
+        if (i == 0) {
+            mpfr_sub(p, fabs_q, q, MPFR_RNDN);
+            mpfr_mul(p, p, K, MPFR_RNDN);
+            mpfr_div(p, p, K_minus_1, MPFR_RNDN);
+        } else if (i == 1) {
+            mpfr_neg(tmp, fabs_q, MPFR_RNDN);
+            mpfr_sub(p, tmp, q, MPFR_RNDN);
+            mpfr_mul(p, p, K, MPFR_RNDN);
+            mpfr_div(p, p, K_plus_1, MPFR_RNDN);
+        } else if (i == 2) {
+            mpfr_sub(p, fabs_q, q, MPFR_RNDN);
+            mpfr_mul(p, p, K, MPFR_RNDN);
+            mpfr_div(p, p, K_plus_1, MPFR_RNDN);
+        } else if (i == 3) {
+            mpfr_neg(tmp, fabs_q, MPFR_RNDN);
+            mpfr_sub(p, tmp, q, MPFR_RNDN);
+            mpfr_mul(p, p, K, MPFR_RNDN);
+            mpfr_div(p, p, K_minus_1, MPFR_RNDN);
+        }
+
+        bool valid = false;
+        if (i == 0) {
+            mpfr_add(tmp, q, p, MPFR_RNDN);
+            if (mpfr_cmp_ui(p, 0) >= 0 && mpfr_cmp_ui(tmp, 0) >= 0) valid = true;
+        } else if (i == 1) {
+            mpfr_add(tmp, q, p, MPFR_RNDN);
+            if (mpfr_cmp_ui(p, 0) >= 0 && mpfr_cmp_ui(tmp, 0) < 0) valid = true;
+        } else if (i == 2) {
+            mpfr_add(tmp, q, p, MPFR_RNDN);
+            if (mpfr_cmp_ui(p, 0) < 0 && mpfr_cmp_ui(tmp, 0) >= 0) valid = true;
+        } else if (i == 3) {
+            mpfr_add(tmp, q, p, MPFR_RNDN);
+            if (mpfr_cmp_ui(p, 0) < 0 && mpfr_cmp_ui(tmp, 0) < 0) valid = true;
+        }
+
+        if (!valid) {
+            continue;
+        }
+
+        mpfr_div(d, p, b, MPFR_RNDN);
+
+        mpfr_add(denom, q, p, MPFR_RNDN);
+        mpfr_abs(denom, denom, MPFR_RNDN);
+
+        if (mpfr_zero_p(denom)) {
+            continue;
+        }
+
+        mpfr_add(fabs_q, fabs_q, p, MPFR_RNDN);
+        mpfr_abs(fabs_q, fabs_q, MPFR_RNDN);
+        mpfr_div(K_calc, fabs_q, denom, MPFR_RNDN);
+
+        mpfr_t diff, rel_diff;
+        mpfr_init2(diff, MPFR_PREC);
+        mpfr_init2(rel_diff, MPFR_PREC);
+        mpfr_sub(diff, K_calc, K, MPFR_RNDN);
+        mpfr_abs(diff, diff, MPFR_RNDN);
+        mpfr_div(rel_diff, diff, K, MPFR_RNDN);
+
+        if (mpfr_cmp_d(rel_diff, 1e-9) < 0) {
+            mpfr_set(K_check, K_calc, MPFR_RNDN);
+            mpfr_clear(K_minus_1);
+            mpfr_clear(K_plus_1);
+            mpfr_clears(q, p, denom, fabs_q, K_calc, tmp, diff, rel_diff, (mpfr_ptr)0);
+            gmp_randclear(state);
+            return true;
+        }
+
+        mpfr_clear(diff);
+        mpfr_clear(rel_diff);
+    }
+
+    mpfr_clear(K_minus_1);
+    mpfr_clear(K_plus_1);
+    mpfr_clears(q, p, denom, fabs_q, K_calc, tmp, (mpfr_ptr)0);
+    gmp_randclear(state);
+    return false;
 }

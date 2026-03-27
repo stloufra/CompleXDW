@@ -6,16 +6,18 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <random>
 
 #include <mpfr.h>
 
-constexpr int MPFR_PREC = 256;
+constexpr int MPFR_PREC = 1024;
 constexpr int N_ITERATIONS = 10000000;
-constexpr int MPFR_DISPLAY_PREC = 10;
+constexpr int MPFR_DISPLAY_PREC = 17;
 
 struct TestResult {
     double rel_err_norm;
     double rel_err_fast;
+    double K;
     double a_re_high;
     double a_re_low;
     double a_im_high;
@@ -52,5 +54,8 @@ void print_header();
 void print_statistics(const std::vector<TestResult>& results);
 
 void save_results(const std::vector<TestResult>& results, const std::string& filename);
+
+bool generate_abcd_mp(mpfr_t K, mpfr_t a, mpfr_t b, mpfr_t c, mpfr_t d, mpfr_t K_check,
+                     std::mt19937_64& rng, int max_tries = 10000);
 
 #endif
