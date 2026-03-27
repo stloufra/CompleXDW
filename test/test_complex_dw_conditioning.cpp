@@ -86,10 +86,37 @@ int main() {
         ComplexDouble<double> a(ar_h, ar_l, ai_h, ai_l);
         ComplexDouble<double> b(br_h, br_l, bi_h, bi_l);
 
+#ifdef __DEBUG__
+        std::cout << "\n=== DEBUG: After assigning numbers ===" << std::endl;
+        std::cout << "K = " << target_K << std::endl;
+        print_mpfr_complex("a", ar, ai);
+        print_mpfr_complex("b", br, bi);
+        std::cout << "DW a = (" << ar_h << ", " << ar_l << ") + i(" << ai_h << ", " << ai_l << ")" << std::endl;
+        std::cout << "DW b = (" << br_h << ", " << br_l << ") + i(" << bi_h << ", " << bi_l << ")" << std::endl;
+#endif
+
         ComplexDouble<double> c_norm = a * b;
+
+#ifdef __DEBUG__
+        std::cout << "\n=== DEBUG: After a * b ===" << std::endl;
+        std::cout << "c_norm = (" << c_norm.re_h() << ", " << c_norm.re_l() << ") + i("
+                  << c_norm.im_h() << ", " << c_norm.im_l() << ")" << std::endl;
+#endif
+
         ComplexDouble<double> c_fast = mul_fast(a, b);
 
+#ifdef __DEBUG__
+        std::cout << "\n=== DEBUG: After mul_fast ===" << std::endl;
+        std::cout << "c_fast = (" << c_fast.re_h() << ", " << c_fast.re_l() << ") + i("
+                  << c_fast.im_h() << ", " << c_fast.im_l() << ")" << std::endl;
+#endif
+
         mpfr_complex_mul(ar, ai, br, bi, cr, ci, MPFR_RNDN);
+
+#ifdef __DEBUG__
+        std::cout << "\n=== DEBUG: After mpfr_complex_mul ===" << std::endl;
+        print_mpfr_complex("cr, ci", cr, ci);
+#endif
 
         double ref_re_h, ref_re_l, ref_im_h, ref_im_l;
         mpfr_to_dw(cr, MPFR_RNDN, &ref_re_h, &ref_re_l);
