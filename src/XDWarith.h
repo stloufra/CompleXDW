@@ -14,15 +14,15 @@ static constexpr __xdw_inline__ void
 SloppyDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
 {
    // TwoSum(xh, yh, &sh, &sl)
-   rne<T> r1 = two_sum(xh, yh);
+   rne<T> shl = two_sum(xh, yh);
    // v  = xl + yl
    T v = add_rn(xl, yl);
    // w  = sl + v
-   T w = add_rn(r1.error, v);
+   T w = add_rn(shl.error, v);
    // Fast2Sum(sh, w, &zh, &zl)
-   rne<T> r2 = quick_two_sum(r1.sum, w);
+   rne<T> zhl = quick_two_sum(shl.sum, w);
 
-   *zh = r2.sum; *zl = r2.error;
+   *zh = zhl.sum; *zl = zhl.error;
 }
 
 // AccurateDWPlusDW — 20 flops
@@ -33,19 +33,19 @@ static constexpr __xdw_inline__ void
 AccurateDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
 {
    // TwoSum(xh, yh, &sh, &sl)
-   rne<T> r1 = two_sum(xh, yh);
+   rne<T> shl = two_sum(xh, yh);
    // TwoSum(xl, yl, &th, &tl)
-   rne<T> r2 = two_sum(xl, yl);
+   rne<T> thl = two_sum(xl, yl);
    // c  = sl + th
-   T c = add_rn(r1.error, r2.sum);
+   T c = add_rn(shl.error, thl.sum);
    // Fast2Sum(sh, c, &vh, &vl)
-   rne<T> r3 = quick_two_sum(r1.sum, c);
+   rne<T> vhl = quick_two_sum(shl.sum, c);
    // w  = tl + vl
-   T w = add_rn(r2.error, r3.error);
+   T w = add_rn(thl.error, vhl.error);
    // Fast2Sum(vh, w, &zh, &zl)
-   rne<T> r4 = quick_two_sum(r3.sum, w);
+   rne<T> zhl = quick_two_sum(vhl.sum, w);
 
-   *zh = r4.sum; *zl = r4.error;
+   *zh = zhl.sum; *zl = zhl.error;
 }
 
 // maddDWPlusDW — 20 flops
@@ -56,19 +56,19 @@ static constexpr __xdw_inline__ void
 maddDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
 {
    // TwoSum(xh, yh, &sh, &sl)
-   rne<T> r1 = two_sum(xh, yh);
+   rne<T> shl = two_sum(xh, yh);
    // TwoSum(xl, yl, &th, &tl)
-   rne<T> r2 = two_sum(xl, yl);
+   rne<T> thl = two_sum(xl, yl);
    // Fast2Sum(sh, th, &ah, &al)
-   rne<T> r3 = quick_two_sum(r1.sum, r2.sum);
+   rne<T> ahl = quick_two_sum(shl.sum, thl.sum);
    // b  = sl + tl
-   T b = add_rn(r1.error, r2.error);
+   T b = add_rn(shl.error, thl.error);
    // e  = b + al
-   T e = add_rn(b, r3.error);
+   T e = add_rn(b, ahl.error);
    // Fast2Sum(ah, e, &zh, &zl)
-   rne<T> r4 = quick_two_sum(r3.sum, e);
+   rne<T> zhl = quick_two_sum(ahl.sum, e);
 
-   *zh = r4.sum; *zl = r4.error;
+   *zh = zhl.sum; *zl = zhl.error;
 }
 
 // DWTimesDW2 — 8 flops
@@ -79,15 +79,15 @@ static constexpr __xdw_inline__ void
 DWTimesDW2(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
 {
    // TwoProdFMA(xh, yh, &ch, &cl1)
-   rne<T> r1 = two_prod(xh, yh);
+   rne<T> chl = two_prod(xh, yh);
    // tl   = xh * yl
    T tl = mul_rn(xh, yl);
    // cl2  = fma(xl, yh, tl)
    T cl2 = fma_rn(xl, yh, tl);
    // cl3  = cl1 + cl2
-   T cl3 = add_rn(r1.error, cl2);
+   T cl3 = add_rn(chl.error, cl2);
    // Fast2Sum(ch, cl3, &zh, &zl)
-   rne<T> r2 = quick_two_sum(r1.sum, cl3);
+   rne<T> r2 = quick_two_sum(chl.sum, cl3);
 
    *zh = r2.sum; *zl = r2.error;
 }
@@ -101,15 +101,15 @@ static constexpr __xdw_inline__ void
 DWTimesDWunnorm(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
 {
    // TwoProdFMA(xh, yh, &ch, &cl1)
-   rne<T> r1 = two_prod(xh, yh);
+   rne<T> chl = two_prod(xh, yh);
    // t   = xh * yl
    T t = mul_rn(xh, yl);
    // u   = fma(xl, yh, t)
    T u = fma_rn(xl, yh, t);
    // cl3 = cl1 + u
-   T cl3 = add_rn(r1.error, u);
+   T cl3 = add_rn(chl.error, u);
 
-   *zh = r1.sum; *zl = cl3;
+   *zh = chl.sum; *zl = cl3;
 }
 
 // DWMulAdd_Norm — 36 flops
@@ -133,7 +133,7 @@ DWMulAdd_Norm(const T ah, const T al, const T bh, const T bl, const T ch, const 
 }
 
 // DWMulAdd_Fast — 21 flops
-// Relative error bound K·12u^2.
+// Relative error bound K·12u^2. (in proper region) <F4>
 // Computes (ah+al)*(bh+bl) + (ch+cl)*(dh+dl) skipping normalization in multiplication.
 FLOAT_TEMPLATE_GUARD
 __cuda_callable__
