@@ -23,7 +23,7 @@ int main() {
 
     const int N_ITERATIONS = 100000;
     const double K_min = 10.0;
-    const double K_max = 1e60;
+    const double K_max = 1e50;
 
     std::vector<TestResult> results(N_ITERATIONS);
 
@@ -39,42 +39,34 @@ int main() {
     auto start_time = std::chrono::high_resolution_clock::now();
 
     for (int i = 0; i < N_ITERATIONS; ++i) {
-        double t = static_cast<double>(i) / (N_ITERATIONS - 1);
+        double t = N_ITERATIONS > 1 ? static_cast<double>(i) / (N_ITERATIONS - 1) : 0.0; //if only one K
         double target_K = K_min * std::pow(K_max / K_min, t);
         
-        double logK = std::log10(target_K);
-        std::uniform_real_distribution<double> dist_exp(logK - 1.0, logK + 1.0);
-        std::uniform_real_distribution<double> dist_frac(0.0, 1.0);
+        if (std::isnan(target_K) || std::isinf(target_K) || target_K <= 0) {
+            std::cerr << "Invalid K at iteration " << i << ", skipping" << '\n';
+            continue;
+        }
         
-        int exp_ar = static_cast<int>(dist_exp(rng));
-        int exp_ai = static_cast<int>(dist_exp(rng));
-        int exp_br = static_cast<int>(dist_exp(rng));
-        int exp_bi = static_cast<int>(dist_exp(rng));
-
-        mpfr_set_d(ar, 1.0, MPFR_RNDN);
-        mpfr_set_d(ai, 1.0, MPFR_RNDN);
-        mpfr_set_d(br, 1.0, MPFR_RNDN);
-        mpfr_set_d(bi, 1.0, MPFR_RNDN);
-
-        mpfr_mul_2si(ar, ar, exp_ar, MPFR_RNDN);
-        mpfr_mul_2si(ai, ai, exp_ai, MPFR_RNDN);
-        mpfr_mul_2si(br, br, exp_br, MPFR_RNDN);
-        mpfr_mul_2si(bi, bi, exp_bi, MPFR_RNDN);
-
-        double rnd_ar = dist_frac(rng);
-        double rnd_ai = dist_frac(rng);
-        double rnd_br = dist_frac(rng);
-        double rnd_bi = dist_frac(rng);
-
-        mpfr_add_d(ar, ar, rnd_ar, MPFR_RNDN);
-        mpfr_add_d(ai, ai, rnd_ai, MPFR_RNDN);
-        mpfr_add_d(br, br, rnd_br, MPFR_RNDN);
-        mpfr_add_d(bi, bi, rnd_bi, MPFR_RNDN);
-
-        if (rng() % 2) mpfr_neg(ar, ar, MPFR_RNDN);
-        if (rng() % 2) mpfr_neg(ai, ai, MPFR_RNDN);
-        if (rng() % 2) mpfr_neg(br, br, MPFR_RNDN);
-        if (rng() % 2) mpfr_neg(bi, bi, MPFR_RNDN);
+#ifdef __DEBUG__
+        std::cout << "=== Testing with K = " << target_K << " ===" << '\n';
+#endif
+        
+        mpfr_t K_mpfr, K_check;
+        mpfr_init2(K_mpfr, MPFR_PREC);
+        mpfr_init2(K_check, MPFR_PREC);
+        mpfr_set_d(K_mpfr, target_K, MPFR_RNDN); //set to target
+        
+        if (!generate_abcd_mp(K_mpfr, ar, ai, br, bi, K_check, rng, 100000)) {
+            std::cerr << "Failed to generate abcd for K = " << target_K << '\n';
+            mpfr_clear(K_mpfr);
+            mpfr_clear(K_check);
+            continue;
+        }
+        
+        double K_actual = mpfr_get_d(K_check, MPFR_RNDN);
+        
+        mpfr_clear(K_mpfr);
+        mpfr_clear(K_check);
 
         double ar_h, ar_l, ai_h, ai_l;
         double br_h, br_l, bi_h, bi_l;
@@ -87,34 +79,41 @@ int main() {
         ComplexDouble<double> b(br_h, br_l, bi_h, bi_l);
 
 #ifdef __DEBUG__
-        std::cout << "\n=== DEBUG: After assigning numbers ===" << std::endl;
-        std::cout << "K = " << target_K << std::endl;
+        std::cout << "\n=== DEBUG: After assigning numbers ===" << '\n';
+        std::cout << "K = " << target_K << '\n';
+        std::cout << "Calling print_mpfr_complex for a..." << '\n';
+        std::cout << std::flush;
         print_mpfr_complex("a", ar, ai);
+        std::cout << "a printed, calling for b..." << '\n';
+        std::cout << std::flush;
         print_mpfr_complex("b", br, bi);
-        std::cout << "DW a = (" << ar_h << ", " << ar_l << ") + i(" << ai_h << ", " << ai_l << ")" << std::endl;
-        std::cout << "DW b = (" << br_h << ", " << br_l << ") + i(" << bi_h << ", " << bi_l << ")" << std::endl;
+        std::cout << "b printed" << '\n';
+        std::cout << std::flush;
+        std::cout << "DW a = (" << ar_h << ", " << ar_l << ") + i(" << ai_h << ", " << ai_l << ")" << '\n';
+        std::cout << "DW b = (" << br_h << ", " << br_l << ") + i(" << bi_h << ", " << bi_l << ")" << '\n';
+        std::cout << std::flush;
 #endif
 
         ComplexDouble<double> c_norm = a * b;
 
 #ifdef __DEBUG__
-        std::cout << "\n=== DEBUG: After a * b ===" << std::endl;
+        std::cout << "\n=== DEBUG: After a * b ===" << '\n';
         std::cout << "c_norm = (" << c_norm.re_h() << ", " << c_norm.re_l() << ") + i("
-                  << c_norm.im_h() << ", " << c_norm.im_l() << ")" << std::endl;
+                  << c_norm.im_h() << ", " << c_norm.im_l() << ")" << '\n';
 #endif
 
         ComplexDouble<double> c_fast = mul_fast(a, b);
 
 #ifdef __DEBUG__
-        std::cout << "\n=== DEBUG: After mul_fast ===" << std::endl;
+        std::cout << "\n=== DEBUG: After mul_fast ===" << '\n';
         std::cout << "c_fast = (" << c_fast.re_h() << ", " << c_fast.re_l() << ") + i("
-                  << c_fast.im_h() << ", " << c_fast.im_l() << ")" << std::endl;
+                  << c_fast.im_h() << ", " << c_fast.im_l() << ")" << '\n';
 #endif
 
         mpfr_complex_mul(ar, ai, br, bi, cr, ci, MPFR_RNDN);
 
 #ifdef __DEBUG__
-        std::cout << "\n=== DEBUG: After mpfr_complex_mul ===" << std::endl;
+        std::cout << "\n=== DEBUG: After mpfr_complex_mul ===" << '\n';
         print_mpfr_complex("cr, ci", cr, ci);
 #endif
 
@@ -129,8 +128,6 @@ int main() {
         double err_fast = relative_error(cr, c_fast.re_h(), c_fast.re_l(), cr, MPFR_RNDN);
         double err_fast2 = relative_error(ci, c_fast.im_h(), c_fast.im_l(), ci, MPFR_RNDN);
         err_fast = std::max(err_fast, err_fast2);
-
-        double K_actual = target_K;
 
         results[idx] = {err_norm, err_fast, K_actual,
                       ar_h, ar_l, ai_h, ai_l,
