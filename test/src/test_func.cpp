@@ -14,6 +14,17 @@ void mpfr_to_dw(mpfr_t x, mpfr_rnd_t rnd, double* high, double* low) {
     *high = mpfr_get_d(hi, rnd);
     *low = mpfr_get_d(lo, rnd);
 
+#ifdef __DEBUG__
+    mpfr_t approx;
+    mpfr_init2(approx, 1024);
+    double re = relative_error(x, *high, *low, approx, rnd);
+    if (re > 1e-30) {
+    std::cout << "ERROR: mpfr_to_dw: relative error > 1e-30\n";
+    throw std::runtime_error("mpfr_to_dw: relative error > 1e-30");
+    }
+    mpfr_clear(approx);
+#endif
+
     mpfr_clear(hi);
     mpfr_clear(lo);
 }
@@ -171,8 +182,8 @@ bool generate_abcd_mp(mpfr_t K, mpfr_t a, mpfr_t b, mpfr_t c, mpfr_t d, mpfr_t K
     gmp_randinit_mt(state);
     gmp_randseed_ui(state, rng());
 
-    mpfr_t q, p, denom, fabs_q, K_calc, tmp;
-    mpfr_inits2(MPFR_PREC, q, p, denom, fabs_q, K_calc, tmp, (mpfr_ptr)0);
+    mpfr_t q, p, denom, nom, fabs_q, fabs_p, K_calc;
+    mpfr_inits2(MPFR_PREC, q, p, denom, nom, fabs_q, fabs_p, K_calc, (mpfr_ptr)0);
 
     mpfr_t K_minus_1, K_plus_1;
     mpfr_init2(K_minus_1, MPFR_PREC);
@@ -180,15 +191,34 @@ bool generate_abcd_mp(mpfr_t K, mpfr_t a, mpfr_t b, mpfr_t c, mpfr_t d, mpfr_t K
     mpfr_sub_ui(K_minus_1, K, 1, MPFR_RNDN);
     mpfr_add_ui(K_plus_1, K, 1, MPFR_RNDN);
 
+    double K_double = mpfr_get_d(K, MPFR_RNDN);
+    double K_mag = std::pow(10, std::floor(std::log10(K_double)));
+
+    double rnd_exp_1 = K_mag * rng();
+    double rnd_exp_2 = K_mag * rng();
+    double rnd_exp_3 = K_mag * rng();
+
     for (int attempt = 0; attempt < max_tries; ++attempt) {
-        mpfr_t N;
-        mpfr_init2(N, MPFR_PREC);
 
         mpfr_urandom(a, state, MPFR_RNDN);
-        mpfr_urandom(b, state, MPFR_RNDN);
-        mpfr_urandom(c, state, MPFR_RNDN);
+        mpfr_mul_d(a, a, rnd_exp_1, MPFR_RNDN);
+        mpfr_sub_d(a, a, rnd_exp_1/2, MPFR_RNDN);
 
-        if (mpfr_zero_p(b) || mpfr_zero_p(a) || mpfr_zero_p(c)) {
+        mpfr_urandom(b, state, MPFR_RNDN);
+        mpfr_mul_d(b, b, rnd_exp_2, MPFR_RNDN);
+        mpfr_sub_d(b, b, rnd_exp_2/2, MPFR_RNDN);
+
+        mpfr_urandom(c, state, MPFR_RNDN);
+        mpfr_mul_d(c, c, rnd_exp_3, MPFR_RNDN);
+        mpfr_sub_d(c, c, rnd_exp_3, MPFR_RNDN);
+
+#ifdef __DEBUG__
+        std::cout << "a = " << mpfr_get_d(a, MPFR_RNDN) << '\n';
+        std::cout << "b = " << mpfr_get_d(b, MPFR_RNDN) << '\n';
+        std::cout << "c = " << mpfr_get_d(c, MPFR_RNDN) << '\n';
+#endif
+
+        if (mpfr_zero_p(a) || mpfr_zero_p(b) || mpfr_zero_p(c)) {
             continue;
         }
 
@@ -196,96 +226,131 @@ bool generate_abcd_mp(mpfr_t K, mpfr_t a, mpfr_t b, mpfr_t c, mpfr_t d, mpfr_t K
         mpfr_abs(fabs_q, q, MPFR_RNDN);
 
         int i = rng() % 4;
+	
+#ifdef __DEBUG__
+	std::cout << "++++++++++++++++++++++++++++++++++" << '\n';
+	std::cout<< "i = " << i << '\n';
+	std::cout << "++++++++++++++++++++++++++++++++++" << '\n';
+#endif
 
-        if (i == 0) {
-            mpfr_sub(p, fabs_q, q, MPFR_RNDN);
-            mpfr_mul(p, p, K, MPFR_RNDN);
+        if (i == 0) { // p > 0, (p+q) > 0,  p = (|q| -Kq)/(K-1)
+            mpfr_mul(p, K, q, MPFR_RNDN);
+            mpfr_sub(p, fabs_q, p, MPFR_RNDN);
             mpfr_div(p, p, K_minus_1, MPFR_RNDN);
-        } else if (i == 1) {
-            mpfr_neg(tmp, fabs_q, MPFR_RNDN);
-            mpfr_sub(p, tmp, q, MPFR_RNDN);
-            mpfr_mul(p, p, K, MPFR_RNDN);
+        } else if (i == 1) { // p > 0, (p+q) < 0,  p = (|q| -Kq)/(K+1)
+            mpfr_mul(p, K, q, MPFR_RNDN);
+            mpfr_add(p, p, fabs_q, MPFR_RNDN);
+            mpfr_neg(p, p, MPFR_RNDN);
             mpfr_div(p, p, K_plus_1, MPFR_RNDN);
-        } else if (i == 2) {
-            mpfr_sub(p, fabs_q, q, MPFR_RNDN);
-            mpfr_mul(p, p, K, MPFR_RNDN);
+        } else if (i == 2) { // p < 0, (p+q) > 0,  p = (|q| -Kq)/(K-1)
+            mpfr_mul(p, K, q, MPFR_RNDN);
+            mpfr_sub(p, fabs_q, p, MPFR_RNDN);
             mpfr_div(p, p, K_plus_1, MPFR_RNDN);
-        } else if (i == 3) {
-            mpfr_neg(tmp, fabs_q, MPFR_RNDN);
-            mpfr_sub(p, tmp, q, MPFR_RNDN);
-            mpfr_mul(p, p, K, MPFR_RNDN);
+        } else if (i == 3) { // p < 0, (p+q) < 0,  p = (-|q| -Kq)/(K-1)
+            mpfr_mul(p, K, q, MPFR_RNDN);
+            mpfr_add(p, p, fabs_q, MPFR_RNDN);
+            mpfr_neg(p, p, MPFR_RNDN);
             mpfr_div(p, p, K_minus_1, MPFR_RNDN);
         }
 
+        //check if valid with previous assumptions
         bool valid = false;
         if (i == 0) {
-            mpfr_add(tmp, q, p, MPFR_RNDN);
-            if (mpfr_cmp_ui(p, 0) >= 0 && mpfr_cmp_ui(tmp, 0) >= 0) valid = true;
+            mpfr_add(denom, q, p, MPFR_RNDN);
+            if (mpfr_sgn(p) > 0 && mpfr_sgn(denom) > 0) valid = true;
         } else if (i == 1) {
-            mpfr_add(tmp, q, p, MPFR_RNDN);
-            if (mpfr_cmp_ui(p, 0) >= 0 && mpfr_cmp_ui(tmp, 0) < 0) valid = true;
+            mpfr_add(denom, q, p, MPFR_RNDN);
+            if (mpfr_sgn(p) > 0 && mpfr_sgn(denom) < 0) valid = true;
         } else if (i == 2) {
-            mpfr_add(tmp, q, p, MPFR_RNDN);
-            if (mpfr_cmp_ui(p, 0) < 0 && mpfr_cmp_ui(tmp, 0) >= 0) valid = true;
+            mpfr_add(denom, q, p, MPFR_RNDN);
+            if (mpfr_sgn(p) < 0 && mpfr_sgn(denom) > 0) valid = true;
         } else if (i == 3) {
-            mpfr_add(tmp, q, p, MPFR_RNDN);
-            if (mpfr_cmp_ui(p, 0) < 0 && mpfr_cmp_ui(tmp, 0) < 0) valid = true;
+            mpfr_add(denom, q, p, MPFR_RNDN);
+            if (mpfr_sgn(p) < 0 && mpfr_sgn(denom) < 0) valid = true;
         }
 
-        if (!valid) {
-            continue;
-        }
+        if (!valid) continue;
 
+        //calculate d
         mpfr_div(d, p, b, MPFR_RNDN);
 
-        mpfr_add(denom, q, p, MPFR_RNDN);
+        //|q+p|
         mpfr_abs(denom, denom, MPFR_RNDN);
+
+        //|p|
+        mpfr_abs(fabs_p, p, MPFR_RNDN);
 
         if (mpfr_zero_p(denom)) {
             continue;
         }
 
-        mpfr_add(fabs_q, fabs_q, p, MPFR_RNDN);
-        mpfr_abs(fabs_q, fabs_q, MPFR_RNDN);
-        mpfr_div(K_calc, fabs_q, denom, MPFR_RNDN);
+        mpfr_add(nom, fabs_q, fabs_p, MPFR_RNDN);
+        mpfr_div(K_calc, nom, denom, MPFR_RNDN);
 
         mpfr_t diff, rel_diff;
         mpfr_init2(diff, MPFR_PREC);
         mpfr_init2(rel_diff, MPFR_PREC);
+
         mpfr_sub(diff, K_calc, K, MPFR_RNDN);
         mpfr_abs(diff, diff, MPFR_RNDN);
         mpfr_div(rel_diff, diff, K, MPFR_RNDN);
 
         if (mpfr_cmp_d(rel_diff, 1e-9) < 0) {
             mpfr_set(K_check, K_calc, MPFR_RNDN);
+#ifdef __DEBUG__
+            std::cout << "SUCCESS! K_check = " << mpfr_get_d(K_check, MPFR_RNDN) << '\n';
+            std::cout << "a = " << mpfr_get_d(a, MPFR_RNDN) << '\n';
+            std::cout << "b = " << mpfr_get_d(b, MPFR_RNDN) << '\n';
+            std::cout << "c = " << mpfr_get_d(c, MPFR_RNDN) << '\n';
+            std::cout << "d = " << mpfr_get_d(d, MPFR_RNDN) << '\n';
+#endif
             mpfr_clear(K_minus_1);
             mpfr_clear(K_plus_1);
-            mpfr_clears(q, p, denom, fabs_q, K_calc, tmp, diff, rel_diff, (mpfr_ptr)0);
+            mpfr_clears(q, p, denom, nom, fabs_q, fabs_p, K_calc, diff, rel_diff, (mpfr_ptr)0);
             gmp_randclear(state);
             return true;
+        }
+        else{
+#ifdef __DEBUG__
+        std::cout << "Rel. dif. to high = " << mpfr_get_d(rel_diff, MPFR_RNDN) << '\n';
+#endif
         }
 
         mpfr_clear(diff);
         mpfr_clear(rel_diff);
     }
 
+#ifdef __DEBUG__
+    std::cout << "FAILED to generate abcd after " << max_tries << " attempts" << '\n';
+#endif
+
     mpfr_clear(K_minus_1);
     mpfr_clear(K_plus_1);
-    mpfr_clears(q, p, denom, fabs_q, K_calc, tmp, (mpfr_ptr)0);
+    mpfr_clears(q, p, denom, nom, fabs_q, fabs_p, K_calc, (mpfr_ptr)0);
     gmp_randclear(state);
     return false;
 }
 
 void print_mpfr(const char* name, mpfr_t x) {
-    char* str = mpfr_get_str(NULL, NULL, 10, 0, x, MPFR_RNDN);
-    std::cout << name << " = " << str << std::endl;
+    mpfr_exp_t exp;  // required exponent output
+    char* str = mpfr_get_str(nullptr, &exp, 10, 0, x, MPFR_RNDN);
+
+    std::cout << name << " = " << str << "e" << exp << '\n';
+
     mpfr_free_str(str);
 }
 
 void print_mpfr_complex(const char* name, mpfr_t re, mpfr_t im) {
-    char* re_str = mpfr_get_str(NULL, NULL, 10, 0, re, MPFR_RNDN);
-    char* im_str = mpfr_get_str(NULL, NULL, 10, 0, im, MPFR_RNDN);
-    std::cout << name << " = " << re_str << " + i(" << im_str << ")" << std::endl;
+    mpfr_exp_t re_exp, im_exp;
+
+    char* re_str = mpfr_get_str(nullptr, &re_exp, 10, 0, re, MPFR_RNDN);
+    char* im_str = mpfr_get_str(nullptr, &im_exp, 10, 0, im, MPFR_RNDN);
+
+    std::cout << name << " = "
+              << re_str << "e" << re_exp
+              << " + i(" << im_str << "e" << im_exp << ")"
+              << std::endl;
+
     mpfr_free_str(re_str);
     mpfr_free_str(im_str);
 }
