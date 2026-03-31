@@ -23,7 +23,7 @@ int main() {
 
     const int N_ITERATIONS = 100000;
     const double K_min = 10.0;
-    const double K_max = 1e35;
+    const double K_max = 1e30;
 
     std::vector<TestResult> results(N_ITERATIONS);
 

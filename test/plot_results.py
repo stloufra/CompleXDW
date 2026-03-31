@@ -125,3 +125,37 @@ def plot_input_vs_error(df, err_col):
 
 plot_input_vs_error(df, 'rel_err_norm')
 plot_input_vs_error(df, 'rel_err_fast')
+
+#---------------------------------------------------------------------------------
+
+u2 = 2**(-2*53)
+y_norm = df['rel_err_norm'] / df['K'] / u2
+y_fast = df['rel_err_fast'] / df['K'] / u2
+
+max_norm = np.full(n_bins, np.nan)
+max_fast = np.full(n_bins, np.nan)
+mean_norm = np.full(n_bins, np.nan)
+mean_fast = np.full(n_bins, np.nan)
+
+for i in range(n_bins):
+    mask = bin_idx == i
+    if mask.any():
+        max_norm[i] = y_norm.values[mask].max()
+        max_fast[i] = y_fast.values[mask].max()
+        mean_norm[i] = y_norm.values[mask].mean()
+        mean_fast[i] = y_fast.values[mask].mean()
+
+fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+for ax, max_vals, mean_vals, label in zip(axes,
+        [max_norm, max_fast], [mean_norm, mean_fast], ['norm', 'fast']):
+    ax.plot(bin_centers, max_vals, color='steelblue', linewidth=1.2, label=f'max {label}')
+    ax.plot(bin_centers, mean_vals, color='steelblue', linewidth=1.2, linestyle='--', label=f'mean {label}')
+    ax.set_xscale('log')
+    ax.set_yscale('linear')
+    ax.set_xlabel('K')
+    ax.set_ylabel('Relative Error / K / u^2')
+    ax.legend()
+plt.suptitle(f'u^2 = 2^(-2*53) = {u2:.2e}')
+plt.tight_layout()
+plt.savefig('rel_err_over_K_over_u2.png', dpi=150)
+plt.close()
