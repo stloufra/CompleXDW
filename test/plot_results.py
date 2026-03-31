@@ -48,8 +48,8 @@ plt.close()
 
 #---------------------------------------------------------------------------------
 
-sig_digits_norm = -np.floor(np.log10(rel_err_norm + 1e-300))
-sig_digits_fast = -np.floor(np.log10(rel_err_fast + 1e-300))
+sig_digits_norm = -np.floor(np.minimum(np.log10(rel_err_norm + 1e-300),0))
+sig_digits_fast = -np.floor(np.minimum(np.log10(rel_err_fast + 1e-300),0))
 
 logK = np.log10(K)
 logK_bins = np.floor(logK).astype(int)
@@ -106,3 +106,22 @@ ax2.set_title('Relative Error (max and mean) vs Conditioning Number')
 plt.tight_layout()
 plt.savefig('rel_error_vs_K_binned.png', dpi=150)
 plt.close()
+
+#---------------------------------------------------------------------------------
+
+def plot_input_vs_error(df, err_col):
+    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    inputs = [('ar_h', 'a Re (high)'), ('ai_h', 'a Im (high)'),
+              ('br_h', 'b Re (high)'), ('bi_h', 'b Im (high)')]
+    for ax, (col, label) in zip(axes.flat, inputs):
+        ax.scatter(df[col], df[err_col], alpha=0.3, s=1)
+        ax.set_xlabel(label)
+        ax.set_ylabel('Relative Error')
+        ax.set_yscale('log')
+    fig.suptitle(f'{err_col} vs Input Magnitude', fontsize=14)
+    plt.tight_layout()
+    plt.savefig(f'{err_col}_vs_input.png', dpi=150)
+    plt.close()
+
+plot_input_vs_error(df, 'rel_err_norm')
+plot_input_vs_error(df, 'rel_err_fast')

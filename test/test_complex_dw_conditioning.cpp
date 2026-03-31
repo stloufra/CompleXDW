@@ -23,7 +23,7 @@ int main() {
 
     const int N_ITERATIONS = 100000;
     const double K_min = 10.0;
-    const double K_max = 1e50;
+    const double K_max = 1e35;
 
     std::vector<TestResult> results(N_ITERATIONS);
 
@@ -56,6 +56,9 @@ int main() {
         mpfr_init2(K_check, MPFR_PREC);
         mpfr_set_d(K_mpfr, target_K, MPFR_RNDN); //set to target
         
+	//			      a,  b,  c,  d
+	//			      ar*br-ai*bi -> ac-bd
+	//			      ai*br + ar*bi -> b*c + a*d
         if (!generate_abcd_mp(K_mpfr, ar, ai, br, bi, K_check, rng, 100000)) {
             std::cerr << "Failed to generate abcd for K = " << target_K << '\n';
             mpfr_clear(K_mpfr);

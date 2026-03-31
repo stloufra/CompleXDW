@@ -68,6 +68,8 @@ double relative_error(mpfr_t exact, double approx_high, double approx_low, mpfr_
 
     double result = mpfr_get_d(rel_err, rnd);
 
+    //if(result > 1) result=1;
+
     mpfr_clear(abs_err);
     mpfr_clear(abs_exact);
     mpfr_clear(rel_err);
@@ -182,6 +184,10 @@ void save_results(const std::vector<TestResult>& results, const std::string& fil
 
 bool generate_abcd_mp(mpfr_t K, mpfr_t a, mpfr_t b, mpfr_t c, mpfr_t d, mpfr_t K_check, 
                       std::mt19937_64& rng, int max_tries) {
+    //a = x_{real}, b= x_{imag}, c=y_{real}, d = y_{imag}
+    //p = x_{imag}*y_{real} q = x_{real}*y_{imag}
+    //p = a*d, q=b*c
+    //K = |q|+|p|/|p+q|
     gmp_randstate_t state;
     gmp_randinit_mt(state);
     gmp_randseed_ui(state, rng());
@@ -198,36 +204,37 @@ bool generate_abcd_mp(mpfr_t K, mpfr_t a, mpfr_t b, mpfr_t c, mpfr_t d, mpfr_t K
     double K_double = mpfr_get_d(K, MPFR_RNDN);
     double K_mag = std::pow(10, std::floor(std::log10(K_double)));
 
-    double rnd_exp_1 = K_mag * rng();
-    double rnd_exp_2 = K_mag * rng();
-    double rnd_exp_3 = K_mag * rng();
-
+    constexpr double u64_max = static_cast<double>(std::numeric_limits<uint64_t>::max());
+    double rnd_exp_1 = K_mag * (rng() / u64_max);
+    double rnd_exp_2 = K_mag * (rng() / u64_max);
+    double rnd_exp_3 = K_mag * (rng() / u64_max);
+    
     for (int attempt = 0; attempt < max_tries; ++attempt) {
 
         mpfr_urandom(a, state, MPFR_RNDN);
         mpfr_mul_d(a, a, rnd_exp_1, MPFR_RNDN);
         mpfr_sub_d(a, a, rnd_exp_1/2, MPFR_RNDN);
 
-        mpfr_urandom(b, state, MPFR_RNDN);
-        mpfr_mul_d(b, b, rnd_exp_2, MPFR_RNDN);
-        mpfr_sub_d(b, b, rnd_exp_2/2, MPFR_RNDN);
-
         mpfr_urandom(c, state, MPFR_RNDN);
-        mpfr_mul_d(c, c, rnd_exp_3, MPFR_RNDN);
-        mpfr_sub_d(c, c, rnd_exp_3, MPFR_RNDN);
+        mpfr_mul_d(c, c, rnd_exp_2, MPFR_RNDN);
+        mpfr_sub_d(c, c, rnd_exp_2/2, MPFR_RNDN);
+
+        mpfr_urandom(d, state, MPFR_RNDN);
+        mpfr_mul_d(d, d, rnd_exp_3, MPFR_RNDN);
+        mpfr_sub_d(d, d, rnd_exp_3/2, MPFR_RNDN);
 
 #ifdef __DEBUG__
         std::cout << "a = " << mpfr_get_d(a, MPFR_RNDN) << '\n';
-        std::cout << "b = " << mpfr_get_d(b, MPFR_RNDN) << '\n';
         std::cout << "c = " << mpfr_get_d(c, MPFR_RNDN) << '\n';
+        std::cout << "d = " << mpfr_get_d(d, MPFR_RNDN) << '\n';
 #endif
 
-        if (mpfr_zero_p(a) || mpfr_zero_p(b) || mpfr_zero_p(c)) {
+        if (mpfr_zero_p(a) || mpfr_zero_p(c) || mpfr_zero_p(d)) {
             continue;
         }
 
-        mpfr_mul(q, a, c, MPFR_RNDN);
-        mpfr_abs(fabs_q, q, MPFR_RNDN);
+        mpfr_mul(p, a, d, MPFR_RNDN);
+        mpfr_abs(fabs_p, p, MPFR_RNDN);
 
         int i = rng() % 4;
 	
@@ -237,52 +244,55 @@ bool generate_abcd_mp(mpfr_t K, mpfr_t a, mpfr_t b, mpfr_t c, mpfr_t d, mpfr_t K
 	std::cout << "++++++++++++++++++++++++++++++++++" << '\n';
 #endif
 
-        if (i == 0) { // p > 0, (p+q) > 0,  p = (|q| -Kq)/(K-1)
-            mpfr_mul(p, K, q, MPFR_RNDN);
-            mpfr_sub(p, fabs_q, p, MPFR_RNDN);
-            mpfr_div(p, p, K_minus_1, MPFR_RNDN);
-        } else if (i == 1) { // p > 0, (p+q) < 0,  p = (|q| -Kq)/(K+1)
-            mpfr_mul(p, K, q, MPFR_RNDN);
-            mpfr_add(p, p, fabs_q, MPFR_RNDN);
-            mpfr_neg(p, p, MPFR_RNDN);
-            mpfr_div(p, p, K_plus_1, MPFR_RNDN);
-        } else if (i == 2) { // p < 0, (p+q) > 0,  p = (|q| -Kq)/(K-1)
-            mpfr_mul(p, K, q, MPFR_RNDN);
-            mpfr_sub(p, fabs_q, p, MPFR_RNDN);
-            mpfr_div(p, p, K_plus_1, MPFR_RNDN);
-        } else if (i == 3) { // p < 0, (p+q) < 0,  p = (-|q| -Kq)/(K-1)
-            mpfr_mul(p, K, q, MPFR_RNDN);
-            mpfr_add(p, p, fabs_q, MPFR_RNDN);
-            mpfr_neg(p, p, MPFR_RNDN);
-            mpfr_div(p, p, K_minus_1, MPFR_RNDN);
+        if (i == 0) { // q > 0, (p+q) > 0,  q = (|p| -Kp)/(K-1)
+            mpfr_mul(q, K, p, MPFR_RNDN);
+            mpfr_sub(q, fabs_p, q, MPFR_RNDN);
+            mpfr_div(q, q, K_minus_1, MPFR_RNDN);
+
+        } else if (i == 1) { // q > 0, (p+q) < 0,  q = (-|p| -Kp)/(K+1)
+            mpfr_mul(q, K, p, MPFR_RNDN);
+            mpfr_add(q, q, fabs_p, MPFR_RNDN); //-(|p|+Kp)
+            mpfr_neg(q, q, MPFR_RNDN);
+            mpfr_div(q, q, K_plus_1, MPFR_RNDN);
+
+        } else if (i == 2) { // q < 0, (p+q) > 0,  q = (|p| -Kp)/(K+1)
+            mpfr_mul(q, K, p, MPFR_RNDN);
+            mpfr_sub(q, fabs_p, q, MPFR_RNDN);
+            mpfr_div(q, q, K_plus_1, MPFR_RNDN);
+
+        } else if (i == 3) { // q < 0, (p+q) < 0,  q = (-|p| -Kp)/(K-1)
+            mpfr_mul(q, K, p, MPFR_RNDN);
+            mpfr_add(q, q, fabs_p, MPFR_RNDN);
+            mpfr_neg(q, q, MPFR_RNDN); //-(|p|+Kp)
+            mpfr_div(q, q, K_minus_1, MPFR_RNDN);
         }
 
         //check if valid with previous assumptions
         bool valid = false;
         if (i == 0) {
             mpfr_add(denom, q, p, MPFR_RNDN);
-            if (mpfr_sgn(p) > 0 && mpfr_sgn(denom) > 0) valid = true;
+            if (mpfr_sgn(q) > 0 && mpfr_sgn(denom) > 0) valid = true;
         } else if (i == 1) {
             mpfr_add(denom, q, p, MPFR_RNDN);
-            if (mpfr_sgn(p) > 0 && mpfr_sgn(denom) < 0) valid = true;
+            if (mpfr_sgn(q) > 0 && mpfr_sgn(denom) < 0) valid = true;
         } else if (i == 2) {
             mpfr_add(denom, q, p, MPFR_RNDN);
-            if (mpfr_sgn(p) < 0 && mpfr_sgn(denom) > 0) valid = true;
+            if (mpfr_sgn(q) < 0 && mpfr_sgn(denom) > 0) valid = true;
         } else if (i == 3) {
             mpfr_add(denom, q, p, MPFR_RNDN);
-            if (mpfr_sgn(p) < 0 && mpfr_sgn(denom) < 0) valid = true;
+            if (mpfr_sgn(q) < 0 && mpfr_sgn(denom) < 0) valid = true;
         }
 
         if (!valid) continue;
 
         //calculate d
-        mpfr_div(d, p, b, MPFR_RNDN);
+        mpfr_div(b, q, c, MPFR_RNDN);
 
         //|q+p|
         mpfr_abs(denom, denom, MPFR_RNDN);
 
-        //|p|
-        mpfr_abs(fabs_p, p, MPFR_RNDN);
+        //|q|
+        mpfr_abs(fabs_q, q, MPFR_RNDN);
 
         if (mpfr_zero_p(denom)) {
             continue;
