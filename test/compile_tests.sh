@@ -10,24 +10,10 @@ fi
 
 echo "Using compiler: $CXX"
 
-# Compile minimal test
-$CXX -std=c++17 -O3 -march=native -I.. \
-    minimal_test.cpp \
-    -I/opt/homebrew/include \
-    -L/opt/homebrew/lib -lmpfr -lgmp -lm \
-    -o minimal_test
-
-# Compile full test
-$CXX -std=c++17 -O3 -march=native -I.. \
-    test_complex_dw_random.cpp \
-    src/test_func.cpp \
-    -I/opt/homebrew/include \
-    -L/opt/homebrew/lib -lmpfr -lgmp -lm \
-    -o test_complex_dw
-
 # Compile conditioning test
 $CXX -std=c++17 -O3 -march=native -I.. \
     test_complex_dw_conditioning.cpp \
+    -DXDW_FAST_FMA \
     src/test_func.cpp \
     -I/opt/homebrew/include \
     -L/opt/homebrew/lib -lmpfr -lgmp -lm \

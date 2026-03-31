@@ -3,7 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 df = pd.read_csv('test_results.csv', comment='#', header=None,
-                 names=['ref_re_h', 'ref_re_l', 'ref_im_h', 'ref_im_l', 'rel_err_norm', 'rel_err_fast', 'K'])
+                 names=['ar_h', 'ar_l', 'ai_h', 'ai_l', 'br_h', 'br_l', 'bi_h', 'bi_l',
+       'ref_re_h', 'ref_re_l', 'ref_im_h', 'ref_im_l', 'rel_err_norm', 'rel_err_fast', 'K'])
 
 rel_err_norm = df['rel_err_norm'].values
 rel_err_fast = df['rel_err_fast'].values
