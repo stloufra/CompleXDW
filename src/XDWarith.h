@@ -112,13 +112,13 @@ DWTimesDW2Unnorm(const T xh, const T xl, const T yh, const T yl, T* __restrict__
    *zh = chl.sum; *zl = cl3;
 }
 
-// DWMulAdd_Norm — 36 flops
+// DWMulAdd_AccurateNorm — 36 flops
 // Relative error bound K·7u^2.
 // Computes (ah+al)*(bh+bl) + (ch+cl)*(dh+dl) with full normalization.
 FLOAT_TEMPLATE_GUARD
 __cuda_callable__
 static constexpr __xdw_inline__ void
-DWMulAdd_Norm(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
+DWMulAdd_AccurateNorm(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
 {
    // Step 1 — p = a*b via full DWTimesDW2
    T ph, pl;
@@ -179,12 +179,12 @@ DWMulAdd_AccurateUnnorm(const T ah, const T al, const T bh, const T bl, const T 
 FLOAT_TEMPLATE_GUARD
 __cuda_callable__
 static constexpr __xdw_inline__ void
-ComplexDWMulNorm(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
+ComplexDWMulAccurateNorm(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
 {
-   // Real part = ac - bd: DWMulAdd_Norm(ah, al, ch, cl, bh, bl, -dh, -dl)
-   DWMulAdd_Norm(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
-   // Imaginary part = ad + bc: DWMulAdd_Norm(ah, al, dh, dl, bh, bl, ch, cl)
-   DWMulAdd_Norm(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
+   // Real part = ac - bd: DWMulAdd_AccurateNorm(ah, al, ch, cl, bh, bl, -dh, -dl)
+   DWMulAdd_AccurateNorm(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
+   // Imaginary part = ad + bc: DWMulAdd_AccurateNorm(ah, al, dh, dl, bh, bl, ch, cl)
+   DWMulAdd_AccurateNorm(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
 }
 
 // ComplexDWMulSloppyUnnorm — computes (a + i*b) * (c + i*d) where each of a, b, c, d is a DW number without normalization.

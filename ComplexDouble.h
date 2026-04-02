@@ -87,7 +87,7 @@ class alignas( 4 * sizeof( T ) ) ComplexDouble
 
   __cuda_callable__
   constexpr static ComplexDouble< T >
-  mulnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b );
+  mulAccurateNorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b );
 
   __cuda_callable__
   constexpr static ComplexDouble< T >
@@ -167,10 +167,10 @@ ComplexDouble< T >::sub( const ComplexDouble< T >& a, const ComplexDouble< T >& 
 template< typename T >
 __cuda_callable__
 constexpr ComplexDouble< T >
-ComplexDouble< T >::mulnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
+ComplexDouble< T >::mulAccurateNorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    T reh, rel, imh, iml;
-   XDW_ARTH::ComplexDWMulNorm( a.data[ 0 ], a.data[ 1 ], a.data[ 2 ], a.data[ 3 ],
+   XDW_ARTH::ComplexDWMulAccurateNorm( a.data[ 0 ], a.data[ 1 ], a.data[ 2 ], a.data[ 3 ],
                      b.data[ 0 ], b.data[ 1 ], b.data[ 2 ], b.data[ 3 ],
                      &reh, &rel, &imh, &iml );
    return ComplexDouble< T >( reh, rel, imh, iml );
@@ -226,7 +226,7 @@ __cuda_callable__
 constexpr ComplexDouble< T >
 operator*( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
-   return ComplexDouble< T >::mulnorm( a, b );
+   return ComplexDouble< T >::mulAccurateNorm( a, b );
 }
 
 template< typename T >
@@ -243,6 +243,14 @@ constexpr ComplexDouble< T >
 mul_accurate_unnnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    return ComplexDouble< T >::mulAccurateUnnorm( a, b );
+}
+
+template< typename T >
+__cuda_callable__
+constexpr ComplexDouble< T >
+mul_accurate_norm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
+{
+   return ComplexDouble< T >::mulAccurateNorm( a, b );
 }
 
 
