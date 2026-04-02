@@ -91,7 +91,11 @@ class alignas( 4 * sizeof( T ) ) ComplexDouble
 
   __cuda_callable__
   constexpr static ComplexDouble< T >
-  mulfast( const ComplexDouble< T >& a, const ComplexDouble< T >& b );
+  mulSloppyUnnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b );
+
+  __cuda_callable__
+  constexpr static ComplexDouble< T >
+  mulAccurateUnnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b );
 };
 
 template< typename T >
@@ -166,7 +170,7 @@ constexpr ComplexDouble< T >
 ComplexDouble< T >::mulnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    T reh, rel, imh, iml;
-   XDW_ARTH::ComplexDWMulnorm( a.data[ 0 ], a.data[ 1 ], a.data[ 2 ], a.data[ 3 ],
+   XDW_ARTH::ComplexDWMulNorm( a.data[ 0 ], a.data[ 1 ], a.data[ 2 ], a.data[ 3 ],
                      b.data[ 0 ], b.data[ 1 ], b.data[ 2 ], b.data[ 3 ],
                      &reh, &rel, &imh, &iml );
    return ComplexDouble< T >( reh, rel, imh, iml );
@@ -175,14 +179,28 @@ ComplexDouble< T >::mulnorm( const ComplexDouble< T >& a, const ComplexDouble< T
 template< typename T >
 __cuda_callable__
 constexpr ComplexDouble< T >
-ComplexDouble< T >::mulfast( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
+ComplexDouble< T >::mulSloppyUnnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    T reh, rel, imh, iml;
-   XDW_ARTH::ComplexDWMulfast( a.data[ 0 ], a.data[ 1 ], a.data[ 2 ], a.data[ 3 ],
+   XDW_ARTH::ComplexDWMulSloppyUnnorm( a.data[ 0 ], a.data[ 1 ], a.data[ 2 ], a.data[ 3 ],
                      b.data[ 0 ], b.data[ 1 ], b.data[ 2 ], b.data[ 3 ],
                      &reh, &rel, &imh, &iml );
    return ComplexDouble< T >( reh, rel, imh, iml );
 }
+
+
+template< typename T >
+__cuda_callable__
+constexpr ComplexDouble< T >
+ComplexDouble< T >::mulAccurateUnnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
+{
+   T reh, rel, imh, iml;
+   XDW_ARTH::ComplexDWMulAccurateUnnorm( a.data[ 0 ], a.data[ 1 ], a.data[ 2 ], a.data[ 3 ],
+                     b.data[ 0 ], b.data[ 1 ], b.data[ 2 ], b.data[ 3 ],
+                     &reh, &rel, &imh, &iml );
+   return ComplexDouble< T >( reh, rel, imh, iml );
+}
+
 
 
 template< typename T >
@@ -201,6 +219,8 @@ operator-( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
    return ComplexDouble< T >::sub( a, b );
 }
 
+//define muliplication
+
 template< typename T >
 __cuda_callable__
 constexpr ComplexDouble< T >
@@ -212,9 +232,17 @@ operator*( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 template< typename T >
 __cuda_callable__
 constexpr ComplexDouble< T >
-mul_fast( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
+mul_sloppy_unnnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
-   return ComplexDouble< T >::mulfast( a, b );
+   return ComplexDouble< T >::mulSloppyUnnorm( a, b );
+}
+
+template< typename T >
+__cuda_callable__
+constexpr ComplexDouble< T >
+mul_accurate_unnnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
+{
+   return ComplexDouble< T >::mulAccurateUnnorm( a, b );
 }
 
 

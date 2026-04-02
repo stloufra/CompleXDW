@@ -92,13 +92,13 @@ DWTimesDW2(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T
    *zh = r2.sum; *zl = r2.error;
 }
 
-// DWTimesDWunnorm — 5 flops
+// DWTimesDW2Unnorm — 5 flops
 // Unnormalized DW product, skips final Fast2Sum. 
 // Returns (ph, pl) where pl may not satisfy |pl| <= u*|ph|.
 FLOAT_TEMPLATE_GUARD
 __cuda_callable__
 static constexpr __xdw_inline__ void
-DWTimesDWunnorm(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
+DWTimesDW2Unnorm(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
 {
    // TwoProdFMA(xh, yh, &ch, &cl1)
    rne<T> chl = two_prod(xh, yh);
@@ -132,33 +132,54 @@ DWMulAdd_Norm(const T ah, const T al, const T bh, const T bl, const T ch, const 
    maddDWPlusDW(ph, pl, qh, ql, rh, rl);
 }
 
-// DWMulAdd_Fast — 21 flops
+// DWMulAdd_SloppyUnnorm — 21 flops
 // Relative error bound K·12u^2. (in proper region) <F4>
 // Computes (ah+al)*(bh+bl) + (ch+cl)*(dh+dl) skipping normalization in multiplication.
 FLOAT_TEMPLATE_GUARD
 __cuda_callable__
 static constexpr __xdw_inline__ void
-DWMulAdd_Fast(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
+DWMulAdd_SloppyUnnorm(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
 {
-   // Step 1 — p = a*b via DWTimesDWunnorm
+   // Step 1 — p = a*b via DWTimesDW2Unnorm
    T ph, pl;
-   DWTimesDWunnorm(ah, al, bh, bl, &ph, &pl);
+   DWTimesDW2Unnorm(ah, al, bh, bl, &ph, &pl);
 
-   // Step 2 — q = c*d via DWTimesDWunnorm
+   // Step 2 — q = c*d via DWTimesDW2Unnorm
    T qh, ql;
-   DWTimesDWunnorm(ch, cl, dh, dl, &qh, &ql);
+   DWTimesDW2Unnorm(ch, cl, dh, dl, &qh, &ql);
 
    // Step 3 — r = p + q via SloppyDWPlusDW(ph, pl, qh, ql)
    SloppyDWPlusDW(ph, pl, qh, ql, rh, rl);
 }
 
-// ComplexDWMulnorm — computes (a + i*b) * (c + i*d) where each of a, b, c, d is a DW number with normalization.
+
+// DWMulAdd_SloppyUnnorm — 21 flops
+// Relative error bound K·12u^2. (in proper region) <F4>
+// Computes (ah+al)*(bh+bl) + (ch+cl)*(dh+dl) skipping normalization in multiplication.
+FLOAT_TEMPLATE_GUARD
+__cuda_callable__
+static constexpr __xdw_inline__ void
+DWMulAdd_AccurateUnnorm(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
+{
+   // Step 1 — p = a*b via DWTimesDW2Unnorm
+   T ph, pl;
+   DWTimesDW2Unnorm(ah, al, bh, bl, &ph, &pl);
+
+   // Step 2 — q = c*d via DWTimesDW2Unnorm
+   T qh, ql;
+   DWTimesDW2Unnorm(ch, cl, dh, dl, &qh, &ql);
+
+   // Step 3 — r = p + q via SloppyDWPlusDW(ph, pl, qh, ql)
+   maddDWPlusDW(ph, pl, qh, ql, rh, rl);
+}
+
+// ComplexDWMulNorm — computes (a + i*b) * (c + i*d) where each of a, b, c, d is a DW number with normalization.
 // Inputs: (ah, al, bh, bl, ch, cl, dh, dl)
 // Output: (reh, rel, imh, iml)
 FLOAT_TEMPLATE_GUARD
 __cuda_callable__
 static constexpr __xdw_inline__ void
-ComplexDWMulnorm(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
+ComplexDWMulNorm(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
 {
    // Real part = ac - bd: DWMulAdd_Norm(ah, al, ch, cl, bh, bl, -dh, -dl)
    DWMulAdd_Norm(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
@@ -166,20 +187,33 @@ ComplexDWMulnorm(const T ah, const T al, const T bh, const T bl, const T ch, con
    DWMulAdd_Norm(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
 }
 
-// ComplexDWMulfast — computes (a + i*b) * (c + i*d) where each of a, b, c, d is a DW number without normalization.
+// ComplexDWMulSloppyUnnorm — computes (a + i*b) * (c + i*d) where each of a, b, c, d is a DW number without normalization.
 // Inputs: (ah, al, bh, bl, ch, cl, dh, dl)
 // Output: (reh, rel, imh, iml)
 FLOAT_TEMPLATE_GUARD
 __cuda_callable__
 static constexpr __xdw_inline__ void
-ComplexDWMulfast(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
+ComplexDWMulSloppyUnnorm(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
 {
-   // Real part = ac - bd: DWMulAdd_Fast(ah, al, ch, cl, bh, bl, -dh, -dl)
-   DWMulAdd_Fast(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
-   // Imaginary part = ad + bc: DWMulAdd_Fast(ah, al, dh, dl, bh, bl, ch, cl)
-   DWMulAdd_Fast(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
+   // Real part = ac - bd: DWMulAdd_SloppyUnnorm(ah, al, ch, cl, bh, bl, -dh, -dl)
+   DWMulAdd_SloppyUnnorm(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
+   // Imaginary part = ad + bc: DWMulAdd_SloppyUnnorm(ah, al, dh, dl, bh, bl, ch, cl)
+   DWMulAdd_SloppyUnnorm(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
 }
 
+// ComplexDWMulAccurateUnnorm — computes (a + i*b) * (c + i*d) where each of a, b, c, d is a DW number without normalization.
+// Inputs: (ah, al, bh, bl, ch, cl, dh, dl)
+// Output: (reh, rel, imh, iml)
+FLOAT_TEMPLATE_GUARD
+__cuda_callable__
+static constexpr __xdw_inline__ void
+ComplexDWMulAccurateUnnorm(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
+{
+   // Real part = ac - bd: DWMulAdd_SloppyUnnorm(ah, al, ch, cl, bh, bl, -dh, -dl)
+   DWMulAdd_AccurateUnnorm(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
+   // Imaginary part = ad + bc: DWMulAdd_SloppyUnnorm(ah, al, dh, dl, bh, bl, ch, cl)
+   DWMulAdd_AccurateUnnorm(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
+}
 }
 
 #endif

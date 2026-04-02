@@ -11,10 +11,12 @@ int main() {
     ComplexDouble<double> b(2.0, 0.0, 3.0, 0.0);
     std::cout << "Created b" << std::endl;
     auto c = a * b;
-    auto c_fast = mul_fast(a, b );
+    auto c_sloppy = mul_sloppy_unnnorm(a, b );
+    auto c_accurate = mul_accurate_unnnorm(a, b );
     std::cout << "Multiplication done" << std::endl;
     std::setprecision(16);
     std::cout << "c = (" << c.re_h() << ", " << c.re_l() << ") + i(" << c.im_h() << ", " << c.im_l() << ")" << std::endl;
-    std::cout << "c_fast = (" << c_fast.re_h() << ", " << c_fast.re_l() << ") + i(" << c_fast.im_h() << ", " << c_fast.im_l() << ")" << std::endl;
+    std::cout << "c_sloppy = (" << c_sloppy.re_h() << ", " << c_sloppy.re_l() << ") + i(" << c_sloppy.im_h() << ", " << c_sloppy.im_l() << ")" << std::endl;
+    std::cout << "c_accurate = (" << c_accurate.re_h() << ", " << c_accurate.re_l() << ") + i(" << c_accurate.im_h() << ", " << c_accurate.im_l() << ")" << std::endl;
     return 0;
 }

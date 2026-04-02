@@ -105,12 +105,12 @@ int main() {
                   << c_norm.im_h() << ", " << c_norm.im_l() << ")" << '\n';
 #endif
 
-        ComplexDouble<double> c_fast = mul_fast(a, b);
+        ComplexDouble<double> c_sloppy = mul_sloppy_unnnorm(a, b);
 
 #ifdef __DEBUG__
-        std::cout << "\n=== DEBUG: After mul_fast ===" << '\n';
-        std::cout << "c_fast = (" << c_fast.re_h() << ", " << c_fast.re_l() << ") + i("
-                  << c_fast.im_h() << ", " << c_fast.im_l() << ")" << '\n';
+        std::cout << "\n=== DEBUG: After mul_sloppy ===" << '\n';
+        std::cout << "c_sloppy = (" << c_sloppy.re_h() << ", " << c_sloppy.re_l() << ") + i("
+                  << c_sloppy.im_h() << ", " << c_sloppy.im_l() << ")" << '\n';
 #endif
 
         mpfr_complex_mul(ar, ai, br, bi, cr, ci, MPFR_RNDN);
@@ -128,15 +128,15 @@ int main() {
         double err_norm2 = relative_error(ci, c_norm.im_h(), c_norm.im_l(), ci, MPFR_RNDN);
         err_norm = std::max(err_norm, err_norm2);
 
-        double err_fast = relative_error(cr, c_fast.re_h(), c_fast.re_l(), cr, MPFR_RNDN);
-        double err_fast2 = relative_error(ci, c_fast.im_h(), c_fast.im_l(), ci, MPFR_RNDN);
-        err_fast = std::max(err_fast, err_fast2);
+        double err_sloppy = relative_error(cr, c_sloppy.re_h(), c_sloppy.re_l(), cr, MPFR_RNDN);
+        double err_sloppy2 = relative_error(ci, c_sloppy.im_h(), c_sloppy.im_l(), ci, MPFR_RNDN);
+        err_sloppy = std::max(err_sloppy, err_sloppy2);
 
-        results[idx] = {err_norm, err_fast, K_actual,
+        results[idx] = {err_norm, err_sloppy, K_actual,
                       ar_h, ar_l, ai_h, ai_l,
                       br_h, br_l, bi_h, bi_l,
                       c_norm.re_h(), c_norm.re_l(), c_norm.im_h(), c_norm.im_l(),
-                      c_fast.re_h(), c_fast.re_l(), c_fast.im_h(), c_fast.im_l(),
+                      c_sloppy.re_h(), c_sloppy.re_l(), c_sloppy.im_h(), c_sloppy.im_l(),
                       ref_re_h, ref_re_l, ref_im_h, ref_im_l};
 
         idx++;
