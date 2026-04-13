@@ -4,110 +4,152 @@ import numpy as np
 
 df = pd.read_csv('test_results.csv', comment='#', header=None,
                  names=['ar_h', 'ar_l', 'ai_h', 'ai_l', 'br_h', 'br_l', 'bi_h', 'bi_l',
-       'ref_re_h', 'ref_re_l', 'ref_im_h', 'ref_im_l', 'rel_err_norm', 'rel_err_fast', 'K'])
+       'ref_re_h', 'ref_re_l', 'ref_im_h', 'ref_im_l', 'rel_err_acc_norm', 'rel_err_acc_un', 'rel_err_sloppy_un', 'K'])
 
-rel_err_norm = df['rel_err_norm'].values
-rel_err_fast = df['rel_err_fast'].values
+rel_err_acc_norm = df['rel_err_acc_norm'].values
+rel_err_acc_un = df['rel_err_acc_un'].values
+rel_err_sloppy_un = df['rel_err_sloppy_un'].values
 K = df['K'].values
 
-worst_norm = np.max(rel_err_norm)
-worst_fast = np.max(rel_err_fast)
+worst_acc_norm = np.max(rel_err_acc_norm)
+worst_acc_un = np.max(rel_err_acc_un)
+worst_sloppy_un = np.max(rel_err_sloppy_un)
 
 with open('worst_rel_error.txt', 'w') as f:
-    f.write(f"Worst rel_err_norm: {worst_norm:.6e}\n")
-    f.write(f"Worst rel_err_fast: {worst_fast:.6e}\n")
+    f.write(f"Worst rel_err_acc_norm: {worst_acc_norm:.6e}\n")
+    f.write(f"Worst rel_err_acc_un: {worst_acc_un:.6e}\n")
+    f.write(f"Worst rel_err_sloppy_un: {worst_sloppy_un:.6e}\n")
 
-#---------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+
+avg_acc_norm = np.mean(rel_err_acc_norm)
+avg_acc_un = np.mean(rel_err_acc_un)
+avg_sloppy_un = np.mean(rel_err_sloppy_un)
 
 fig, ax = plt.subplots(figsize=(10, 6))
-ax.hist(rel_err_norm, bins=50, alpha=0.5, label='rel_err_norm', density=True)
-ax.hist(rel_err_fast, bins=50, alpha=0.5, label='rel_err_fast', density=True)
+ax.hist(rel_err_acc_norm, bins=50, alpha=0.5, label='rel_err_acc_norm', density=True)
+ax.hist(rel_err_acc_un, bins=50, alpha=0.5, label='rel_err_acc_un', density=True)
+ax.hist(rel_err_sloppy_un, bins=50, alpha=0.5, label='rel_err_sloppy_un', density=True)
 ax.set_xlabel('Relative Error')
 ax.set_ylabel('Density')
 ax.set_yscale('log')
 ax.legend()
+
+textstr = f'Avg rel_err_acc_norm: {avg_acc_norm:.16g}\nAvg rel_err_acc_un: {avg_acc_un:.16g}\nAvg rel_err_sloppy_un: {avg_sloppy_un:.16g}'
+props = dict(boxstyle='round', facecolor='white', alpha=0.7)
+ax.text(0.95, 0.95, textstr, transform=ax.transAxes, fontsize=10,
+        verticalalignment='top', horizontalalignment='right', bbox=props)
+
 ax.set_title('Distribution of Relative Errors')
 plt.tight_layout()
 plt.savefig('rel_error_distribution.png', dpi=150)
 plt.close()
 
-#---------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
 fig2, ax2 = plt.subplots(figsize=(10, 6))
-ax2.scatter(K, rel_err_norm, alpha=0.3, s=1, label='rel_err_norm')
-ax2.scatter(K, rel_err_fast, alpha=0.3, s=1, label='rel_err_fast')
+ax2.scatter(K, rel_err_acc_norm, alpha=0.3, s=1, label='rel_err_acc_norm')
+ax2.scatter(K, rel_err_acc_un, alpha=0.3, s=1, label='rel_err_acc_un')
+ax2.scatter(K, rel_err_sloppy_un, alpha=0.3, s=1, label='rel_err_sloppy_un')
 ax2.set_xscale('log')
 ax2.set_yscale('log')
 ax2.set_xlabel('Conditioning Number (K)')
 ax2.set_ylabel('Relative Error')
 ax2.legend()
+
+textstr2 = f'Avg rel_err_acc_norm: {avg_acc_norm:.16g}\nAvg rel_err_acc_un: {avg_acc_un:.16g}\nAvg rel_err_sloppy_un: {avg_sloppy_un:.16g}'
+props2 = dict(boxstyle='round', facecolor='white', alpha=0.7)
+ax2.text(0.95, 0.05, textstr2, transform=ax2.transAxes, fontsize=10,
+        verticalalignment='bottom', horizontalalignment='right', bbox=props2)
+
 ax2.set_title('Relative Error vs Conditioning Number')
 plt.tight_layout()
 plt.savefig('rel_error_vs_K.png', dpi=150)
 plt.close()
 
-#---------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-sig_digits_norm = -np.floor(np.minimum(np.log10(rel_err_norm + 1e-300),0))
-sig_digits_fast = -np.floor(np.minimum(np.log10(rel_err_fast + 1e-300),0))
+sig_digits_acc_norm = -np.floor(np.minimum(np.log10(rel_err_acc_norm + 1e-300),0))
+sig_digits_acc_un = -np.floor(np.minimum(np.log10(rel_err_acc_un + 1e-300),0))
+sig_digits_sloppy_un = -np.floor(np.minimum(np.log10(rel_err_sloppy_un + 1e-300),0))
 
 logK = np.log10(K)
 logK_bins = np.floor(logK).astype(int)
 unique_K_bins = np.unique(logK_bins)
 
-sig_digits_norm_by_K = [np.min(sig_digits_norm[logK_bins == k]) for k in unique_K_bins]
-sig_digits_fast_by_K = [np.min(sig_digits_fast[logK_bins == k]) for k in unique_K_bins]
+sig_digits_acc_norm_by_K = [np.min(sig_digits_acc_norm[logK_bins == k]) for k in unique_K_bins]
+sig_digits_acc_un_by_K = [np.min(sig_digits_acc_un[logK_bins == k]) for k in unique_K_bins]
+sig_digits_sloppy_un_by_K = [np.min(sig_digits_sloppy_un[logK_bins == k]) for k in unique_K_bins]
 
 K_centers = 10.0**unique_K_bins
 
 fig3, ax3 = plt.subplots(figsize=(10, 6))
-ax3.plot(K_centers, sig_digits_norm_by_K, 'o-', label='rel_err_norm', markersize=4)
-ax3.plot(K_centers, sig_digits_fast_by_K, 's-', label='rel_err_fast', markersize=4)
+ax3.plot(K_centers, sig_digits_acc_norm_by_K, 'o-', label='rel_err_acc_norm', markersize=4)
+ax3.plot(K_centers, sig_digits_acc_un_by_K, 's-', label='rel_err_acc_un', markersize=4)
+ax3.plot(K_centers, sig_digits_sloppy_un_by_K, '^-', label='rel_err_sloppy_un', markersize=4)
 ax3.set_xscale('log')
 ax3.set_xlabel('Conditioning Number (K)')
 ax3.set_ylabel('Significant Digits')
 ax3.legend()
+
+textstr3 = f'Avg rel_err_acc_norm: {avg_acc_norm:.16g}\nAvg rel_err_acc_un: {avg_acc_un:.16g}\nAvg rel_err_sloppy_un: {avg_sloppy_un:.16g}'
+props3 = dict(boxstyle='round', facecolor='white', alpha=0.7)
+ax3.text(0.05, 0.05, textstr3, transform=ax3.transAxes, fontsize=10,
+        verticalalignment='bottom', horizontalalignment='left', bbox=props3)
+
 ax3.set_title('Significant Digits vs Conditioning Number')
 plt.tight_layout()
 plt.savefig('sig_digits_vs_K.png', dpi=150)
 plt.close()
 
-#---------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
 n_bins = 100
 log_edges = np.logspace(np.log10(K.min()), np.log10(K.max()), n_bins + 1)
 bin_idx = np.clip(np.digitize(K, log_edges) - 1, 0, n_bins - 1)
 bin_centers = np.sqrt(log_edges[:-1] * log_edges[1:])
 
-max_norm  = np.full(n_bins, np.nan)
-max_fast  = np.full(n_bins, np.nan)
-mean_norm = np.full(n_bins, np.nan)
-mean_fast = np.full(n_bins, np.nan)
+max_acc_norm  = np.full(n_bins, np.nan)
+max_acc_un  = np.full(n_bins, np.nan)
+max_sloppy_un  = np.full(n_bins, np.nan)
+mean_acc_norm = np.full(n_bins, np.nan)
+mean_acc_un = np.full(n_bins, np.nan)
+mean_sloppy_un = np.full(n_bins, np.nan)
 
 for i in range(n_bins):
     mask = bin_idx == i
     if mask.any():
-        max_norm[i]  = rel_err_norm[mask].max()
-        max_fast[i]  = rel_err_fast[mask].max()
-        mean_norm[i] = rel_err_norm[mask].mean()
-        mean_fast[i] = rel_err_fast[mask].mean()
+        max_acc_norm[i]  = rel_err_acc_norm[mask].max()
+        max_acc_un[i]  = rel_err_acc_un[mask].max()
+        max_sloppy_un[i]  = rel_err_sloppy_un[mask].max()
+        mean_acc_norm[i] = rel_err_acc_norm[mask].mean()
+        mean_acc_un[i] = rel_err_acc_un[mask].mean()
+        mean_sloppy_un[i] = rel_err_sloppy_un[mask].mean()
 
 fig2, ax2 = plt.subplots(figsize=(10, 6))
-ax2.plot(bin_centers, max_norm,  color='steelblue',  linewidth=1.2, label='max norm')
-ax2.plot(bin_centers, mean_norm, color='steelblue',  linewidth=1.2, linestyle='--', label='mean norm')
-ax2.plot(bin_centers, max_fast,  color='darkorange', linewidth=1.2, label='max fast')
-ax2.plot(bin_centers, mean_fast, color='darkorange', linewidth=1.2, linestyle='--', label='mean fast')
+ax2.plot(bin_centers, max_acc_norm,  color='steelblue',  linewidth=1.2, label='max acc_norm')
+ax2.plot(bin_centers, mean_acc_norm, color='steelblue',  linewidth=1.2, linestyle='--', label='mean acc_norm')
+ax2.plot(bin_centers, max_acc_un,  color='green', linewidth=1.2, label='max acc_un')
+ax2.plot(bin_centers, mean_acc_un, color='green', linewidth=1.2, linestyle='--', label='mean acc_un')
+ax2.plot(bin_centers, max_sloppy_un,  color='darkorange', linewidth=1.2, label='max sloppy_un')
+ax2.plot(bin_centers, mean_sloppy_un, color='darkorange', linewidth=1.2, linestyle='--', label='mean sloppy_un')
 ax2.set_xscale('log')
 ax2.set_yscale('log')
 ax2.set_xlabel('Conditioning Number (K)')
 ax2.set_ylabel('Relative Error')
 ax2.legend()
+
+textstr_binned = f'Avg rel_err_acc_norm: {avg_acc_norm:.16g}\nAvg rel_err_acc_un: {avg_acc_un:.16g}\nAvg rel_err_sloppy_un: {avg_sloppy_un:.16g}'
+props_binned = dict(boxstyle='round', facecolor='white', alpha=0.7)
+ax2.text(0.95, 0.05, textstr_binned, transform=ax2.transAxes, fontsize=10,
+        verticalalignment='bottom', horizontalalignment='right', bbox=props_binned)
+
 ax2.set_title('Relative Error (max and mean) vs Conditioning Number')
 plt.tight_layout()
 plt.savefig('rel_error_vs_K_binned.png', dpi=150)
 plt.close()
 
-#---------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
 def plot_input_vs_error(df, err_col):
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
@@ -123,31 +165,39 @@ def plot_input_vs_error(df, err_col):
     plt.savefig(f'{err_col}_vs_input.png', dpi=150)
     plt.close()
 
-plot_input_vs_error(df, 'rel_err_norm')
-plot_input_vs_error(df, 'rel_err_fast')
+plot_input_vs_error(df, 'rel_err_acc_norm')
+plot_input_vs_error(df, 'rel_err_acc_un')
+plot_input_vs_error(df, 'rel_err_sloppy_un')
 
-#---------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
 u2 = 2**(-2*53)
-y_norm = df['rel_err_norm'] / df['K'] / u2
-y_fast = df['rel_err_fast'] / df['K'] / u2
+y_acc_norm = rel_err_acc_norm / K / u2
+y_acc_un = rel_err_acc_un / K / u2
+y_sloppy_un = rel_err_sloppy_un / K / u2
 
-max_norm = np.full(n_bins, np.nan)
-max_fast = np.full(n_bins, np.nan)
-mean_norm = np.full(n_bins, np.nan)
-mean_fast = np.full(n_bins, np.nan)
+max_acc_norm = np.full(n_bins, np.nan)
+max_acc_un = np.full(n_bins, np.nan)
+max_sloppy_un = np.full(n_bins, np.nan)
+mean_acc_norm = np.full(n_bins, np.nan)
+mean_acc_un = np.full(n_bins, np.nan)
+mean_sloppy_un = np.full(n_bins, np.nan)
 
 for i in range(n_bins):
     mask = bin_idx == i
     if mask.any():
-        max_norm[i] = y_norm.values[mask].max()
-        max_fast[i] = y_fast.values[mask].max()
-        mean_norm[i] = y_norm.values[mask].mean()
-        mean_fast[i] = y_fast.values[mask].mean()
+        max_acc_norm[i] = y_acc_norm[mask].max()
+        max_acc_un[i] = y_acc_un[mask].max()
+        max_sloppy_un[i] = y_sloppy_un[mask].max()
+        mean_acc_norm[i] = y_acc_norm[mask].mean()
+        mean_acc_un[i] = y_acc_un[mask].mean()
+        mean_sloppy_un[i] = y_sloppy_un[mask].mean()
 
-fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+fig, axes = plt.subplots(1, 3, figsize=(18, 6))
 for ax, max_vals, mean_vals, label in zip(axes,
-        [max_norm, max_fast], [mean_norm, mean_fast], ['norm', 'fast']):
+        [max_acc_norm, max_acc_un, max_sloppy_un], 
+        [mean_acc_norm, mean_acc_un, mean_sloppy_un], 
+        ['acc_norm', 'acc_un', 'sloppy_un']):
     ax.plot(bin_centers, max_vals, color='steelblue', linewidth=1.2, label=f'max {label}')
     ax.plot(bin_centers, mean_vals, color='steelblue', linewidth=1.2, linestyle='--', label=f'mean {label}')
     ax.set_xscale('log')
