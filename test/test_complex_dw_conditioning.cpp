@@ -97,20 +97,29 @@ int main() {
         std::cout << std::flush;
 #endif
 
-        ComplexDouble<double> c_norm = a * b;
+        ComplexDouble<double> c_acc_norm = mul_accurate_norm(a, b);
 
 #ifdef __DEBUG__
         std::cout << "\n=== DEBUG: After a * b ===" << '\n';
-        std::cout << "c_norm = (" << c_norm.re_h() << ", " << c_norm.re_l() << ") + i("
-                  << c_norm.im_h() << ", " << c_norm.im_l() << ")" << '\n';
+        std::cout << "c_acc_norm = (" << c_acc_norm.re_h() << ", " << c_acc_norm.re_l() << ") + i("
+                  << c_acc_norm.im_h() << ", " << c_acc_norm.im_l() << ")" << '\n';
 #endif
 
-        ComplexDouble<double> c_sloppy = mul_sloppy_unnnorm(a, b);
+        ComplexDouble<double> c_acc_un = mul_accurate_unnorm(a, b);
 
 #ifdef __DEBUG__
         std::cout << "\n=== DEBUG: After mul_sloppy ===" << '\n';
-        std::cout << "c_sloppy = (" << c_sloppy.re_h() << ", " << c_sloppy.re_l() << ") + i("
-                  << c_sloppy.im_h() << ", " << c_sloppy.im_l() << ")" << '\n';
+        std::cout << "c_acc_un = (" << c_acc_un.re_h() << ", " << c_acc_un.re_l() << ") + i("
+                  << c_acc_un.im_h() << ", " << c_acc_un.im_l() << ")" << '\n';
+#endif
+
+
+        ComplexDouble<double> c_sloppy_un = mul_sloppy_unnorm(a, b);
+
+#ifdef __DEBUG__
+        std::cout << "\n=== DEBUG: After mul_sloppy ===" << '\n';
+        std::cout << "c_sloppy_un = (" << c_sloppy_un.re_h() << ", " << c_sloppy_un.re_l() << ") + i("
+                  << c_sloppy_un.im_h() << ", " << c_sloppy_un.im_l() << ")" << '\n';
 #endif
 
         mpfr_complex_mul(ar, ai, br, bi, cr, ci, MPFR_RNDN);
@@ -124,19 +133,24 @@ int main() {
         mpfr_to_dw(cr, MPFR_RNDN, &ref_re_h, &ref_re_l);
         mpfr_to_dw(ci, MPFR_RNDN, &ref_im_h, &ref_im_l);
 
-        double err_norm = relative_error(cr, c_norm.re_h(), c_norm.re_l(), cr, MPFR_RNDN);
-        double err_norm2 = relative_error(ci, c_norm.im_h(), c_norm.im_l(), ci, MPFR_RNDN);
-        err_norm = std::max(err_norm, err_norm2);
+        double err_acc_norm = relative_error(cr, c_acc_norm.re_h(), c_acc_norm.re_l(), cr, MPFR_RNDN);
+        double err_acc_norm2 = relative_error(ci, c_acc_norm.im_h(), c_acc_norm.im_l(), ci, MPFR_RNDN);
+        err_acc_norm = std::max(err_acc_norm, err_acc_norm2);
 
-        double err_sloppy = relative_error(cr, c_sloppy.re_h(), c_sloppy.re_l(), cr, MPFR_RNDN);
-        double err_sloppy2 = relative_error(ci, c_sloppy.im_h(), c_sloppy.im_l(), ci, MPFR_RNDN);
+        double err_acc_un = relative_error(cr, c_acc_un.re_h(), c_acc_un.re_l(), cr, MPFR_RNDN);
+        double err_acc_un2 = relative_error(ci, c_acc_un.im_h(), c_acc_un.im_l(), ci, MPFR_RNDN);
+        err_acc_un = std::max(err_acc_un, err_acc_un2);
+
+        double err_sloppy = relative_error(cr, c_sloppy_un.re_h(), c_sloppy_un.re_l(), cr, MPFR_RNDN);
+        double err_sloppy2 = relative_error(ci, c_sloppy_un.im_h(), c_sloppy_un.im_l(), ci, MPFR_RNDN);
         err_sloppy = std::max(err_sloppy, err_sloppy2);
 
-        results[idx] = {err_norm, err_sloppy, K_actual,
+        results[idx] = {err_acc_norm, err_acc_un, err_sloppy, K_actual,
                       ar_h, ar_l, ai_h, ai_l,
                       br_h, br_l, bi_h, bi_l,
-                      c_norm.re_h(), c_norm.re_l(), c_norm.im_h(), c_norm.im_l(),
-                      c_sloppy.re_h(), c_sloppy.re_l(), c_sloppy.im_h(), c_sloppy.im_l(),
+                      c_acc_norm.re_h(), c_acc_norm.re_l(), c_acc_norm.im_h(), c_acc_norm.im_l(),
+                      c_acc_un.re_h(), c_acc_un.re_l(), c_acc_un.im_h(), c_acc_un.im_l(),
+                      c_sloppy_un.re_h(), c_sloppy_un.re_l(), c_sloppy_un.im_h(), c_sloppy_un.im_l(),
                       ref_re_h, ref_re_l, ref_im_h, ref_im_l};
 
         idx++;

@@ -232,7 +232,7 @@ operator*( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 template< typename T >
 __cuda_callable__
 constexpr ComplexDouble< T >
-mul_sloppy_unnnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
+mul_sloppy_unnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    return ComplexDouble< T >::mulSloppyUnnorm( a, b );
 }
@@ -240,7 +240,7 @@ mul_sloppy_unnnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 template< typename T >
 __cuda_callable__
 constexpr ComplexDouble< T >
-mul_accurate_unnnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
+mul_accurate_unnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    return ComplexDouble< T >::mulAccurateUnnorm( a, b );
 }

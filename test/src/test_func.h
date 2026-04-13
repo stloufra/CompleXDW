@@ -15,8 +15,9 @@ constexpr int N_ITERATIONS = 10000000;
 constexpr int MPFR_DISPLAY_PREC = 17;
 
 struct TestResult {
-    double rel_err_norm;
-    double rel_err_fast;
+    double rel_err_acc_norm;
+    double rel_err_acc_un;
+    double rel_err_sloppy_un;
     double K;
     double a_re_high;
     double a_re_low;
@@ -26,14 +27,18 @@ struct TestResult {
     double b_re_low;
     double b_im_high;
     double b_im_low;
-    double res_norm_re_high;
-    double res_norm_re_low;
-    double res_norm_im_high;
-    double res_norm_im_low;
-    double res_fast_re_high;
-    double res_fast_re_low;
-    double res_fast_im_high;
-    double res_fast_im_low;
+    double res_acc_norm_re_high;
+    double res_acc_norm_re_low;
+    double res_acc_norm_im_high;
+    double res_acc_norm_im_low;
+    double res_acc_un_re_high;
+    double res_acc_un_re_low;
+    double res_acc_un_im_high;
+    double res_acc_un_im_low;
+    double res_sloppy_un_re_high;
+    double res_sloppy_un_re_low;
+    double res_sloppy_un_im_high;
+    double res_sloppy_un_im_low;
     double re_ref_high;
     double re_ref_low;
     double im_ref_high;

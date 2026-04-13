@@ -90,73 +90,106 @@ void print_header() {
 }
 
 void print_statistics(const std::vector<TestResult>& results) {
-    double max_err_norm = 0.0, max_err_fast = 0.0;
-    double sum_err_norm = 0.0, sum_err_fast = 0.0;
-    size_t max_err_idx_norm = 0, max_err_idx_fast = 0;
+    double max_err_acc_norm = 0.0, max_err_acc_un = 0.0, max_err_sloppy_un = 0.0;
+    double sum_err_acc_norm = 0.0, sum_err_acc_un = 0.0, sum_err_sloppy_un = 0.0;
+    size_t max_err_idx_acc_norm = 0, max_err_idx_acc_un = 0, max_err_idx_sloppy_un = 0;
 
     for (size_t i = 0; i < results.size(); ++i) {
-        if (results[i].rel_err_norm > max_err_norm) {
-            max_err_norm = results[i].rel_err_norm;
-            max_err_idx_norm = i;
+
+        if (results[i].rel_err_acc_norm > max_err_acc_norm) {
+            max_err_acc_norm = results[i].rel_err_acc_norm;
+            max_err_idx_acc_norm = i;
         }
-        if (results[i].rel_err_fast > max_err_fast) {
-            max_err_fast = results[i].rel_err_fast;
-            max_err_idx_fast = i;
+        if (results[i].rel_err_acc_un  > max_err_acc_un) {
+            max_err_acc_un  = results[i].rel_err_acc_un;
+            max_err_idx_acc_un  = i;
         }
-        sum_err_norm += results[i].rel_err_norm;
-        sum_err_fast += results[i].rel_err_fast;
+	if (results[i].rel_err_sloppy_un  > max_err_sloppy_un) {
+            max_err_sloppy_un = results[i].rel_err_sloppy_un;
+            max_err_idx_sloppy_un = i;
+        }
+
+        sum_err_acc_norm += results[i].rel_err_acc_norm;
+        sum_err_acc_un += results[i].rel_err_acc_un;
+        sum_err_sloppy_un += results[i].rel_err_sloppy_un;
+
     }
 
-    double avg_err_norm = sum_err_norm / results.size();
-    double avg_err_fast = sum_err_fast / results.size();
+    double avg_err_acc_norm = sum_err_acc_norm / results.size();
+    double avg_err_acc_un = sum_err_acc_un / results.size();
+    double avg_err_sloppy_un = sum_err_sloppy_un / results.size();
 
     print_separator();
-    std::cout << "STATISTICS (Normalized Multiplication *)\n";
+
+    std::cout << "STATISTICS (Normalized Accurate Multiplication)\n";
     print_separator();
     std::cout << std::scientific << std::setprecision(6);
-    std::cout << "  Average relative error: " << avg_err_norm << "\n";
-    std::cout << "  Maximum relative error: " << max_err_norm << "\n";
-    std::cout << "  Occurred at iteration:  " << max_err_idx_norm << "\n";
+    std::cout << "  Average relative error: " << avg_err_acc_norm << "\n";
+    std::cout << "  Maximum relative error: " << max_err_acc_norm<< "\n";
+    std::cout << "  Occurred at iteration:  " << max_err_idx_acc_norm << "\n";
+
+    std::cout << "STATISTICS (Unnormalized Accurate Multiplication)\n";
+    print_separator();
+    std::cout << std::scientific << std::setprecision(6);
+    std::cout << "  Average relative error: " << avg_err_acc_un << "\n";
+    std::cout << "  Maximum relative error: " << max_err_acc_un<< "\n";
+    std::cout << "  Occurred at iteration:  " << max_err_idx_acc_un << "\n";
 
     print_separator();
-    std::cout << "STATISTICS (Fast Multiplication mul_fast)\n";
+    std::cout << "STATISTICS (Unnormalized Sloppy Multiplication)\n";
     print_separator();
-    std::cout << "  Average relative error: " << avg_err_fast << "\n";
-    std::cout << "  Maximum relative error: " << max_err_fast << "\n";
-    std::cout << "  Occurred at iteration:  " << max_err_idx_fast << "\n";
+    std::cout << "  Average relative error: " << avg_err_sloppy_un << "\n";
+    std::cout << "  Maximum relative error: " << max_err_sloppy_un << "\n";
+    std::cout << "  Occurred at iteration:  " << max_err_idx_sloppy_un << "\n";
 
     print_separator();
-    std::cout << "WORST CASE (Normalized *)\n";
+
+    std::cout << "WORST CASE (Normalized Accurate)\n";
     print_separator();
-    const auto& wn = results[max_err_idx_norm];
+    const auto& wn = results[max_err_idx_acc_norm];
     std::cout << std::fixed << std::setprecision(17);
     std::cout << "  a = (" << wn.a_re_high << ", " << wn.a_re_low << ") + i(" 
               << wn.a_im_high << ", " << wn.a_im_low << ")\n";
     std::cout << "  b = (" << wn.b_re_high << ", " << wn.b_re_low << ") + i(" 
               << wn.b_im_high << ", " << wn.b_im_low << ")\n";
     std::cout << std::scientific << std::setprecision(MPFR_DISPLAY_PREC);
-    std::cout << "  res = (" << wn.res_norm_re_high << ", " << wn.res_norm_re_low << ") + i(" 
-              << wn.res_norm_im_high << ", " << wn.res_norm_im_low << ")\n";
+    std::cout << "  res = (" << wn.res_acc_norm_re_high << ", " << wn.res_acc_norm_re_low << ") + i(" 
+              << wn.res_acc_norm_im_high << ", " << wn.res_acc_norm_im_low << ")\n";
     std::cout << "  ref = (" << wn.re_ref_high << ", " << wn.re_ref_low << ") + i(" 
               << wn.im_ref_high << ", " << wn.im_ref_low << ")\n";
-    std::cout << "  error = " << wn.rel_err_norm << "\n";
+    std::cout << "  error = " << wn.rel_err_acc_norm << "\n";
+    print_separator();
 
+    std::cout << "WORST CASE (Unnormalized Accurate)\n";
     print_separator();
-    std::cout << "WORST CASE (Fast mul_fast)\n";
+    const auto& wu = results[max_err_idx_acc_un];
+    std::cout << std::fixed << std::setprecision(17);
+    std::cout << "  a = (" << wu.a_re_high << ", " << wu.a_re_low << ") + i(" 
+              << wu.a_im_high << ", " << wu.a_im_low << ")\n";
+    std::cout << "  b = (" << wu.b_re_high << ", " << wu.b_re_low << ") + i(" 
+              << wu.b_im_high << ", " << wu.b_im_low << ")\n";
+    std::cout << std::scientific << std::setprecision(MPFR_DISPLAY_PREC);
+    std::cout << "  res = (" << wu.res_acc_un_re_high << ", " << wu.res_acc_un_re_low << ") + i(" 
+              << wu.res_acc_un_im_high << ", " << wu.res_acc_un_im_low << ")\n";
+    std::cout << "  ref = (" << wu.re_ref_high << ", " << wu.re_ref_low << ") + i(" 
+              << wu.im_ref_high << ", " << wu.im_ref_low << ")\n";
+    std::cout << "  error = " << wu.rel_err_acc_un << "\n";
     print_separator();
-    const auto& wf = results[max_err_idx_fast];
+
+    std::cout << "WORST CASE (Unnormalized Sloppy)\n";
+    print_separator();
+    const auto& wf = results[max_err_idx_sloppy_un];
     std::cout << std::fixed << std::setprecision(17);
     std::cout << "  a = (" << wf.a_re_high << ", " << wf.a_re_low << ") + i(" 
               << wf.a_im_high << ", " << wf.a_im_low << ")\n";
     std::cout << "  b = (" << wf.b_re_high << ", " << wf.b_re_low << ") + i(" 
               << wf.b_im_high << ", " << wf.b_im_low << ")\n";
     std::cout << std::scientific << std::setprecision(MPFR_DISPLAY_PREC);
-    std::cout << "  res = (" << wf.res_fast_re_high << ", " << wf.res_fast_re_low << ") + i(" 
-              << wf.res_fast_im_high << ", " << wf.res_fast_im_low << ")\n";
+    std::cout << "  res = (" << wf.res_sloppy_un_re_high << ", " << wf.res_sloppy_un_re_low << ") + i(" 
+              << wf.res_sloppy_un_im_high << ", " << wf.res_sloppy_un_im_low << ")\n";
     std::cout << "  ref = (" << wf.re_ref_high << ", " << wf.re_ref_low << ") + i(" 
               << wf.im_ref_high << ", " << wf.im_ref_low << ")\n";
-    std::cout << "  error = " << wf.rel_err_fast << "\n";
-
+    std::cout << "  error = " << wf.rel_err_sloppy_un << "\n";
     print_separator();
 }
 
@@ -165,7 +198,7 @@ void save_results(const std::vector<TestResult>& results, const std::string& fil
     file << "# Complex DW Multiplication Test Results\n";
     file << "# Iterations: " << results.size() << "\n";
     file << "# MPFR Precision: " << MPFR_PREC << " bits\n";
-    file << "# Format: ar_h,ar_l,ai_h,ai_l,br_h,br_l,bi_h,bi_l,ref_re_h,ref_re_l,ref_im_h,ref_im_l,rel_err_norm,rel_err_fast,K\n";
+    file << "# Format: ar_h,ar_l,ai_h,ai_l,br_h,br_l,bi_h,bi_l,ref_re_h,ref_re_l,ref_im_h,ref_im_l,rel_err_acc_norm,rel_err_acc_un,rel_err_sloppy_un,K\n";
     
     file << std::scientific << std::setprecision(MPFR_DISPLAY_PREC);
     for (const auto& r : results) {
@@ -175,7 +208,7 @@ void save_results(const std::vector<TestResult>& results, const std::string& fil
              << r.b_im_high << "," << r.b_im_low << ","
              << r.re_ref_high << "," << r.re_ref_low << ","
              << r.im_ref_high << "," << r.im_ref_low << ","
-             << r.rel_err_norm << "," << r.rel_err_fast << ","
+             << r.rel_err_acc_norm << "," << r.rel_err_acc_un << "," << r.rel_err_sloppy_un << ","
              << r.K << "\n";
     }
     file.close();
