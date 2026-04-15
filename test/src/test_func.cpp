@@ -1,7 +1,48 @@
 #include "test_func.h"
 #include <random>
 #include <algorithm>
+#include <cmath>
 #include <gmp.h>
+
+using namespace XDW_ARTH;
+
+ComplexDouble<double> generate_random_dw_single(std::mt19937_64& rng) {
+    static gmp_randstate_t state;
+    static bool initialized = false;
+    
+    if (!initialized) {
+        gmp_randinit_mt(state);
+        gmp_randseed_ui(state, rng());
+        initialized = true;
+    }
+    
+    mpfr_t ar, ai;
+    mpfr_init2(ar, MPFR_PREC);
+    mpfr_init2(ai, MPFR_PREC);
+    
+    std::uniform_real_distribution<double> dist_exp(-100.0, 100.0);
+    
+    int exp1_re = static_cast<int>(dist_exp(rng));
+    int exp1_im = static_cast<int>(dist_exp(rng));
+    
+    mpfr_urandom(ar, state, MPFR_RNDN);
+    mpfr_urandom(ai, state, MPFR_RNDN);
+    
+    mpfr_mul_2si(ar, ar, exp1_re, MPFR_RNDN);
+    mpfr_mul_2si(ai, ai, exp1_im, MPFR_RNDN);
+    
+    if (rng() % 2) mpfr_neg(ar, ar, MPFR_RNDN);
+    if (rng() % 2) mpfr_neg(ai, ai, MPFR_RNDN);
+    
+    double ar_h, ar_l, ai_h, ai_l;
+    mpfr_to_dw(ar, MPFR_RNDN, &ar_h, &ar_l);
+    mpfr_to_dw(ai, MPFR_RNDN, &ai_h, &ai_l);
+    
+    mpfr_clear(ar);
+    mpfr_clear(ai);
+    
+    return ComplexDouble<double>(ar_h, ar_l, ai_h, ai_l);
+}
 
 void mpfr_to_dw(mpfr_t x, mpfr_rnd_t rnd, double* high, double* low) {
     mpfr_t hi, lo;
