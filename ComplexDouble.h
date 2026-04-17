@@ -5,6 +5,16 @@
 #include "src/XDWArith.h"
 #include <complex>
 
+#if defined( __CUDACC__ )
+#define __xdw_inline__ __forceinline__
+#elif defined( _MSC_VER )
+#define __xdw_inline__ __forceinline
+#elif defined( __GNUC__ ) || defined( __clang__ )
+#define __xdw_inline__ __attribute__( ( always_inline ) ) inline
+#else
+#define __xdw_inline__ inline
+#endif
+
 template< typename T >
 class alignas( 4 * sizeof( T ) ) ComplexDouble
 {
@@ -144,7 +154,7 @@ ComplexDouble< T >::operator-() const
 
 template< typename T >
 __cuda_callable__
-constexpr ComplexDouble< T >
+constexpr __xdw_inline__ ComplexDouble< T >
 ComplexDouble< T >::add( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    T reh, rel, imh, iml;
@@ -155,7 +165,7 @@ ComplexDouble< T >::add( const ComplexDouble< T >& a, const ComplexDouble< T >& 
 
 template< typename T >
 __cuda_callable__
-constexpr ComplexDouble< T >
+constexpr __xdw_inline__ ComplexDouble< T >
 ComplexDouble< T >::sub( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    T reh, rel, imh, iml;
@@ -166,7 +176,7 @@ ComplexDouble< T >::sub( const ComplexDouble< T >& a, const ComplexDouble< T >& 
 
 template< typename T >
 __cuda_callable__
-constexpr ComplexDouble< T >
+constexpr __xdw_inline__ ComplexDouble< T >
 ComplexDouble< T >::mulAccurateNorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    T reh, rel, imh, iml;
@@ -178,7 +188,7 @@ ComplexDouble< T >::mulAccurateNorm( const ComplexDouble< T >& a, const ComplexD
 
 template< typename T >
 __cuda_callable__
-constexpr ComplexDouble< T >
+constexpr __xdw_inline__ ComplexDouble< T >
 ComplexDouble< T >::mulSloppyUnnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    T reh, rel, imh, iml;
@@ -191,7 +201,7 @@ ComplexDouble< T >::mulSloppyUnnorm( const ComplexDouble< T >& a, const ComplexD
 
 template< typename T >
 __cuda_callable__
-constexpr ComplexDouble< T >
+constexpr __xdw_inline__ ComplexDouble< T >
 ComplexDouble< T >::mulAccurateUnnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    T reh, rel, imh, iml;
@@ -205,7 +215,7 @@ ComplexDouble< T >::mulAccurateUnnorm( const ComplexDouble< T >& a, const Comple
 
 template< typename T >
 __cuda_callable__
-constexpr ComplexDouble< T >
+constexpr __xdw_inline__ ComplexDouble< T >
 operator+( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    return ComplexDouble< T >::add( a, b );
@@ -213,7 +223,7 @@ operator+( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 
 template< typename T >
 __cuda_callable__
-constexpr ComplexDouble< T >
+constexpr __xdw_inline__ ComplexDouble< T >
 operator-( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    return ComplexDouble< T >::sub( a, b );
@@ -223,7 +233,7 @@ operator-( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 
 template< typename T >
 __cuda_callable__
-constexpr ComplexDouble< T >
+constexpr __xdw_inline__ ComplexDouble< T >
 operator*( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    return ComplexDouble< T >::mulAccurateNorm( a, b );
@@ -231,7 +241,7 @@ operator*( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 
 template< typename T >
 __cuda_callable__
-constexpr ComplexDouble< T >
+constexpr __xdw_inline__ ComplexDouble< T >
 mul_sloppy_unnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    return ComplexDouble< T >::mulSloppyUnnorm( a, b );
@@ -239,7 +249,7 @@ mul_sloppy_unnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 
 template< typename T >
 __cuda_callable__
-constexpr ComplexDouble< T >
+constexpr __xdw_inline__ ComplexDouble< T >
 mul_accurate_unnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    return ComplexDouble< T >::mulAccurateUnnorm( a, b );
@@ -247,7 +257,7 @@ mul_accurate_unnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 
 template< typename T >
 __cuda_callable__
-constexpr ComplexDouble< T >
+constexpr __xdw_inline__ ComplexDouble< T >
 mul_accurate_norm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    return ComplexDouble< T >::mulAccurateNorm( a, b );
