@@ -12,8 +12,8 @@
 #include "../ComplexDouble.h"
 #include "../test/src/test_func.h"
 
-constexpr int MEASUREMENTS = 1000;
-constexpr int WARMUPS = 100;
+constexpr int MEASUREMENTS = 100;
+constexpr int WARMUPS = 10;
 constexpr int REAL = 100;
 
 using namespace XDW_ARTH;
@@ -30,49 +30,52 @@ void save_results(std::array<double, MEASUREMENTS>& times_acc_norm,
     out.close();
 }
 
-template<size_t N>
+template<size_t N, size_t ITER>
 double measure_time_norm_acc(ComplexDouble<double>* a, 
-                             ComplexDouble<double>* b,
-                             double* results) {
-    //#pragma omp simd aligned(a,b,results:64)
-    for (size_t i = 0; i < N; ++i) {
-        auto c = mul_accurate_norm(a[i], b[i]);
-        results[i] = c.re_h();
+                              ComplexDouble<double>* b,
+                              ComplexDouble<double>* c) {
+    auto start = std::chrono::high_resolution_clock::now();
+    for (size_t r = 0; r < ITER; ++r) {
+        for (size_t i = 0; i < N; ++i) {
+            c[i] = mul_accurate_norm(a[i], b[i]);
+        }
     }
-    
-    volatile double sink = results[0];
+    auto end = std::chrono::high_resolution_clock::now();
+    volatile double sink = c[0].re_h();
     asm volatile("" : "+r"(sink));
-    return sink;
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() / ITER;
 }
 
-template<size_t N>
+template<size_t N, size_t ITER>
 double measure_time_un_acc(ComplexDouble<double>* a, 
-                               ComplexDouble<double>* b,
-                               double* results) {
-    //#pragma omp simd aligned(a,b,results:64)
-    for (size_t i = 0; i < N; ++i) {
-        auto c = mul_accurate_unnorm(a[i], b[i]);
-        results[i] = c.re_h();
+                           ComplexDouble<double>* b,
+                           ComplexDouble<double>* c) {
+    auto start = std::chrono::high_resolution_clock::now();
+    for (size_t r = 0; r < ITER; ++r) {
+        for (size_t i = 0; i < N; ++i) {
+            c[i] = mul_accurate_unnorm(a[i], b[i]);
+        }
     }
-    
-    volatile double sink = results[0];
+    auto end = std::chrono::high_resolution_clock::now();
+    volatile double sink = c[0].re_h();
     asm volatile("" : "+r"(sink));
-    return sink;
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() / ITER;
 }
 
-template<size_t N>
+template<size_t N, size_t ITER>
 double measure_time_un_sloppy(ComplexDouble<double>* a, 
-                                   ComplexDouble<double>* b,
-                                   double* results) {
-    //#pragma omp simd aligned(a,b,results:64)
-    for (size_t i = 0; i < N; ++i) {
-        auto c = mul_sloppy_unnorm(a[i], b[i]);
-        results[i] = c.re_h();
+                              ComplexDouble<double>* b,
+                              ComplexDouble<double>* c) {
+    auto start = std::chrono::high_resolution_clock::now();
+    for (size_t r = 0; r < ITER; ++r) {
+        for (size_t i = 0; i < N; ++i) {
+            c[i] = mul_sloppy_unnorm(a[i], b[i]);
+        }
     }
-    
-    volatile double sink = results[0];
+    auto end = std::chrono::high_resolution_clock::now();
+    volatile double sink = c[0].re_h();
     asm volatile("" : "+r"(sink));
-    return sink;
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() / ITER;
 }
 
 template<size_t N>
@@ -81,44 +84,22 @@ void run_benchmark() {
     
     auto a = std::make_unique<std::array<ComplexDouble<double>, N>>();
     auto b = std::make_unique<std::array<ComplexDouble<double>, N>>();
+    auto c = std::make_unique<std::array<ComplexDouble<double>, N>>();
     
     generate_random_dw_complex<N>(*a, *b, rng);
-    
-    alignas(64) std::array<double, N> results;
     
     std::array<double, MEASUREMENTS> times_acc_norm;
     std::array<double, MEASUREMENTS> times_acc_un;
     std::array<double, MEASUREMENTS> times_sloppy_un;
     
     for (int m = 0; m < MEASUREMENTS; ++m) {
-        // warmup
-        for (int w = 0; w < WARMUPS; ++w) {
-            measure_time_norm_acc<N>(a->data(), b->data(), results.data());
-            measure_time_un_acc<N>(a->data(), b->data(), results.data());
-            measure_time_un_sloppy<N>(a->data(), b->data(), results.data());
-        }
+        measure_time_norm_acc<N, WARMUPS>(a->data(), b->data(), c->data());
+        measure_time_un_acc<N, WARMUPS>(a->data(), b->data(), c->data());
+        measure_time_un_sloppy<N, WARMUPS>(a->data(), b->data(), c->data());
         
-        // measured - time entire loop at once for less noise
-        auto start_norm = std::chrono::high_resolution_clock::now();
-        for (int r = 0; r < REAL; ++r) {
-            measure_time_norm_acc<N>(a->data(), b->data(), results.data());
-        }
-        auto end_norm = std::chrono::high_resolution_clock::now();
-        times_acc_norm[m] = std::chrono::duration_cast<std::chrono::nanoseconds>(end_norm - start_norm).count() / REAL;
-        
-        auto start_un = std::chrono::high_resolution_clock::now();
-        for (int r = 0; r < REAL; ++r) {
-            measure_time_un_acc<N>(a->data(), b->data(), results.data());
-        }
-        auto end_un = std::chrono::high_resolution_clock::now();
-        times_acc_un[m] = std::chrono::duration_cast<std::chrono::nanoseconds>(end_un - start_un).count() / REAL;
-        
-        auto start_sloppy = std::chrono::high_resolution_clock::now();
-        for (int r = 0; r < REAL; ++r) {
-            measure_time_un_sloppy<N>(a->data(), b->data(), results.data());
-        }
-        auto end_sloppy = std::chrono::high_resolution_clock::now();
-        times_sloppy_un[m] = std::chrono::duration_cast<std::chrono::nanoseconds>(end_sloppy - start_sloppy).count() / REAL;
+        times_acc_norm[m] = measure_time_norm_acc<N, REAL>(a->data(), b->data(), c->data());
+        times_acc_un[m] = measure_time_un_acc<N, REAL>(a->data(), b->data(), c->data());
+        times_sloppy_un[m] = measure_time_un_sloppy<N, REAL>(a->data(), b->data(), c->data());
     }
     
     double mean_acc_norm = 0, mean_acc_un = 0, mean_sloppy = 0;
