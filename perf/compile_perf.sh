@@ -16,4 +16,6 @@ $CXX -std=c++20 -O3 -march=native -I.. -I../test/src \
     -L/opt/homebrew/lib -L$OMP_LIB -lmpfr -lgmp -lm -lomp \
     -o perf_test
 
+#ulimit -s 65536  # Increase stack size to 64MB
+
 ./perf_test
