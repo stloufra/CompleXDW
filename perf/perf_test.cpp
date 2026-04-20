@@ -31,9 +31,9 @@ void save_results(std::array<double, MEASUREMENTS>& times_acc_norm,
 }
 
 template<size_t N, size_t ITER>
-double measure_time_norm_acc(ComplexDouble<double>* a, 
-                              ComplexDouble<double>* b,
-                              ComplexDouble<double>* c) {
+double measure_time_norm_acc(ComplexDouble<double>* __restrict__ a, 
+                              ComplexDouble<double>* __restrict__ b,
+                              ComplexDouble<double>* __restrict__ c) {
     auto start = std::chrono::high_resolution_clock::now();
     for (size_t r = 0; r < ITER; ++r) {
         for (size_t i = 0; i < N; ++i) {
@@ -47,9 +47,9 @@ double measure_time_norm_acc(ComplexDouble<double>* a,
 }
 
 template<size_t N, size_t ITER>
-double measure_time_un_acc(ComplexDouble<double>* a, 
-                           ComplexDouble<double>* b,
-                           ComplexDouble<double>* c) {
+double measure_time_un_acc(ComplexDouble<double>* __restrict__ a, 
+                           ComplexDouble<double>* __restrict__ b,
+                           ComplexDouble<double>* __restrict__ c) {
     auto start = std::chrono::high_resolution_clock::now();
     for (size_t r = 0; r < ITER; ++r) {
         for (size_t i = 0; i < N; ++i) {
@@ -63,9 +63,9 @@ double measure_time_un_acc(ComplexDouble<double>* a,
 }
 
 template<size_t N, size_t ITER>
-double measure_time_un_sloppy(ComplexDouble<double>* a, 
-                              ComplexDouble<double>* b,
-                              ComplexDouble<double>* c) {
+double measure_time_un_sloppy(ComplexDouble<double>* __restrict__ a, 
+                              ComplexDouble<double>* __restrict__ b,
+                              ComplexDouble<double>* __restrict__ c) {
     auto start = std::chrono::high_resolution_clock::now();
     for (size_t r = 0; r < ITER; ++r) {
         for (size_t i = 0; i < N; ++i) {
