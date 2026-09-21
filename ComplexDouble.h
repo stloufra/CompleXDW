@@ -265,6 +265,14 @@ operator-( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
    return ComplexDouble< T >::sub( a, b );
 }
 
+template< typename T >
+__cuda_callable__
+constexpr __xdw_inline__ bool
+operator==( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
+{
+   return a.re_h() == b.re_h() && a.re_l() == b.re_l() && a.im_h() == b.im_h() && a.im_l() == b.im_l();
+}
+
 //define muliplication
 
 template< typename T >
