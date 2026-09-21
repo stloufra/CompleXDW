@@ -88,6 +88,18 @@ class alignas( 4 * sizeof( T ) ) ComplexDouble
   operator-() const;
 
   __cuda_callable__
+  constexpr ComplexDouble< T >&
+  operator+=( const ComplexDouble< T >& other );
+
+  __cuda_callable__
+  constexpr ComplexDouble< T >&
+  operator-=( const ComplexDouble< T >& other );
+
+  __cuda_callable__
+  constexpr ComplexDouble< T >&
+  operator*=( const ComplexDouble< T >& other );
+
+  __cuda_callable__
   constexpr static ComplexDouble< T >
   add( const ComplexDouble< T >& a, const ComplexDouble< T >& b );
 
@@ -212,6 +224,30 @@ ComplexDouble< T >::mulAccurateUnnorm( const ComplexDouble< T >& a, const Comple
 }
 
 
+
+template< typename T >
+__cuda_callable__
+constexpr __xdw_inline__ ComplexDouble< T >&
+ComplexDouble< T >::operator+=( const ComplexDouble< T >& other )
+{
+   return *this = add( *this, other );
+}
+
+template< typename T >
+__cuda_callable__
+constexpr __xdw_inline__ ComplexDouble< T >&
+ComplexDouble< T >::operator-=( const ComplexDouble< T >& other )
+{
+   return *this = sub( *this, other );
+}
+
+template< typename T >
+__cuda_callable__
+constexpr __xdw_inline__ ComplexDouble< T >&
+ComplexDouble< T >::operator*=( const ComplexDouble< T >& other )
+{
+   return *this = mulAccurateNorm( *this, other );
+}
 
 template< typename T >
 __cuda_callable__
