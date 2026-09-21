@@ -11,8 +11,8 @@ int main() {
     ComplexDouble<double> b(2.0, 0.0, 3.0, 0.0);
     std::cout << "Created b" << std::endl;
     auto c = a * b;
-    auto c_sloppy = mul_sloppy_unnnorm(a, b );
-    auto c_accurate = mul_accurate_unnnorm(a, b );
+    auto c_sloppy = mul_sloppy_unnorm(a, b );
+    auto c_accurate = mul_accurate_unnorm(a, b );
     std::cout << "Multiplication done" << std::endl;
     std::setprecision(16);
     std::cout << "c = (" << c.re_h() << ", " << c.re_l() << ") + i(" << c.im_h() << ", " << c.im_l() << ")" << std::endl;

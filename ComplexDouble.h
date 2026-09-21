@@ -2,7 +2,7 @@
 #define COMPLEX_DOUBLE_H
 
 #include "src/XDWerrorFree.h"
-#include "src/XDWArith.h"
+#include "src/XDWarith.h"
 #include <complex>
 
 #if defined( __CUDACC__ )
