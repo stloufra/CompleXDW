@@ -3,7 +3,9 @@
 
 #pragma once
 
+#include <concepts>
 #include <limits>
+#include <type_traits>
 #include <cmath>
 
 #if defined( __CUDACC__ )
@@ -33,11 +35,7 @@ __host__
 #define __cuda_callable__
 #endif
 
-#define FLOAT_TEMPLATE_GUARD \
-template< typename T, std::enable_if_t< std::is_floating_point_v< T >, int > = 0 >
-
-
-FLOAT_TEMPLATE_GUARD
+template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ T
 add_rn( const T x, const T y )
@@ -54,7 +52,7 @@ add_rn( const T x, const T y )
 #endif
 }
 
-FLOAT_TEMPLATE_GUARD
+template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ T
 mul_rn( const T x, const T y )
@@ -71,7 +69,7 @@ mul_rn( const T x, const T y )
 #endif
 }
 
-FLOAT_TEMPLATE_GUARD
+template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ T
 div_rn( const T x, const T y )
@@ -88,7 +86,7 @@ div_rn( const T x, const T y )
 #endif
 }
 
-FLOAT_TEMPLATE_GUARD
+template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ T
 fma_rn( const T x, const T y, const T z )

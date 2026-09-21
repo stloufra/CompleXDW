@@ -8,7 +8,7 @@ namespace XDW_ARTH{
 
 // SloppyDWPlusDW — 11 flops
 // Relative error <= 1
-FLOAT_TEMPLATE_GUARD
+template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ void
 SloppyDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
@@ -27,7 +27,7 @@ SloppyDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ z
 
 // AccurateDWPlusDW — 20 flops
 // Relative error < 3u^2.
-FLOAT_TEMPLATE_GUARD
+template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ void
 AccurateDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
@@ -50,7 +50,7 @@ AccurateDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__
 
 // maddDWPlusDW — 20 flops
 // Relative error 2u^2. 
-FLOAT_TEMPLATE_GUARD
+template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ void
 maddDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
@@ -73,7 +73,7 @@ maddDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh,
 
 // DWTimesDW2 — 8 flops
 // Relative error <= 5u^2. 
-FLOAT_TEMPLATE_GUARD
+template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ void
 DWTimesDW2(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
@@ -95,7 +95,7 @@ DWTimesDW2(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T
 // DWTimesDW2Unnorm — 5 flops
 // Unnormalized DW product, skips final Fast2Sum. 
 // Returns (ph, pl) where pl may not satisfy |pl| <= u*|ph|.
-FLOAT_TEMPLATE_GUARD
+template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ void
 DWTimesDW2Unnorm(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
@@ -115,7 +115,7 @@ DWTimesDW2Unnorm(const T xh, const T xl, const T yh, const T yl, T* __restrict__
 // DWMulAdd_AccurateNorm — 36 flops
 // Relative error bound K·7u^2.
 // Computes (ah+al)*(bh+bl) + (ch+cl)*(dh+dl) with full normalization.
-FLOAT_TEMPLATE_GUARD
+template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ void
 DWMulAdd_AccurateNorm(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
@@ -135,7 +135,7 @@ DWMulAdd_AccurateNorm(const T ah, const T al, const T bh, const T bl, const T ch
 // DWMulAdd_SloppyUnnorm — 21 flops
 // Relative error bound K·12u^2. (in proper region) <F4>
 // Computes (ah+al)*(bh+bl) + (ch+cl)*(dh+dl) skipping normalization in multiplication.
-FLOAT_TEMPLATE_GUARD
+template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ void
 DWMulAdd_SloppyUnnorm(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
@@ -155,7 +155,7 @@ DWMulAdd_SloppyUnnorm(const T ah, const T al, const T bh, const T bl, const T ch
 
 // DWMulAdd_AccurateUnnorm — 30 flops
 // Computes (ah+al)*(bh+bl) + (ch+cl)*(dh+dl), unnormalized products with maddDWPlusDW.
-FLOAT_TEMPLATE_GUARD
+template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ void
 DWMulAdd_AccurateUnnorm(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
@@ -175,7 +175,7 @@ DWMulAdd_AccurateUnnorm(const T ah, const T al, const T bh, const T bl, const T 
 // ComplexDWMulAccurateNorm — computes (a + i*b) * (c + i*d) where each of a, b, c, d is a DW number with normalization.
 // Inputs: (ah, al, bh, bl, ch, cl, dh, dl)
 // Output: (reh, rel, imh, iml)
-FLOAT_TEMPLATE_GUARD
+template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ void
 ComplexDWMulAccurateNorm(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
@@ -189,7 +189,7 @@ ComplexDWMulAccurateNorm(const T ah, const T al, const T bh, const T bl, const T
 // ComplexDWMulSloppyUnnorm — computes (a + i*b) * (c + i*d) where each of a, b, c, d is a DW number without normalization.
 // Inputs: (ah, al, bh, bl, ch, cl, dh, dl)
 // Output: (reh, rel, imh, iml)
-FLOAT_TEMPLATE_GUARD
+template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ void
 ComplexDWMulSloppyUnnorm(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
@@ -203,7 +203,7 @@ ComplexDWMulSloppyUnnorm(const T ah, const T al, const T bh, const T bl, const T
 // ComplexDWMulAccurateUnnorm — computes (a + i*b) * (c + i*d) where each of a, b, c, d is a DW number without normalization.
 // Inputs: (ah, al, bh, bl, ch, cl, dh, dl)
 // Output: (reh, rel, imh, iml)
-FLOAT_TEMPLATE_GUARD
+template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ void
 ComplexDWMulAccurateUnnorm(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
