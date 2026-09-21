@@ -273,6 +273,42 @@ operator==( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
    return a.re_h() == b.re_h() && a.re_l() == b.re_l() && a.im_h() == b.im_h() && a.im_l() == b.im_l();
 }
 
+template< typename T >
+__cuda_callable__
+constexpr __xdw_inline__ ComplexDouble< T >
+conj( const ComplexDouble< T >& z )
+{
+   return ComplexDouble< T >( z.re_h(), z.re_l(), -z.im_h(), -z.im_l() );
+}
+
+template< typename T >
+__cuda_callable__
+constexpr __xdw_inline__ ComplexDouble< T >
+real( const ComplexDouble< T >& z )
+{
+   return ComplexDouble< T >( z.re_h(), z.re_l(), T( 0 ), T( 0 ) );
+}
+
+template< typename T >
+__cuda_callable__
+constexpr __xdw_inline__ ComplexDouble< T >
+imag( const ComplexDouble< T >& z )
+{
+   return ComplexDouble< T >( z.im_h(), z.im_l(), T( 0 ), T( 0 ) );
+}
+
+// |z|^2, real-valued.
+template< typename T >
+__cuda_callable__
+constexpr __xdw_inline__ ComplexDouble< T >
+norm( const ComplexDouble< T >& z )
+{
+   T rh, rl;
+   XDW_ARTH::DWMulAdd_AccurateNorm( z.re_h(), z.re_l(), z.re_h(), z.re_l(),
+                                    z.im_h(), z.im_l(), z.im_h(), z.im_l(), &rh, &rl );
+   return ComplexDouble< T >( rh, rl, T( 0 ), T( 0 ) );
+}
+
 //define muliplication
 
 template< typename T >

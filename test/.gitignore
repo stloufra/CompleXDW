@@ -3,3 +3,4 @@ test_complex_dw
 test_results.csv
 rel_error_distribution.png
 worst_rel_error.txt
+test_complex_dw_functions
