@@ -3,6 +3,8 @@
 *.s
 *.o
 a.out
+*.png
+*.csv
 perf/perf_test
 perf/perf_GEMM
 test/test_complex_dw_conditioning

@@ -3,6 +3,7 @@
 
 #include "src/XDWerrorFree.h"
 #include "src/XDWarith.h"
+#include "src/XDWTraits.h"
 #include <complex>
 
 #if defined( __CUDACC__ )
@@ -99,25 +100,20 @@ class alignas( 4 * sizeof( T ) ) ComplexDouble
   constexpr ComplexDouble< T >&
   operator*=( const ComplexDouble< T >& other );
 
+  template< XDW_ARTH::AddMode Add = XDW_ARTH::kAddMode >
   __cuda_callable__
   constexpr static ComplexDouble< T >
   add( const ComplexDouble< T >& a, const ComplexDouble< T >& b );
 
+  template< XDW_ARTH::AddMode Add = XDW_ARTH::kAddMode >
   __cuda_callable__
   constexpr static ComplexDouble< T >
   sub( const ComplexDouble< T >& a, const ComplexDouble< T >& b );
 
+  template< XDW_ARTH::AddMode Add = XDW_ARTH::kAddMode, XDW_ARTH::NormMode Norm = XDW_ARTH::kNormMode >
   __cuda_callable__
   constexpr static ComplexDouble< T >
-  mulAccurateNorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b );
-
-  __cuda_callable__
-  constexpr static ComplexDouble< T >
-  mulSloppyUnnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b );
-
-  __cuda_callable__
-  constexpr static ComplexDouble< T >
-  mulAccurateUnnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b );
+  mul( const ComplexDouble< T >& a, const ComplexDouble< T >& b );
 };
 
 template< typename T >
@@ -165,61 +161,40 @@ ComplexDouble< T >::operator-() const
 }
 
 template< typename T >
+template< XDW_ARTH::AddMode Add >
 __cuda_callable__
 constexpr __xdw_inline__ ComplexDouble< T >
 ComplexDouble< T >::add( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    T reh, rel, imh, iml;
-   XDW_ARTH::maddDWPlusDW( a.data[ 0 ], a.data[ 1 ], b.data[ 0 ], b.data[ 1 ], &reh, &rel );
-   XDW_ARTH::maddDWPlusDW( a.data[ 2 ], a.data[ 3 ], b.data[ 2 ], b.data[ 3 ], &imh, &iml );
+   XDW_ARTH::XDWadd< T, Add >( a.re_h(), a.re_l(), a.im_h(), a.im_l(),
+                                b.re_h(), b.re_l(), b.im_h(), b.im_l(),
+                                &reh, &rel, &imh, &iml );
    return ComplexDouble< T >( reh, rel, imh, iml );
 }
 
 template< typename T >
+template< XDW_ARTH::AddMode Add >
 __cuda_callable__
 constexpr __xdw_inline__ ComplexDouble< T >
 ComplexDouble< T >::sub( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    T reh, rel, imh, iml;
-   XDW_ARTH::maddDWPlusDW( a.data[ 0 ], a.data[ 1 ], -b.data[ 0 ], -b.data[ 1 ], &reh, &rel );
-   XDW_ARTH::maddDWPlusDW( a.data[ 2 ], a.data[ 3 ], -b.data[ 2 ], -b.data[ 3 ], &imh, &iml );
+   XDW_ARTH::XDWsub< T, Add >( a.re_h(), a.re_l(), a.im_h(), a.im_l(),
+                                b.re_h(), b.re_l(), b.im_h(), b.im_l(),
+                                &reh, &rel, &imh, &iml );
    return ComplexDouble< T >( reh, rel, imh, iml );
 }
 
 template< typename T >
+template< XDW_ARTH::AddMode Add, XDW_ARTH::NormMode Norm >
 __cuda_callable__
 constexpr __xdw_inline__ ComplexDouble< T >
-ComplexDouble< T >::mulAccurateNorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
+ComplexDouble< T >::mul( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    T reh, rel, imh, iml;
-   XDW_ARTH::ComplexDWMulAccurateNorm( a.data[ 0 ], a.data[ 1 ], a.data[ 2 ], a.data[ 3 ],
-                     b.data[ 0 ], b.data[ 1 ], b.data[ 2 ], b.data[ 3 ],
-                     &reh, &rel, &imh, &iml );
-   return ComplexDouble< T >( reh, rel, imh, iml );
-}
-
-template< typename T >
-__cuda_callable__
-constexpr __xdw_inline__ ComplexDouble< T >
-ComplexDouble< T >::mulSloppyUnnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
-{
-   T reh, rel, imh, iml;
-   XDW_ARTH::ComplexDWMulSloppyUnnorm( a.data[ 0 ], a.data[ 1 ], a.data[ 2 ], a.data[ 3 ],
-                     b.data[ 0 ], b.data[ 1 ], b.data[ 2 ], b.data[ 3 ],
-                     &reh, &rel, &imh, &iml );
-   return ComplexDouble< T >( reh, rel, imh, iml );
-}
-
-
-template< typename T >
-__cuda_callable__
-constexpr __xdw_inline__ ComplexDouble< T >
-ComplexDouble< T >::mulAccurateUnnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
-{
-   T reh, rel, imh, iml;
-   XDW_ARTH::ComplexDWMulAccurateUnnorm( a.data[ 0 ], a.data[ 1 ], a.data[ 2 ], a.data[ 3 ],
-                     b.data[ 0 ], b.data[ 1 ], b.data[ 2 ], b.data[ 3 ],
-                     &reh, &rel, &imh, &iml );
+   XDW_ARTH::XDWmul< T, Add, Norm >( a.re_h(), a.re_l(), a.im_h(), a.im_l(),
+                                      b.re_h(), b.re_l(), b.im_h(), b.im_l(), &reh, &rel, &imh, &iml );
    return ComplexDouble< T >( reh, rel, imh, iml );
 }
 
@@ -230,7 +205,7 @@ __cuda_callable__
 constexpr __xdw_inline__ ComplexDouble< T >&
 ComplexDouble< T >::operator+=( const ComplexDouble< T >& other )
 {
-   return *this = add( *this, other );
+   return *this = *this + other;
 }
 
 template< typename T >
@@ -238,7 +213,7 @@ __cuda_callable__
 constexpr __xdw_inline__ ComplexDouble< T >&
 ComplexDouble< T >::operator-=( const ComplexDouble< T >& other )
 {
-   return *this = sub( *this, other );
+   return *this = *this - other;
 }
 
 template< typename T >
@@ -246,7 +221,7 @@ __cuda_callable__
 constexpr __xdw_inline__ ComplexDouble< T >&
 ComplexDouble< T >::operator*=( const ComplexDouble< T >& other )
 {
-   return *this = mulAccurateNorm( *this, other );
+   return *this = *this * other;
 }
 
 template< typename T >
@@ -263,6 +238,14 @@ constexpr __xdw_inline__ ComplexDouble< T >
 operator-( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    return ComplexDouble< T >::sub( a, b );
+}
+
+template< typename T >
+__cuda_callable__
+constexpr __xdw_inline__ ComplexDouble< T >
+operator*( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
+{
+   return ComplexDouble< T >::mul( a, b );
 }
 
 template< typename T >
@@ -297,51 +280,16 @@ imag( const ComplexDouble< T >& z )
    return ComplexDouble< T >( z.im_h(), z.im_l(), T( 0 ), T( 0 ) );
 }
 
-// |z|^2, real-valued.
-template< typename T >
+// |z|^2, real-valued, no sqrt.
+template< typename T, XDW_ARTH::AddMode Add = XDW_ARTH::kAddMode >
 __cuda_callable__
 constexpr __xdw_inline__ ComplexDouble< T >
 norm( const ComplexDouble< T >& z )
 {
    T rh, rl;
-   XDW_ARTH::DWMulAdd_AccurateNorm( z.re_h(), z.re_l(), z.re_h(), z.re_l(),
-                                    z.im_h(), z.im_l(), z.im_h(), z.im_l(), &rh, &rl );
+   XDW_ARTH::DWMulAdd< T, Add >( z.re_h(), z.re_l(), z.re_h(), z.re_l(),
+                                  z.im_h(), z.im_l(), z.im_h(), z.im_l(), &rh, &rl );
    return ComplexDouble< T >( rh, rl, T( 0 ), T( 0 ) );
 }
-
-//define muliplication
-
-template< typename T >
-__cuda_callable__
-constexpr __xdw_inline__ ComplexDouble< T >
-operator*( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
-{
-   return ComplexDouble< T >::mulAccurateNorm( a, b );
-}
-
-template< typename T >
-__cuda_callable__
-constexpr __xdw_inline__ ComplexDouble< T >
-mul_sloppy_unnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
-{
-   return ComplexDouble< T >::mulSloppyUnnorm( a, b );
-}
-
-template< typename T >
-__cuda_callable__
-constexpr __xdw_inline__ ComplexDouble< T >
-mul_accurate_unnorm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
-{
-   return ComplexDouble< T >::mulAccurateUnnorm( a, b );
-}
-
-template< typename T >
-__cuda_callable__
-constexpr __xdw_inline__ ComplexDouble< T >
-mul_accurate_norm( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
-{
-   return ComplexDouble< T >::mulAccurateNorm( a, b );
-}
-
 
 #endif

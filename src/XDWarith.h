@@ -6,8 +6,14 @@
 
 namespace XDW_ARTH{
 
+// Selects mode
+enum class AddMode { Accurate, Madd, Sloppy };
+enum class NormMode { Normalized, Unnormalized };
+
+//-------------------- ADD ---------------------
+
 // SloppyDWPlusDW — 11 flops
-// Relative error <= 1
+// Relative error <= 1 (abs 7u^2)
 template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ void
@@ -26,7 +32,7 @@ SloppyDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ z
 }
 
 // AccurateDWPlusDW — 20 flops
-// Relative error < 3u^2.
+// Relative error <= 3u^2
 template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ void
@@ -49,11 +55,11 @@ AccurateDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__
 }
 
 // maddDWPlusDW — 20 flops
-// Relative error 2u^2. 
+// Relative error <= 2u^2 
 template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ void
-maddDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
+MaddDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
 {
    // TwoSum(xh, yh, &sh, &sl)
    rne<T> shl = two_sum(xh, yh);
@@ -71,8 +77,49 @@ maddDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh,
    *zh = zhl.sum; *zl = zhl.error;
 }
 
+// Selects mode
+template< std::floating_point T, AddMode Add >
+__cuda_callable__
+static constexpr __xdw_inline__ void
+DWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
+{
+   if constexpr (Add == AddMode::Madd) {
+      MaddDWPlusDW(xh, xl, yh, yl, zh, zl);
+   } else if constexpr (Add == AddMode::Accurate) {
+      AccurateDWPlusDW(xh, xl, yh, yl, zh, zl);
+   } else if constexpr (Add == AddMode::Sloppy) {
+      SloppyDWPlusDW(xh, xl, yh, yl, zh, zl);
+   } else {
+      static_assert(Add == AddMode::Sloppy, "DWPlusDW: unhandled AddMode");
+   }
+}
+
+//-------------------- COMPLEX ADD ---------------------
+// (ah,al,bh,bl) op (ch,cl,dh,dl) componentwise -> (reh,rel,imh,iml)
+
+
+template< std::floating_point T, AddMode Add >
+__cuda_callable__
+static constexpr __xdw_inline__ void
+XDWadd(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
+{
+   DWPlusDW<T, Add>(ah, al, ch, cl, reh, rel);
+   DWPlusDW<T, Add>(bh, bl, dh, dl, imh, iml);
+}
+
+template< std::floating_point T, AddMode Add >
+__cuda_callable__
+static constexpr __xdw_inline__ void
+XDWsub(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
+{
+   DWPlusDW<T, Add>(ah, al, -ch, -cl, reh, rel);
+   DWPlusDW<T, Add>(bh, bl, -dh, -dl, imh, iml);
+}
+
+//-------------------- MUL ---------------------
+
 // DWTimesDW2 — 8 flops
-// Relative error <= 5u^2. 
+// Relative error <= 5u^2 
 template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ void
@@ -95,6 +142,7 @@ DWTimesDW2(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T
 // DWTimesDW2Unnorm — 5 flops
 // Unnormalized DW product, skips final Fast2Sum. 
 // Returns (ph, pl) where pl may not satisfy |pl| <= u*|ph|.
+// Overlap of o=3u·|zl|  
 template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ void
@@ -112,13 +160,15 @@ DWTimesDW2Unnorm(const T xh, const T xl, const T yh, const T yl, T* __restrict__
    *zh = chl.sum; *zl = cl3;
 }
 
-// DWMulAdd_AccurateNorm — 36 flops
+//-------------------- MUL ADD ---------------------
+//-------------------- NORMALIZED ---------------------
+
+// DWMulAdd_Madd_N — 36 flops
 // Relative error bound K·7u^2.
-// Computes (ah+al)*(bh+bl) + (ch+cl)*(dh+dl) with full normalization.
 template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ void
-DWMulAdd_AccurateNorm(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
+DWMulAdd_Madd_N(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
 {
    // Step 1 — p = a*b via full DWTimesDW2
    T ph, pl;
@@ -128,17 +178,94 @@ DWMulAdd_AccurateNorm(const T ah, const T al, const T bh, const T bl, const T ch
    T qh, ql;
    DWTimesDW2(ch, cl, dh, dl, &qh, &ql);
 
-   // Step 3 — r = p + q via maddDWPlusDW(ph, pl, qh, ql)
-   maddDWPlusDW(ph, pl, qh, ql, rh, rl);
+   // Step 3 — r = p + q via MaddDWPlusDW(ph, pl, qh, ql)
+   MaddDWPlusDW(ph, pl, qh, ql, rh, rl);
 }
 
-// DWMulAdd_SloppyUnnorm — 21 flops
-// Relative error bound K·12u^2. (in proper region) <F4>
-// Computes (ah+al)*(bh+bl) + (ch+cl)*(dh+dl) skipping normalization in multiplication.
+// DWMulAdd_Accu_N — 36 flops
+// Relative error bound K·8u^2.
 template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ void
-DWMulAdd_SloppyUnnorm(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
+DWMulAdd_Accu_N(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
+{
+   // Step 1 — p = a*b via full DWTimesDW2
+   T ph, pl;
+   DWTimesDW2(ah, al, bh, bl, &ph, &pl);
+
+   // Step 2 — q = c*d via full DWTimesDW2
+   T qh, ql;
+   DWTimesDW2(ch, cl, dh, dl, &qh, &ql);
+
+   // Step 3 — r = p + q via AccurateDWPlusDW(ph, pl, qh, ql)
+   AccurateDWPlusDW(ph, pl, qh, ql, rh, rl);
+}
+
+// DWMulAdd_Slop_N — 27 flops
+// Relative error bound K·8u^2. (in proper region) 
+template< std::floating_point T >
+__cuda_callable__
+static constexpr __xdw_inline__ void
+DWMulAdd_Slop_N(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
+{
+   // Step 1 — p = a*b via full DWTimesDW2
+   T ph, pl;
+   DWTimesDW2(ah, al, bh, bl, &ph, &pl);
+
+   // Step 2 — q = c*d via full DWTimesDW2
+   T qh, ql;
+   DWTimesDW2(ch, cl, dh, dl, &qh, &ql);
+
+   // Step 3 — r = p + q via SloppyDWPlusDW(ph, pl, qh, ql)
+   SloppyDWPlusDW(ph, pl, qh, ql, rh, rl);
+}
+
+//-------------------- UNNORMAL ---------------------
+
+// DWMulAdd_Madd_U — 30 flops
+// Relative error bound K·8u^2.
+template< std::floating_point T >
+__cuda_callable__
+static constexpr __xdw_inline__ void
+DWMulAdd_Madd_U(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
+{
+   // Step 1 — p = a*b via DWTimesDW2Unnorm
+   T ph, pl;
+   DWTimesDW2Unnorm(ah, al, bh, bl, &ph, &pl);
+
+   // Step 2 — q = c*d via DWTimesDW2Unnorm
+   T qh, ql;
+   DWTimesDW2Unnorm(ch, cl, dh, dl, &qh, &ql);
+
+   // Step 3 — r = p + q via MaddDWPlusDW(ph, pl, qh, ql)
+   MaddDWPlusDW(ph, pl, qh, ql, rh, rl);
+}
+
+// DWMulAdd_Accu_U — 30 flops
+// Relative error bound K·10u^2.
+template< std::floating_point T >
+__cuda_callable__
+static constexpr __xdw_inline__ void
+DWMulAdd_Accu_U(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
+{
+   // Step 1 — p = a*b via DWTimesDW2Unnorm
+   T ph, pl;
+   DWTimesDW2Unnorm(ah, al, bh, bl, &ph, &pl);
+
+   // Step 2 — q = c*d via DWTimesDW2Unnorm
+   T qh, ql;
+   DWTimesDW2Unnorm(ch, cl, dh, dl, &qh, &ql);
+
+   // Step 3 — r = p + q via AccurateDWPlusDW(ph, pl, qh, ql)
+   AccurateDWPlusDW(ph, pl, qh, ql, rh, rl);
+}
+
+// DWMulAdd_Slop_U — 21 flops
+// Relative error bound K·12u^2. (in proper region) 
+template< std::floating_point T >
+__cuda_callable__
+static constexpr __xdw_inline__ void
+DWMulAdd_Slop_U(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
 {
    // Step 1 — p = a*b via DWTimesDW2Unnorm
    T ph, pl;
@@ -152,67 +279,111 @@ DWMulAdd_SloppyUnnorm(const T ah, const T al, const T bh, const T bl, const T ch
    SloppyDWPlusDW(ph, pl, qh, ql, rh, rl);
 }
 
+// Selects mode
+template< std::floating_point T, AddMode Add >
+__cuda_callable__
+static constexpr __xdw_inline__ void
+DWMulAdd(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
+{
+   if constexpr (Add == AddMode::Madd) {
+      DWMulAdd_Madd_N(ah, al, bh, bl, ch, cl, dh, dl, rh, rl);
+   } else if constexpr (Add == AddMode::Accurate) {
+      DWMulAdd_Accu_N(ah, al, bh, bl, ch, cl, dh, dl, rh, rl);
+   } else if constexpr (Add == AddMode::Sloppy) {
+      DWMulAdd_Slop_N(ah, al, bh, bl, ch, cl, dh, dl, rh, rl);
+   } else {
+      static_assert(Add == AddMode::Sloppy, "DWMulAdd: unhandled AddMode");
+   }
+}
 
-// DWMulAdd_AccurateUnnorm — 30 flops
-// Computes (ah+al)*(bh+bl) + (ch+cl)*(dh+dl), unnormalized products with maddDWPlusDW.
+//-------------------- COMPLEX MUL ---------------------
+// (ah,al,bh,bl) * (ch,cl,dh,dl), real = ac-bd, imag = ad+bc -> (reh,rel,imh,iml)
+
 template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ void
-DWMulAdd_AccurateUnnorm(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
+XDWmul_Madd_N(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
 {
-   // Step 1 — p = a*b via DWTimesDW2Unnorm
-   T ph, pl;
-   DWTimesDW2Unnorm(ah, al, bh, bl, &ph, &pl);
-
-   // Step 2 — q = c*d via DWTimesDW2Unnorm
-   T qh, ql;
-   DWTimesDW2Unnorm(ch, cl, dh, dl, &qh, &ql);
-
-   // Step 3 — r = p + q via maddDWPlusDW(ph, pl, qh, ql)
-   maddDWPlusDW(ph, pl, qh, ql, rh, rl);
+   DWMulAdd_Madd_N(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
+   DWMulAdd_Madd_N(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
 }
 
-// ComplexDWMulAccurateNorm — computes (a + i*b) * (c + i*d) where each of a, b, c, d is a DW number with normalization.
-// Inputs: (ah, al, bh, bl, ch, cl, dh, dl)
-// Output: (reh, rel, imh, iml)
 template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ void
-ComplexDWMulAccurateNorm(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
+XDWmul_Accu_N(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
 {
-   // Real part = ac - bd: DWMulAdd_AccurateNorm(ah, al, ch, cl, bh, bl, -dh, -dl)
-   DWMulAdd_AccurateNorm(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
-   // Imaginary part = ad + bc: DWMulAdd_AccurateNorm(ah, al, dh, dl, bh, bl, ch, cl)
-   DWMulAdd_AccurateNorm(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
+   DWMulAdd_Accu_N(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
+   DWMulAdd_Accu_N(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
 }
 
-// ComplexDWMulSloppyUnnorm — computes (a + i*b) * (c + i*d) where each of a, b, c, d is a DW number without normalization.
-// Inputs: (ah, al, bh, bl, ch, cl, dh, dl)
-// Output: (reh, rel, imh, iml)
 template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ void
-ComplexDWMulSloppyUnnorm(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
+XDWmul_Slop_N(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
 {
-   // Real part = ac - bd: DWMulAdd_SloppyUnnorm(ah, al, ch, cl, bh, bl, -dh, -dl)
-   DWMulAdd_SloppyUnnorm(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
-   // Imaginary part = ad + bc: DWMulAdd_SloppyUnnorm(ah, al, dh, dl, bh, bl, ch, cl)
-   DWMulAdd_SloppyUnnorm(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
+   DWMulAdd_Slop_N(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
+   DWMulAdd_Slop_N(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
 }
 
-// ComplexDWMulAccurateUnnorm — computes (a + i*b) * (c + i*d) where each of a, b, c, d is a DW number without normalization.
-// Inputs: (ah, al, bh, bl, ch, cl, dh, dl)
-// Output: (reh, rel, imh, iml)
 template< std::floating_point T >
 __cuda_callable__
 static constexpr __xdw_inline__ void
-ComplexDWMulAccurateUnnorm(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
+XDWmul_Madd_U(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
 {
-   // Real part = ac - bd: DWMulAdd_AccurateUnnorm(ah, al, ch, cl, bh, bl, -dh, -dl)
-   DWMulAdd_AccurateUnnorm(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
-   // Imaginary part = ad + bc: DWMulAdd_AccurateUnnorm(ah, al, dh, dl, bh, bl, ch, cl)
-   DWMulAdd_AccurateUnnorm(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
+   DWMulAdd_Madd_U(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
+   DWMulAdd_Madd_U(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
 }
+
+template< std::floating_point T >
+__cuda_callable__
+static constexpr __xdw_inline__ void
+XDWmul_Accu_U(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
+{
+   DWMulAdd_Accu_U(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
+   DWMulAdd_Accu_U(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
+}
+
+template< std::floating_point T >
+__cuda_callable__
+static constexpr __xdw_inline__ void
+XDWmul_Slop_U(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
+{
+   DWMulAdd_Slop_U(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
+   DWMulAdd_Slop_U(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
+}
+
+// Selects mode
+template< std::floating_point T, AddMode Add, NormMode Norm >
+__cuda_callable__
+static constexpr __xdw_inline__ void
+XDWmul(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
+{
+   if constexpr (Norm == NormMode::Normalized) {
+      if constexpr (Add == AddMode::Madd) {
+         XDWmul_Madd_N(ah, al, bh, bl, ch, cl, dh, dl, reh, rel, imh, iml);
+      } else if constexpr (Add == AddMode::Accurate) {
+         XDWmul_Accu_N(ah, al, bh, bl, ch, cl, dh, dl, reh, rel, imh, iml);
+      } else if constexpr (Add == AddMode::Sloppy) {
+         XDWmul_Slop_N(ah, al, bh, bl, ch, cl, dh, dl, reh, rel, imh, iml);
+      } else {
+         static_assert(Add == AddMode::Sloppy, "XDWmul: unhandled AddMode");
+      }
+   } else if constexpr (Norm == NormMode::Unnormalized) {
+      if constexpr (Add == AddMode::Madd) {
+         XDWmul_Madd_U(ah, al, bh, bl, ch, cl, dh, dl, reh, rel, imh, iml);
+      } else if constexpr (Add == AddMode::Accurate) {
+         XDWmul_Accu_U(ah, al, bh, bl, ch, cl, dh, dl, reh, rel, imh, iml);
+      } else if constexpr (Add == AddMode::Sloppy) {
+         XDWmul_Slop_U(ah, al, bh, bl, ch, cl, dh, dl, reh, rel, imh, iml);
+      } else {
+         static_assert(Add == AddMode::Sloppy, "XDWmul: unhandled AddMode");
+      }
+   } else {
+      static_assert(Norm == NormMode::Unnormalized, "XDWmul: unhandled NormMode");
+   }
+}
+
 }
 
 #endif
