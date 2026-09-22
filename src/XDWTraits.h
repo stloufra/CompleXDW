@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <cfloat>
+
 #if defined( __CUDACC__ ) || defined( __HIPCC__ )
 #define XDW_CUDA_CALLABLE \
 __device__             \
@@ -21,6 +23,30 @@ __host__
 #define XDW_INLINE __attribute__( ( always_inline ) ) inline
 #else
 #define XDW_INLINE inline
+#endif
+
+#if !defined( __CUDA_ARCH__ ) && !defined( __HIP_DEVICE_COMPILE__ )
+
+namespace XDW_ARTH::detail {
+
+#if defined( __FAST_MATH__ )
+inline constexpr bool fast_math_enabled = true;
+#else
+inline constexpr bool fast_math_enabled = false;
+#endif
+
+}
+
+static_assert( !XDW_ARTH::detail::fast_math_enabled,
+               "CompleXDW's round-to-nearest error-free transforms are unsound under "
+               "-ffast-math/-Ofast; build without fast-math." );
+
+#if defined( __FLT_EVAL_METHOD__ )
+static_assert( __FLT_EVAL_METHOD__ != 2,
+               "FLT_EVAL_METHOD == 2 means excess-precision (x87) intermediates, which breaks "
+               "the round-to-nearest error-free transforms; build with SSE2 math instead." );
+#endif
+
 #endif
 
 namespace XDW_ARTH {
