@@ -37,7 +37,7 @@ double measure_time_norm_acc(ComplexDouble<double>* __restrict__ a,
     auto start = std::chrono::high_resolution_clock::now();
     for (size_t r = 0; r < ITER; ++r) {
         for (size_t i = 0; i < N; ++i) {
-            c[i] = mul_accurate_norm(a[i], b[i]);
+            c[i] = ComplexDouble<double>::mul<AddMode::Madd, NormMode::Normalized>(a[i], b[i]);
         }
     }
     auto end = std::chrono::high_resolution_clock::now();
@@ -53,7 +53,7 @@ double measure_time_un_acc(ComplexDouble<double>* __restrict__ a,
     auto start = std::chrono::high_resolution_clock::now();
     for (size_t r = 0; r < ITER; ++r) {
         for (size_t i = 0; i < N; ++i) {
-            c[i] = mul_accurate_unnorm(a[i], b[i]);
+            c[i] = ComplexDouble<double>::mul<AddMode::Madd, NormMode::Unnormalized>(a[i], b[i]);
         }
     }
     auto end = std::chrono::high_resolution_clock::now();
@@ -69,7 +69,7 @@ double measure_time_un_sloppy(ComplexDouble<double>* __restrict__ a,
     auto start = std::chrono::high_resolution_clock::now();
     for (size_t r = 0; r < ITER; ++r) {
         for (size_t i = 0; i < N; ++i) {
-            c[i] = mul_sloppy_unnorm(a[i], b[i]);
+            c[i] = ComplexDouble<double>::mul<AddMode::Sloppy, NormMode::Unnormalized>(a[i], b[i]);
         }
     }
     auto end = std::chrono::high_resolution_clock::now();

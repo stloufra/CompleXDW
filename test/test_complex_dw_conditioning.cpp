@@ -97,7 +97,7 @@ int main() {
         std::cout << std::flush;
 #endif
 
-        ComplexDouble<double> c_acc_norm = mul_accurate_norm(a, b);
+        ComplexDouble<double> c_acc_norm = ComplexDouble<double>::mul<AddMode::Madd, NormMode::Normalized>(a, b);
 
 #ifdef __DEBUG__
         std::cout << "\n=== DEBUG: After a * b ===" << '\n';
@@ -105,7 +105,7 @@ int main() {
                   << c_acc_norm.im_h() << ", " << c_acc_norm.im_l() << ")" << '\n';
 #endif
 
-        ComplexDouble<double> c_acc_un = mul_accurate_unnorm(a, b);
+        ComplexDouble<double> c_acc_un = ComplexDouble<double>::mul<AddMode::Madd, NormMode::Unnormalized>(a, b);
 
 #ifdef __DEBUG__
         std::cout << "\n=== DEBUG: After mul_sloppy ===" << '\n';
@@ -114,7 +114,7 @@ int main() {
 #endif
 
 
-        ComplexDouble<double> c_sloppy_un = mul_sloppy_unnorm(a, b);
+        ComplexDouble<double> c_sloppy_un = ComplexDouble<double>::mul<AddMode::Sloppy, NormMode::Unnormalized>(a, b);
 
 #ifdef __DEBUG__
         std::cout << "\n=== DEBUG: After mul_sloppy ===" << '\n';
