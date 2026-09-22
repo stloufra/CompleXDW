@@ -4,21 +4,23 @@
 #pragma once
 
 #if defined( __CUDACC__ )
-#define __cuda_callable__ \
+#define XDW_CUDA_CALLABLE \
 __device__             \
 __host__
 #else
-#define __cuda_callable__
+#define XDW_CUDA_CALLABLE
 #endif
 
-#if defined( __CUDACC__ )
-#define __xdw_inline__ __forceinline__
+#if !defined( NDEBUG ) // not in debug mode
+#define XDW_INLINE inline
+#elif defined( __CUDACC__ )
+#define XDW_INLINE __forceinline__
 #elif defined( _MSC_VER )
-#define __xdw_inline__ __forceinline
+#define XDW_INLINE __forceinline
 #elif defined( __GNUC__ ) || defined( __clang__ )
-#define __xdw_inline__ __attribute__( ( always_inline ) ) inline
+#define XDW_INLINE __attribute__( ( always_inline ) ) inline
 #else
-#define __xdw_inline__ inline
+#define XDW_INLINE inline
 #endif
 
 namespace XDW_ARTH {

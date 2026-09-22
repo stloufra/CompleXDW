@@ -12,8 +12,8 @@ namespace XDW_ARTH{
 // SloppyDWPlusDW — 11 flops
 // Relative error <= 1 (abs 7u^2)
 template< std::floating_point T >
-__cuda_callable__
-static constexpr __xdw_inline__ void
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
 SloppyDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
 {
    // TwoSum(xh, yh, &sh, &sl)
@@ -31,8 +31,8 @@ SloppyDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ z
 // AccurateDWPlusDW — 20 flops
 // Relative error <= 3u^2
 template< std::floating_point T >
-__cuda_callable__
-static constexpr __xdw_inline__ void
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
 AccurateDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
 {
    // TwoSum(xh, yh, &sh, &sl)
@@ -54,8 +54,8 @@ AccurateDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__
 // maddDWPlusDW — 20 flops
 // Relative error <= 2u^2 
 template< std::floating_point T >
-__cuda_callable__
-static constexpr __xdw_inline__ void
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
 MaddDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
 {
    // TwoSum(xh, yh, &sh, &sl)
@@ -76,8 +76,8 @@ MaddDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh,
 
 // Selects mode
 template< std::floating_point T, AddMode Add >
-__cuda_callable__
-static constexpr __xdw_inline__ void
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
 DWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
 {
    if constexpr (Add == AddMode::Madd) {
@@ -96,8 +96,8 @@ DWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* 
 
 
 template< std::floating_point T, AddMode Add >
-__cuda_callable__
-static constexpr __xdw_inline__ void
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
 XDWadd(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
 {
    DWPlusDW<T, Add>(ah, al, ch, cl, reh, rel);
@@ -105,8 +105,8 @@ XDWadd(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, c
 }
 
 template< std::floating_point T, AddMode Add >
-__cuda_callable__
-static constexpr __xdw_inline__ void
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
 XDWsub(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
 {
    DWPlusDW<T, Add>(ah, al, -ch, -cl, reh, rel);
@@ -118,8 +118,8 @@ XDWsub(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, c
 // DWTimesDW2 — 8 flops
 // Relative error <= 5u^2 
 template< std::floating_point T >
-__cuda_callable__
-static constexpr __xdw_inline__ void
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
 DWTimesDW2(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
 {
    // TwoProdFMA(xh, yh, &ch, &cl1)
@@ -141,8 +141,8 @@ DWTimesDW2(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T
 // Returns (ph, pl) where pl may not satisfy |pl| <= u*|ph|.
 // Overlap of o=3u·|zl|  
 template< std::floating_point T >
-__cuda_callable__
-static constexpr __xdw_inline__ void
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
 DWTimesDW2Unnorm(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
 {
    // TwoProdFMA(xh, yh, &ch, &cl1)
@@ -163,8 +163,8 @@ DWTimesDW2Unnorm(const T xh, const T xl, const T yh, const T yl, T* __restrict__
 // DWMulAdd_Madd_N — 36 flops
 // Relative error bound K·7u^2.
 template< std::floating_point T >
-__cuda_callable__
-static constexpr __xdw_inline__ void
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
 DWMulAdd_Madd_N(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
 {
    // Step 1 — p = a*b via full DWTimesDW2
@@ -182,8 +182,8 @@ DWMulAdd_Madd_N(const T ah, const T al, const T bh, const T bl, const T ch, cons
 // DWMulAdd_Accu_N — 36 flops
 // Relative error bound K·8u^2.
 template< std::floating_point T >
-__cuda_callable__
-static constexpr __xdw_inline__ void
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
 DWMulAdd_Accu_N(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
 {
    // Step 1 — p = a*b via full DWTimesDW2
@@ -201,8 +201,8 @@ DWMulAdd_Accu_N(const T ah, const T al, const T bh, const T bl, const T ch, cons
 // DWMulAdd_Slop_N — 27 flops
 // Relative error bound K·8u^2. (in proper region) 
 template< std::floating_point T >
-__cuda_callable__
-static constexpr __xdw_inline__ void
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
 DWMulAdd_Slop_N(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
 {
    // Step 1 — p = a*b via full DWTimesDW2
@@ -222,8 +222,8 @@ DWMulAdd_Slop_N(const T ah, const T al, const T bh, const T bl, const T ch, cons
 // DWMulAdd_Madd_U — 30 flops
 // Relative error bound K·8u^2.
 template< std::floating_point T >
-__cuda_callable__
-static constexpr __xdw_inline__ void
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
 DWMulAdd_Madd_U(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
 {
    // Step 1 — p = a*b via DWTimesDW2Unnorm
@@ -241,8 +241,8 @@ DWMulAdd_Madd_U(const T ah, const T al, const T bh, const T bl, const T ch, cons
 // DWMulAdd_Accu_U — 30 flops
 // Relative error bound K·10u^2.
 template< std::floating_point T >
-__cuda_callable__
-static constexpr __xdw_inline__ void
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
 DWMulAdd_Accu_U(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
 {
    // Step 1 — p = a*b via DWTimesDW2Unnorm
@@ -260,8 +260,8 @@ DWMulAdd_Accu_U(const T ah, const T al, const T bh, const T bl, const T ch, cons
 // DWMulAdd_Slop_U — 21 flops
 // Relative error bound K·12u^2. (in proper region) 
 template< std::floating_point T >
-__cuda_callable__
-static constexpr __xdw_inline__ void
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
 DWMulAdd_Slop_U(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
 {
    // Step 1 — p = a*b via DWTimesDW2Unnorm
@@ -278,8 +278,8 @@ DWMulAdd_Slop_U(const T ah, const T al, const T bh, const T bl, const T ch, cons
 
 // Selects mode
 template< std::floating_point T, AddMode Add >
-__cuda_callable__
-static constexpr __xdw_inline__ void
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
 DWMulAdd(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
 {
    if constexpr (Add == AddMode::Madd) {
@@ -297,8 +297,8 @@ DWMulAdd(const T ah, const T al, const T bh, const T bl, const T ch, const T cl,
 // (ah,al,bh,bl) * (ch,cl,dh,dl), real = ac-bd, imag = ad+bc -> (reh,rel,imh,iml)
 
 template< std::floating_point T >
-__cuda_callable__
-static constexpr __xdw_inline__ void
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
 XDWmul_Madd_N(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
 {
    DWMulAdd_Madd_N(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
@@ -306,8 +306,8 @@ XDWmul_Madd_N(const T ah, const T al, const T bh, const T bl, const T ch, const 
 }
 
 template< std::floating_point T >
-__cuda_callable__
-static constexpr __xdw_inline__ void
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
 XDWmul_Accu_N(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
 {
    DWMulAdd_Accu_N(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
@@ -315,8 +315,8 @@ XDWmul_Accu_N(const T ah, const T al, const T bh, const T bl, const T ch, const 
 }
 
 template< std::floating_point T >
-__cuda_callable__
-static constexpr __xdw_inline__ void
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
 XDWmul_Slop_N(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
 {
    DWMulAdd_Slop_N(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
@@ -324,8 +324,8 @@ XDWmul_Slop_N(const T ah, const T al, const T bh, const T bl, const T ch, const 
 }
 
 template< std::floating_point T >
-__cuda_callable__
-static constexpr __xdw_inline__ void
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
 XDWmul_Madd_U(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
 {
    DWMulAdd_Madd_U(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
@@ -333,8 +333,8 @@ XDWmul_Madd_U(const T ah, const T al, const T bh, const T bl, const T ch, const 
 }
 
 template< std::floating_point T >
-__cuda_callable__
-static constexpr __xdw_inline__ void
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
 XDWmul_Accu_U(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
 {
    DWMulAdd_Accu_U(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
@@ -342,8 +342,8 @@ XDWmul_Accu_U(const T ah, const T al, const T bh, const T bl, const T ch, const 
 }
 
 template< std::floating_point T >
-__cuda_callable__
-static constexpr __xdw_inline__ void
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
 XDWmul_Slop_U(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
 {
    DWMulAdd_Slop_U(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
@@ -352,8 +352,8 @@ XDWmul_Slop_U(const T ah, const T al, const T bh, const T bl, const T ch, const 
 
 // Selects mode
 template< std::floating_point T, AddMode Add, NormMode Norm >
-__cuda_callable__
-static constexpr __xdw_inline__ void
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
 XDWmul(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
 {
    if constexpr (Norm == NormMode::Normalized) {

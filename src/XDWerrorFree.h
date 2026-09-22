@@ -32,7 +32,7 @@ static constexpr float FLOAT_SPLIT_THRESH = 0x1p115f;    // 2^115 ≈ 4.15383748
 }
 
 template< std::floating_point T, typename U >
-__xdw_inline__ __cuda_callable__
+XDW_INLINE XDW_CUDA_CALLABLE
 constexpr rne< U >
 split( T value )
 {
@@ -75,8 +75,8 @@ split( T value )
 }
 
 template< std::floating_point T >
-__cuda_callable__
-constexpr __xdw_inline__ rne< T >
+XDW_CUDA_CALLABLE
+constexpr XDW_INLINE rne< T >
 quick_two_sum( const T a, const T b )
 {
   const T s = add_rn(a, b);
@@ -86,8 +86,8 @@ quick_two_sum( const T a, const T b )
 }
 
 template< std::floating_point T >
-__cuda_callable__
-constexpr __xdw_inline__ rne< T >
+XDW_CUDA_CALLABLE
+constexpr XDW_INLINE rne< T >
 quick_two_diff( const T a, const T b )
 {
   const T s = add_rn(a, -b);
@@ -98,8 +98,8 @@ quick_two_diff( const T a, const T b )
 
 
 template< std::floating_point T >
-__cuda_callable__
-constexpr __xdw_inline__ rne< T >
+XDW_CUDA_CALLABLE
+constexpr XDW_INLINE rne< T >
 two_sum( const T a, const T b )
 {
   const T s = add_rn(a, b);
@@ -113,8 +113,8 @@ two_sum( const T a, const T b )
 
 
 template< std::floating_point T >
-__cuda_callable__
-constexpr __xdw_inline__ rne< T >
+XDW_CUDA_CALLABLE
+constexpr XDW_INLINE rne< T >
 two_diff( const T a, const T b )
 {
    const T s  = add_rn(a, -b);
@@ -127,8 +127,8 @@ two_diff( const T a, const T b )
 }
 
 template< std::floating_point T >
-__cuda_callable__
-constexpr __xdw_inline__ rne< T >
+XDW_CUDA_CALLABLE
+constexpr XDW_INLINE rne< T >
 two_prod( const T a, const T b )
 {
 #ifdef __CUDA_ARCH__
