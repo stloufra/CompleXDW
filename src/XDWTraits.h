@@ -3,7 +3,30 @@
 
 #pragma once
 
-#include "XDWarith.h"
+#if defined( __CUDACC__ )
+#define __cuda_callable__ \
+__device__             \
+__host__
+#else
+#define __cuda_callable__
+#endif
+
+#if defined( __CUDACC__ )
+#define __xdw_inline__ __forceinline__
+#elif defined( _MSC_VER )
+#define __xdw_inline__ __forceinline
+#elif defined( __GNUC__ ) || defined( __clang__ )
+#define __xdw_inline__ __attribute__( ( always_inline ) ) inline
+#else
+#define __xdw_inline__ inline
+#endif
+
+namespace XDW_ARTH {
+
+enum class AddMode { Accurate, Madd, Sloppy };
+enum class NormMode { Normalized, Unnormalized };
+
+}
 
 // Compile time set as -DXDW_ADD_MODE=<var> -DXDW_NORM_MODE=<var>
 // XDW_ADD_MODE:  A = Accurate, M = Madd, S = Sloppy

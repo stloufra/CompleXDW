@@ -8,6 +8,8 @@
 #include <type_traits>
 #include <cmath>
 
+#include "XDWTraits.h"
+
 #if defined( __CUDACC__ )
 #include <cuda_runtime.h>
 #endif
@@ -16,24 +18,6 @@
 namespace XDW_ARTH{
 
 //implementation of basic operations to ensure round to nearest in CUDA
-
-#if defined( __CUDACC__ )
-#define __xdw_inline__ __forceinline__
-#elif defined( _MSC_VER )
-#define __xdw_inline__ __forceinline
-#elif defined( __GNUC__ ) || defined( __clang__ )
-#define __xdw_inline__ __attribute__( ( always_inline ) ) inline
-#else
-#define __xdw_inline__ inline
-#endif
-
-#if defined( __CUDACC__ )
-#define __cuda_callable__ \
-__device__             \
-__host__
-#else
-#define __cuda_callable__
-#endif
 
 template< std::floating_point T >
 __cuda_callable__

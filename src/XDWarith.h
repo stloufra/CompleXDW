@@ -3,12 +3,9 @@
 
 #include "XDWerrorFree.h"
 #include "XDWbasicOP.h"
+#include "XDWTraits.h"
 
 namespace XDW_ARTH{
-
-// Selects mode
-enum class AddMode { Accurate, Madd, Sloppy };
-enum class NormMode { Normalized, Unnormalized };
 
 //-------------------- ADD ---------------------
 

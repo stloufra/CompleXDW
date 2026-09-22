@@ -6,16 +6,6 @@
 #include "src/XDWTraits.h"
 #include <complex>
 
-#if defined( __CUDACC__ )
-#define __xdw_inline__ __forceinline__
-#elif defined( _MSC_VER )
-#define __xdw_inline__ __forceinline
-#elif defined( __GNUC__ ) || defined( __clang__ )
-#define __xdw_inline__ __attribute__( ( always_inline ) ) inline
-#else
-#define __xdw_inline__ inline
-#endif
-
 template< typename T >
 class alignas( 4 * sizeof( T ) ) ComplexDouble
 {
