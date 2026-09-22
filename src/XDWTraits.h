@@ -3,7 +3,7 @@
 
 #pragma once
 
-#if defined( __CUDACC__ )
+#if defined( __CUDACC__ ) || defined( __HIPCC__ )
 #define XDW_CUDA_CALLABLE \
 __device__             \
 __host__
@@ -13,7 +13,7 @@ __host__
 
 #if !defined( NDEBUG ) // not in debug mode
 #define XDW_INLINE inline
-#elif defined( __CUDACC__ )
+#elif defined( __CUDACC__ ) || defined( __HIPCC__ )
 #define XDW_INLINE __forceinline__
 #elif defined( _MSC_VER )
 #define XDW_INLINE __forceinline
