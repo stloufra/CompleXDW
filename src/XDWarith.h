@@ -296,60 +296,6 @@ DWMulAdd(const T ah, const T al, const T bh, const T bl, const T ch, const T cl,
 //-------------------- COMPLEX MUL ---------------------
 // (ah,al,bh,bl) * (ch,cl,dh,dl), real = ac-bd, imag = ad+bc -> (reh,rel,imh,iml)
 
-template< std::floating_point T >
-XDW_CUDA_CALLABLE
-static constexpr XDW_INLINE void
-XDWmul_Madd_N(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
-{
-   DWMulAdd_Madd_N(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
-   DWMulAdd_Madd_N(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
-}
-
-template< std::floating_point T >
-XDW_CUDA_CALLABLE
-static constexpr XDW_INLINE void
-XDWmul_Accu_N(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
-{
-   DWMulAdd_Accu_N(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
-   DWMulAdd_Accu_N(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
-}
-
-template< std::floating_point T >
-XDW_CUDA_CALLABLE
-static constexpr XDW_INLINE void
-XDWmul_Slop_N(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
-{
-   DWMulAdd_Slop_N(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
-   DWMulAdd_Slop_N(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
-}
-
-template< std::floating_point T >
-XDW_CUDA_CALLABLE
-static constexpr XDW_INLINE void
-XDWmul_Madd_U(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
-{
-   DWMulAdd_Madd_U(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
-   DWMulAdd_Madd_U(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
-}
-
-template< std::floating_point T >
-XDW_CUDA_CALLABLE
-static constexpr XDW_INLINE void
-XDWmul_Accu_U(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
-{
-   DWMulAdd_Accu_U(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
-   DWMulAdd_Accu_U(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
-}
-
-template< std::floating_point T >
-XDW_CUDA_CALLABLE
-static constexpr XDW_INLINE void
-XDWmul_Slop_U(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
-{
-   DWMulAdd_Slop_U(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
-   DWMulAdd_Slop_U(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
-}
-
 // Selects mode
 template< std::floating_point T, AddMode Add, NormMode Norm >
 XDW_CUDA_CALLABLE
@@ -358,21 +304,27 @@ XDWmul(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, c
 {
    if constexpr (Norm == NormMode::Normalized) {
       if constexpr (Add == AddMode::Madd) {
-         XDWmul_Madd_N(ah, al, bh, bl, ch, cl, dh, dl, reh, rel, imh, iml);
+         DWMulAdd_Madd_N(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
+         DWMulAdd_Madd_N(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
       } else if constexpr (Add == AddMode::Accurate) {
-         XDWmul_Accu_N(ah, al, bh, bl, ch, cl, dh, dl, reh, rel, imh, iml);
+         DWMulAdd_Accu_N(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
+         DWMulAdd_Accu_N(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
       } else if constexpr (Add == AddMode::Sloppy) {
-         XDWmul_Slop_N(ah, al, bh, bl, ch, cl, dh, dl, reh, rel, imh, iml);
+         DWMulAdd_Slop_N(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
+         DWMulAdd_Slop_N(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
       } else {
          static_assert(Add == AddMode::Sloppy, "XDWmul: unhandled AddMode");
       }
    } else if constexpr (Norm == NormMode::Unnormalized) {
       if constexpr (Add == AddMode::Madd) {
-         XDWmul_Madd_U(ah, al, bh, bl, ch, cl, dh, dl, reh, rel, imh, iml);
+         DWMulAdd_Madd_U(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
+         DWMulAdd_Madd_U(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
       } else if constexpr (Add == AddMode::Accurate) {
-         XDWmul_Accu_U(ah, al, bh, bl, ch, cl, dh, dl, reh, rel, imh, iml);
+         DWMulAdd_Accu_U(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
+         DWMulAdd_Accu_U(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
       } else if constexpr (Add == AddMode::Sloppy) {
-         XDWmul_Slop_U(ah, al, bh, bl, ch, cl, dh, dl, reh, rel, imh, iml);
+         DWMulAdd_Slop_U(ah, al, ch, cl, bh, bl, -dh, -dl, reh, rel);
+         DWMulAdd_Slop_U(ah, al, dh, dl, bh, bl, ch, cl, imh, iml);
       } else {
          static_assert(Add == AddMode::Sloppy, "XDWmul: unhandled AddMode");
       }
