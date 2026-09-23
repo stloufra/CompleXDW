@@ -516,6 +516,36 @@ XDWmul(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, c
    }
 }
 
+//-------------------- COMPLEX DIV ---------------------
+// (ah,al,bh,bl) / (ch,cl,dh,dl), real = (ac+bd)/(c^2+d^2), imag = (bc-ad)/(c^2+d^2) -> (reh,rel,imh,iml)
+//  Div selects DWDivDW2 vs DWDivDW3 for the two final divisions
+
+template< std::floating_point T, DivMode Div, AddMode Add, NormMode Norm >
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
+XDWDiv(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
+{
+   // denom = c^2 + d^2, via DWPowAdd
+   T denomh, denoml;
+   DWPowAdd<T, Add, Norm>(ch, cl, dh, dl, &denomh, &denoml);
+
+   // numerator real = a*c + b*d, numerator imag = b*c - a*d, via DWMulAdd<Add> (always normalized)
+   T numreh, numrel, numimh, numiml;
+   DWMulAdd<T, Add>(ah, al, ch, cl, bh, bl, dh, dl, &numreh, &numrel);
+   DWMulAdd<T, Add>(bh, bl, ch, cl, ah, al, -dh, -dl, &numimh, &numiml);
+
+   // real = numreal / denom, imag = numimag / denom
+   if constexpr (Div == DivMode::Div2) {
+      DWDivDW2(numreh, numrel, denomh, denoml, reh, rel);
+      DWDivDW2(numimh, numiml, denomh, denoml, imh, iml);
+   } else if constexpr (Div == DivMode::Div3) {
+      DWDivDW3(numreh, numrel, denomh, denoml, reh, rel);
+      DWDivDW3(numimh, numiml, denomh, denoml, imh, iml);
+   } else {
+      static_assert(Div == DivMode::Div3, "XDWDiv: unhandled DivMode");
+   }
+}
+
 }
 
 #endif
