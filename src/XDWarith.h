@@ -189,6 +189,26 @@ DWPow2(const T xh, const T xl, T* __restrict__ zh, T* __restrict__ zl)
    *zh = r.sum; *zl = r.error;
 }
 
+// DWPowAdd — (ah,al)^2 + (bh,bl)^2 -> (rh,rl)
+template< std::floating_point T, AddMode Add, NormMode Norm >
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
+DWPowAdd(const T ah, const T al, const T bh, const T bl, T* __restrict__ rh, T* __restrict__ rl)
+{
+   T a2h, a2l, b2h, b2l;
+   if constexpr (Norm == NormMode::Normalized) {
+      DWPow2(ah, al, &a2h, &a2l);
+      DWPow2(bh, bl, &b2h, &b2l);
+   } else if constexpr (Norm == NormMode::Unnormalized) {
+      DWPow2Unnorm(ah, al, &a2h, &a2l);
+      DWPow2Unnorm(bh, bl, &b2h, &b2l);
+   } else {
+      static_assert(Norm == NormMode::Unnormalized, "DWPowAdd: unhandled NormMode");
+   }
+
+   DWPlusDW<T, Add>(a2h, a2l, b2h, b2l, rh, rl);
+}
+
 // DWTimesDW3 — 9 flops
 // Relative error <= 5u^2 (4u^2, Muller & Rideau 2022)
 template< std::floating_point T >
