@@ -29,3 +29,21 @@ $CXX -std=c++20 -O3 -march=native -I.. \
     -I/opt/homebrew/include \
     -L/opt/homebrew/lib -lmpfr -lgmp -lm \
     -o exec/test_complex_dw_functions
+
+# Compile the long-running binned conditioning sweep (meant for a multi-day cluster job)
+$CXX -std=c++20 -O3 -march=native -I.. \
+    test_complex_dw_conditioning_binned.cpp \
+    -DXDW_FAST_FMA \
+    src/test_func.cpp \
+    -I/opt/homebrew/include \
+    -L/opt/homebrew/lib -lmpfr -lgmp -lm \
+    -o exec/test_complex_dw_conditioning_binned
+
+# Re-runs a worst case stored in res/binned_results.csv
+$CXX -std=c++20 -O3 -march=native -I.. \
+    test_complex_dw_conditioning_replay.cpp \
+    -DXDW_FAST_FMA \
+    src/test_func.cpp \
+    -I/opt/homebrew/include \
+    -L/opt/homebrew/lib -lmpfr -lgmp -lm \
+    -o exec/test_complex_dw_conditioning_replay
