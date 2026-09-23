@@ -94,12 +94,10 @@ class alignas( 4 * sizeof( T ) ) ComplexDouble
   constexpr ComplexDouble< T >&
   operator/=( const ComplexDouble< T >& other );
 
-  template< XDW_ARTH::AddMode Add = XDW_ARTH::kAddMode >
   XDW_CUDA_CALLABLE
   constexpr static ComplexDouble< T >
   add( const ComplexDouble< T >& a, const ComplexDouble< T >& b );
 
-  template< XDW_ARTH::AddMode Add = XDW_ARTH::kAddMode >
   XDW_CUDA_CALLABLE
   constexpr static ComplexDouble< T >
   sub( const ComplexDouble< T >& a, const ComplexDouble< T >& b );
@@ -160,26 +158,24 @@ ComplexDouble< T >::operator-() const
 }
 
 template< typename T >
-template< XDW_ARTH::AddMode Add >
 XDW_CUDA_CALLABLE
 constexpr XDW_INLINE ComplexDouble< T >
 ComplexDouble< T >::add( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    T reh, rel, imh, iml;
-   XDW_ARTH::XDWadd< T, Add >( a.re_h(), a.re_l(), a.im_h(), a.im_l(),
+   XDW_ARTH::XDWadd< T, XDW_ARTH::AddMode::Madd >( a.re_h(), a.re_l(), a.im_h(), a.im_l(),
                                 b.re_h(), b.re_l(), b.im_h(), b.im_l(),
                                 &reh, &rel, &imh, &iml );
    return ComplexDouble< T >( reh, rel, imh, iml );
 }
 
 template< typename T >
-template< XDW_ARTH::AddMode Add >
 XDW_CUDA_CALLABLE
 constexpr XDW_INLINE ComplexDouble< T >
 ComplexDouble< T >::sub( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    T reh, rel, imh, iml;
-   XDW_ARTH::XDWsub< T, Add >( a.re_h(), a.re_l(), a.im_h(), a.im_l(),
+   XDW_ARTH::XDWsub< T, XDW_ARTH::AddMode::Madd >( a.re_h(), a.re_l(), a.im_h(), a.im_l(),
                                 b.re_h(), b.re_l(), b.im_h(), b.im_l(),
                                 &reh, &rel, &imh, &iml );
    return ComplexDouble< T >( reh, rel, imh, iml );
