@@ -10,6 +10,8 @@ fi
 
 echo "Using compiler: $CXX"
 
+mkdir -p exec res
+
 # Compile conditioning test
 $CXX -std=c++20 -O3 -march=native -I.. \
     test_complex_dw_conditioning.cpp \
@@ -17,7 +19,7 @@ $CXX -std=c++20 -O3 -march=native -I.. \
     src/test_func.cpp \
     -I/opt/homebrew/include \
     -L/opt/homebrew/lib -lmpfr -lgmp -lm \
-    -o test_complex_dw_conditioning
+    -o exec/test_complex_dw_conditioning
 
 # Compile function tests
 $CXX -std=c++20 -O3 -march=native -I.. \
@@ -26,4 +28,4 @@ $CXX -std=c++20 -O3 -march=native -I.. \
     src/test_func.cpp \
     -I/opt/homebrew/include \
     -L/opt/homebrew/lib -lmpfr -lgmp -lm \
-    -o test_complex_dw_functions
+    -o exec/test_complex_dw_functions

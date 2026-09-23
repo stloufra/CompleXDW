@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-df = pd.read_csv('test_results.csv', comment='#', header=None,
+df = pd.read_csv('res/test_results.csv', comment='#', header=None,
                  names=['ar_h', 'ar_l', 'ai_h', 'ai_l', 'br_h', 'br_l', 'bi_h', 'bi_l',
        'ref_re_h', 'ref_re_l', 'ref_im_h', 'ref_im_l', 'rel_err_acc_norm', 'rel_err_acc_un', 'rel_err_sloppy_un', 'K'])
 
@@ -15,7 +15,7 @@ worst_acc_norm = np.max(rel_err_acc_norm)
 worst_acc_un = np.max(rel_err_acc_un)
 worst_sloppy_un = np.max(rel_err_sloppy_un)
 
-with open('worst_rel_error.txt', 'w') as f:
+with open('res/worst_rel_error.txt', 'w') as f:
     f.write(f"Worst rel_err_acc_norm: {worst_acc_norm:.6e}\n")
     f.write(f"Worst rel_err_acc_un: {worst_acc_un:.6e}\n")
     f.write(f"Worst rel_err_sloppy_un: {worst_sloppy_un:.6e}\n")
@@ -42,7 +42,7 @@ ax.text(0.95, 0.95, textstr, transform=ax.transAxes, fontsize=10,
 
 ax.set_title('Distribution of Relative Errors')
 plt.tight_layout()
-plt.savefig('rel_error_distribution.png', dpi=150)
+plt.savefig('res/rel_error_distribution.png', dpi=150)
 plt.close()
 
 #-------------------------------------------------------------------------------
@@ -64,7 +64,7 @@ ax2.text(0.95, 0.05, textstr2, transform=ax2.transAxes, fontsize=10,
 
 ax2.set_title('Relative Error vs Conditioning Number')
 plt.tight_layout()
-plt.savefig('rel_error_vs_K.png', dpi=150)
+plt.savefig('res/rel_error_vs_K.png', dpi=150)
 plt.close()
 
 #-------------------------------------------------------------------------------
@@ -99,7 +99,7 @@ ax3.text(0.05, 0.05, textstr3, transform=ax3.transAxes, fontsize=10,
 
 ax3.set_title('Significant Digits vs Conditioning Number')
 plt.tight_layout()
-plt.savefig('sig_digits_vs_K.png', dpi=150)
+plt.savefig('res/sig_digits_vs_K.png', dpi=150)
 plt.close()
 
 #-------------------------------------------------------------------------------
@@ -146,7 +146,7 @@ ax2.text(0.95, 0.05, textstr_binned, transform=ax2.transAxes, fontsize=10,
 
 ax2.set_title('Relative Error (max and mean) vs Conditioning Number')
 plt.tight_layout()
-plt.savefig('rel_error_vs_K_binned.png', dpi=150)
+plt.savefig('res/rel_error_vs_K_binned.png', dpi=150)
 plt.close()
 
 #-------------------------------------------------------------------------------
@@ -162,7 +162,7 @@ def plot_input_vs_error(df, err_col):
         ax.set_yscale('log')
     fig.suptitle(f'{err_col} vs Input Magnitude', fontsize=14)
     plt.tight_layout()
-    plt.savefig(f'{err_col}_vs_input.png', dpi=150)
+    plt.savefig(f'res/{err_col}_vs_input.png', dpi=150)
     plt.close()
 
 plot_input_vs_error(df, 'rel_err_acc_norm')
@@ -207,5 +207,5 @@ for ax, max_vals, mean_vals, label in zip(axes,
     ax.legend()
 plt.suptitle(f'u^2 = 2^(-2*53) = {u2:.2e}')
 plt.tight_layout()
-plt.savefig('rel_err_over_K_over_u2.png', dpi=150)
+plt.savefig('res/rel_err_over_K_over_u2.png', dpi=150)
 plt.close()

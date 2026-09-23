@@ -170,7 +170,7 @@ int main() {
     
     std::cout << "\nExecution time: " << duration.count() << " ms\n";
 
-    std::string filename = "test_results.csv";
+    std::string filename = "res/test_results.csv";
     save_results(results, filename);
 
     mpfr_clear(ar);
