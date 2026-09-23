@@ -57,10 +57,11 @@ enum class DivMode { Div2, Div3 };
 
 }
 
-// Compile time set as -DXDW_ADD_MODE=<var> -DXDW_NORM_MODE=<var>
+// Compile time set as -DXDW_ADD_MODE=<var> -DXDW_NORM_MODE=<var> -DXDW_DIV_MODE=<var>
 // XDW_ADD_MODE:  A = Accurate, M = Madd, S = Sloppy
 // XDW_NORM_MODE: N = Normalized, U = Unnormalized
-// Unset macros default to Madd, Normalized
+// XDW_DIV_MODE:  2 = Div2, 3 = Div3
+// Unset macros default to Madd, Normalized, Div2
 
 #if !defined( XDW_ADD_MODE )
 #define XDW_ADD_MODE M
@@ -68,6 +69,10 @@ enum class DivMode { Div2, Div3 };
 
 #if !defined( XDW_NORM_MODE )
 #define XDW_NORM_MODE N
+#endif
+
+#if !defined( XDW_DIV_MODE )
+#define XDW_DIV_MODE 2
 #endif
 
 #define XDW_STRINGIFY_( x ) #x
@@ -91,6 +96,10 @@ static_assert( XDW_ARTH::detail::is_mode( XDW_STRINGIFY( XDW_NORM_MODE ), 'N' )
             || XDW_ARTH::detail::is_mode( XDW_STRINGIFY( XDW_NORM_MODE ), 'U' ),
             "XDW_NORM_MODE must be N (Normalized) or U (Unnormalized)" );
 
+static_assert( XDW_ARTH::detail::is_mode( XDW_STRINGIFY( XDW_DIV_MODE ), '2' )
+            || XDW_ARTH::detail::is_mode( XDW_STRINGIFY( XDW_DIV_MODE ), '3' ),
+            "XDW_DIV_MODE must be 2 (Div2) or 3 (Div3)" );
+
 #undef XDW_STRINGIFY
 #undef XDW_STRINGIFY_
 
@@ -101,6 +110,9 @@ static_assert( XDW_ARTH::detail::is_mode( XDW_STRINGIFY( XDW_NORM_MODE ), 'N' )
 #define XDW_NORM_TAG_N ::XDW_ARTH::NormMode::Normalized
 #define XDW_NORM_TAG_U ::XDW_ARTH::NormMode::Unnormalized
 
+#define XDW_DIV_TAG_2 ::XDW_ARTH::DivMode::Div2
+#define XDW_DIV_TAG_3 ::XDW_ARTH::DivMode::Div3
+
 #define XDW_TOKEN_PASTE_( a, b ) a##b
 #define XDW_TOKEN_PASTE( a, b ) XDW_TOKEN_PASTE_( a, b )
 
@@ -108,6 +120,7 @@ namespace XDW_ARTH {
 
 inline constexpr AddMode kAddMode = XDW_TOKEN_PASTE( XDW_ADD_TAG_, XDW_ADD_MODE );
 inline constexpr NormMode kNormMode = XDW_TOKEN_PASTE( XDW_NORM_TAG_, XDW_NORM_MODE );
+inline constexpr DivMode kDivMode = XDW_TOKEN_PASTE( XDW_DIV_TAG_, XDW_DIV_MODE );
 
 }
 

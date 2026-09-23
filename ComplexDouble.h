@@ -90,6 +90,10 @@ class alignas( 4 * sizeof( T ) ) ComplexDouble
   constexpr ComplexDouble< T >&
   operator*=( const ComplexDouble< T >& other );
 
+  XDW_CUDA_CALLABLE
+  constexpr ComplexDouble< T >&
+  operator/=( const ComplexDouble< T >& other );
+
   template< XDW_ARTH::AddMode Add = XDW_ARTH::kAddMode >
   XDW_CUDA_CALLABLE
   constexpr static ComplexDouble< T >
@@ -104,6 +108,11 @@ class alignas( 4 * sizeof( T ) ) ComplexDouble
   XDW_CUDA_CALLABLE
   constexpr static ComplexDouble< T >
   mul( const ComplexDouble< T >& a, const ComplexDouble< T >& b );
+
+  template< XDW_ARTH::DivMode Div = XDW_ARTH::kDivMode, XDW_ARTH::AddMode Add = XDW_ARTH::kAddMode, XDW_ARTH::NormMode Norm = XDW_ARTH::kNormMode >
+  XDW_CUDA_CALLABLE
+  constexpr static ComplexDouble< T >
+  div( const ComplexDouble< T >& a, const ComplexDouble< T >& b );
 };
 
 template< typename T >
@@ -188,6 +197,18 @@ ComplexDouble< T >::mul( const ComplexDouble< T >& a, const ComplexDouble< T >& 
    return ComplexDouble< T >( reh, rel, imh, iml );
 }
 
+template< typename T >
+template< XDW_ARTH::DivMode Div, XDW_ARTH::AddMode Add, XDW_ARTH::NormMode Norm >
+XDW_CUDA_CALLABLE
+constexpr XDW_INLINE ComplexDouble< T >
+ComplexDouble< T >::div( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
+{
+   T reh, rel, imh, iml;
+   XDW_ARTH::XDWDiv< T, Div, Add, Norm >( a.re_h(), a.re_l(), a.im_h(), a.im_l(),
+                                           b.re_h(), b.re_l(), b.im_h(), b.im_l(), &reh, &rel, &imh, &iml );
+   return ComplexDouble< T >( reh, rel, imh, iml );
+}
+
 
 
 template< typename T >
@@ -216,6 +237,14 @@ ComplexDouble< T >::operator*=( const ComplexDouble< T >& other )
 
 template< typename T >
 XDW_CUDA_CALLABLE
+constexpr XDW_INLINE ComplexDouble< T >&
+ComplexDouble< T >::operator/=( const ComplexDouble< T >& other )
+{
+   return *this = *this / other;
+}
+
+template< typename T >
+XDW_CUDA_CALLABLE
 constexpr XDW_INLINE ComplexDouble< T >
 operator+( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
@@ -236,6 +265,14 @@ constexpr XDW_INLINE ComplexDouble< T >
 operator*( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
 {
    return ComplexDouble< T >::mul( a, b );
+}
+
+template< typename T >
+XDW_CUDA_CALLABLE
+constexpr XDW_INLINE ComplexDouble< T >
+operator/( const ComplexDouble< T >& a, const ComplexDouble< T >& b )
+{
+   return ComplexDouble< T >::div( a, b );
 }
 
 template< typename T >
