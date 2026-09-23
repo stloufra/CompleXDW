@@ -182,7 +182,6 @@ DWTimesDW3(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T
 
 //-------------------- DW-FP MIXED ---------------------
 // (xh,xl) op y, where y is a single (non-DW) floating-point value.
-// From Valentina Popescu's thesis / CAMPARY (specAddition.h, specMultiplication.h).
 
 // DWPlusFP — 10 flops
 // Relative error <= 3u^2
@@ -237,6 +236,56 @@ DWTimesFP3(const T xh, const T xl, const T y, T* __restrict__ zh, T* __restrict_
    rne<T> r2 = quick_two_sum(chl.sum, cl2);
 
    *zh = r2.sum; *zl = r2.error;
+}
+
+//-------------------- DIV ---------------------
+// (xh,xl) / (yh,yl), Newton-refined reciprocal
+
+// DWDivDW2 — 18 flops, no FMA
+// Relative error <= 15u^2 (+56u^3)
+template< std::floating_point T >
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
+DWDivDW2(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
+{
+   // t = xh / yh, an approximate quotient
+   T t = div_rn(xh, yh);
+   // (rh,rl) = y * t via DWTimesFP1
+   T rh, rl;
+   DWTimesFP1(yh, yl, t, &rh, &rl);
+   // r = x - r, the residual of that approximation
+   rh = add_rn(xh, -rh);
+   rl = add_rn(xl, -rl);
+   rh = add_rn(rh, rl);
+   // rh = r / yh, the correction term
+   rh = div_rn(rh, yh);
+   // Fast2Sum(t, rh, &zh, &zl)
+   rne<T> r2 = quick_two_sum(t, rh);
+
+   *zh = r2.sum; *zl = r2.error;
+}
+
+// DWDivDW3 — 31 flops, needs FMA
+// Relative error <= 9.8u^2
+template< std::floating_point T >
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
+DWDivDW3(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
+{
+   // t = 1 / yh, an initial approximation of 1/y
+   T t = div_rn(T(1), yh);
+   // r = 1 - y*t, the residual of that approximation, as a DW
+   T r0 = fma_rn(-yh, t, T(1));
+   T r1 = -mul_rn(yl, t);
+   rne<T> r01 = quick_two_sum(r0, r1);
+   // d = r * t via DWTimesFP3
+   T dh, dl;
+   DWTimesFP3(r01.sum, r01.error, t, &dh, &dl);
+   // (rh,rl) = d + t via DWPlusFP, a refined approximation of 1/y
+   T rh, rl;
+   DWPlusFP(dh, dl, t, &rh, &rl);
+   // z = x * r via DWTimesDW3
+   DWTimesDW3(xh, xl, rh, rl, zh, zl);
 }
 
 //-------------------- MUL ADD ---------------------
