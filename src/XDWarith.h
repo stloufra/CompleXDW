@@ -157,6 +157,88 @@ DWTimesDW2Unnorm(const T xh, const T xl, const T yh, const T yl, T* __restrict__
    *zh = chl.sum; *zl = cl3;
 }
 
+// DWTimesDW3 — 9 flops
+// Relative error <= 5u^2 (4u^2, Muller & Rideau 2022)
+template< std::floating_point T >
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
+DWTimesDW3(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
+{
+   // TwoProdFMA(xh, yh, &ch, &cl0)
+   rne<T> chl = two_prod(xh, yh);
+   // t0 = xl * yl
+   T t0 = mul_rn(xl, yl);
+   // t1 = fma(xh, yl, t0)
+   T t1 = fma_rn(xh, yl, t0);
+   // t2 = fma(xl, yh, t1)
+   T t2 = fma_rn(xl, yh, t1);
+   // cl = cl0 + t2
+   T cl = add_rn(chl.error, t2);
+   // Fast2Sum(ch, cl, &zh, &zl)
+   rne<T> r2 = quick_two_sum(chl.sum, cl);
+
+   *zh = r2.sum; *zl = r2.error;
+}
+
+//-------------------- DW-FP MIXED ---------------------
+// (xh,xl) op y, where y is a single (non-DW) floating-point value.
+// From Valentina Popescu's thesis / CAMPARY (specAddition.h, specMultiplication.h).
+
+// DWPlusFP — 10 flops
+// Relative error <= 3u^2
+template< std::floating_point T >
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
+DWPlusFP(const T xh, const T xl, const T y, T* __restrict__ zh, T* __restrict__ zl)
+{
+   // TwoSum(xh, y, &s, &e)
+   rne<T> se = two_sum(xh, y);
+   // e = xl + e
+   T e = add_rn(xl, se.error);
+   // Fast2Sum(s, e, &zh, &zl)
+   rne<T> r2 = quick_two_sum(se.sum, e);
+
+   *zh = r2.sum; *zl = r2.error;
+}
+
+// DWTimesFP1 — 10 flops, no FMA
+// Relative error <= 2u^2
+template< std::floating_point T >
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
+DWTimesFP1(const T xh, const T xl, const T y, T* __restrict__ zh, T* __restrict__ zl)
+{
+   // TwoProd(xh, y, &ch, &cl1)
+   rne<T> chl = two_prod(xh, y);
+   // t = xl * y
+   T t = mul_rn(xl, y);
+   // Fast2Sum(ch, t, &ch2, &e)
+   rne<T> che = quick_two_sum(chl.sum, t);
+   // cl2 = e + cl1
+   T cl2 = add_rn(che.error, chl.error);
+   // Fast2Sum(ch2, cl2, &zh, &zl)
+   rne<T> r2 = quick_two_sum(che.sum, cl2);
+
+   *zh = r2.sum; *zl = r2.error;
+}
+
+// DWTimesFP3 — 6 flops, needs FMA
+// Relative error <= 2u^2
+template< std::floating_point T >
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
+DWTimesFP3(const T xh, const T xl, const T y, T* __restrict__ zh, T* __restrict__ zl)
+{
+   // TwoProdFMA(xh, y, &ch, &cl1)
+   rne<T> chl = two_prod(xh, y);
+   // cl2 = fma(xl, y, cl1)
+   T cl2 = fma_rn(xl, y, chl.error);
+   // Fast2Sum(ch, cl2, &zh, &zl)
+   rne<T> r2 = quick_two_sum(chl.sum, cl2);
+
+   *zh = r2.sum; *zl = r2.error;
+}
+
 //-------------------- MUL ADD ---------------------
 //-------------------- NORMALIZED ---------------------
 
