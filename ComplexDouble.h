@@ -270,15 +270,14 @@ imag( const ComplexDouble< T >& z )
    return ComplexDouble< T >( z.im_h(), z.im_l(), T( 0 ), T( 0 ) );
 }
 
-// |z|^2, real-valued, no sqrt.
-template< typename T, XDW_ARTH::AddMode Add = XDW_ARTH::kAddMode >
+// |z|^2 = z * z', real-valued, no sqrt.
+template< typename T, XDW_ARTH::AddMode Add = XDW_ARTH::kAddMode, XDW_ARTH::NormMode Norm = XDW_ARTH::kNormMode >
 XDW_CUDA_CALLABLE
 constexpr XDW_INLINE ComplexDouble< T >
 norm( const ComplexDouble< T >& z )
 {
    T rh, rl;
-   XDW_ARTH::DWMulAdd< T, Add >( z.re_h(), z.re_l(), z.re_h(), z.re_l(),
-                                  z.im_h(), z.im_l(), z.im_h(), z.im_l(), &rh, &rl );
+   XDW_ARTH::DWPowAdd< T, Add, Norm >( z.re_h(), z.re_l(), z.im_h(), z.im_l(), &rh, &rl );
    return ComplexDouble< T >( rh, rl, T( 0 ), T( 0 ) );
 }
 
