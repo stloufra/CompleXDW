@@ -157,6 +157,38 @@ DWTimesDW2Unnorm(const T xh, const T xl, const T yh, const T yl, T* __restrict__
    *zh = chl.sum; *zl = cl3;
 }
 
+//-------------------- POW ---------------------
+
+// DWPow2Unnorm — x^2, 4 flops 
+template< std::floating_point T >
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
+DWPow2Unnorm(const T xh, const T xl, T* __restrict__ zh, T* __restrict__ zl)
+{
+   // 2ProdFMA(xh, xh, &p0, &p1)
+   rne<T> p = two_prod(xh, xh);
+   // t = 2*xh, exact
+   T t = mul_rn(xh, T(2));
+   // v = 2*xh*xl + p1 
+   T v = fma_rn(t, xl, p.error);
+
+   *zh = p.sum; *zl = v;
+}
+
+// DWPow2 — x^2, 7 flops
+template< std::floating_point T >
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
+DWPow2(const T xh, const T xl, T* __restrict__ zh, T* __restrict__ zl)
+{
+   T ph, pl;
+   DWPow2Unnorm(xh, xl, &ph, &pl);
+   // Fast2Sum(ph, pl, &zh, &zl)
+   rne<T> r = quick_two_sum(ph, pl);
+
+   *zh = r.sum; *zl = r.error;
+}
+
 // DWTimesDW3 — 9 flops
 // Relative error <= 5u^2 (4u^2, Muller & Rideau 2022)
 template< std::floating_point T >

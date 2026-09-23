@@ -53,6 +53,7 @@ namespace XDW_ARTH {
 
 enum class AddMode { Accurate, Madd, Sloppy };
 enum class NormMode { Normalized, Unnormalized };
+enum class DivMode { Div2, Div3 };
 
 }
 
