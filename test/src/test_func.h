@@ -80,7 +80,14 @@ void print_mpfr(const char* name, mpfr_t x);
 
 void print_mpfr_complex(const char* name, mpfr_t re, mpfr_t im);
 
+// Optional instrumentation for generate_abcd_mp.
+struct GenStats {
+    int branch = -1;             // branch i of the accepted (a,b,c,d), -1 if none was found
+    int attempts = 0;            // loop iterations used, including rejected ones
+    std::array<int, 4> tried{};  // how often each branch was drawn
+};
+
 bool generate_abcd_mp(mpfr_t K, mpfr_t a, mpfr_t b, mpfr_t c, mpfr_t d, mpfr_t K_check,
-                     std::mt19937_64& rng, int max_tries = 10000);
+                     std::mt19937_64& rng, int max_tries = 10000, GenStats* stats = nullptr);
 
 #endif

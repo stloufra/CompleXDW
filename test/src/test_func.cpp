@@ -257,7 +257,8 @@ void save_results(const std::vector<TestResult>& results, const std::string& fil
 }
 
 bool generate_abcd_mp(mpfr_t K, mpfr_t a, mpfr_t b, mpfr_t c, mpfr_t d, mpfr_t K_check, 
-                      std::mt19937_64& rng, int max_tries) {
+                      std::mt19937_64& rng, int max_tries, GenStats* stats) {
+    if (stats) *stats = GenStats{};
     //a = x_{real}, b= x_{imag}, c=y_{real}, d = y_{imag}
     //p = x_{imag}*y_{real} q = x_{real}*y_{imag}
     //p = a*d, q=b*c
@@ -311,6 +312,7 @@ bool generate_abcd_mp(mpfr_t K, mpfr_t a, mpfr_t b, mpfr_t c, mpfr_t d, mpfr_t K
         mpfr_abs(fabs_p, p, MPFR_RNDN);
 
         int i = rng() % 4;
+        if (stats) ++stats->tried[i];
 	
 #ifdef __DEBUG__
 	std::cout << "++++++++++++++++++++++++++++++++++" << '\n';
@@ -384,6 +386,7 @@ bool generate_abcd_mp(mpfr_t K, mpfr_t a, mpfr_t b, mpfr_t c, mpfr_t d, mpfr_t K
         mpfr_div(rel_diff, diff, K, MPFR_RNDN);
 
         if (mpfr_cmp_d(rel_diff, 1e-9) < 0) {
+            if (stats) { stats->branch = i; stats->attempts = attempt + 1; }
             mpfr_set(K_check, K_calc, MPFR_RNDN);
 #ifdef __DEBUG__
             std::cout << "SUCCESS! K_check = " << mpfr_get_d(K_check, MPFR_RNDN) << '\n';
@@ -416,6 +419,7 @@ bool generate_abcd_mp(mpfr_t K, mpfr_t a, mpfr_t b, mpfr_t c, mpfr_t d, mpfr_t K
     mpfr_clear(K_plus_1);
     mpfr_clears(q, p, denom, nom, fabs_q, fabs_p, K_calc, (mpfr_ptr)0);
     gmp_randclear(state);
+    if (stats) stats->attempts = max_tries;
     return false;
 }
 
