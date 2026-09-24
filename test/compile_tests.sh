@@ -47,3 +47,12 @@ $CXX -std=c++20 -O3 -march=native -I.. \
     -I/opt/homebrew/include \
     -L/opt/homebrew/lib -lmpfr -lgmp -lm \
     -o exec/test_complex_dw_conditioning_replay
+
+# Examines the conditioning generator (generate_abcd_mp), writes res_cond/
+$CXX -std=c++20 -O3 -march=native -I.. \
+    test_conditioning_generator.cpp \
+    -DXDW_FAST_FMA \
+    src/test_func.cpp \
+    -I/opt/homebrew/include \
+    -L/opt/homebrew/lib -lmpfr -lgmp -lm \
+    -o exec/test_conditioning_generator
