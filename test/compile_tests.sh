@@ -39,7 +39,7 @@ $CXX -std=c++20 -O3 -march=native -I.. \
     -L/opt/homebrew/lib -lmpfr -lgmp -lm \
     -o exec/test_complex_dw_conditioning_binned
 
-# Re-runs a worst case stored in res/binned_results.csv
+# Re-runs a worst case stored in res/binned_results_mul.csv
 $CXX -std=c++20 -O3 -march=native -I.. \
     test_complex_dw_conditioning_replay.cpp \
     -DXDW_FAST_FMA \
@@ -47,6 +47,17 @@ $CXX -std=c++20 -O3 -march=native -I.. \
     -I/opt/homebrew/include \
     -L/opt/homebrew/lib -lmpfr -lgmp -lm \
     -o exec/test_complex_dw_conditioning_replay
+
+# Long-running binned division conditioning sweep and its worst-case replay (res/binned_results_div.csv)
+for tool in test_complex_dw_division_binned test_complex_dw_division_replay; do
+    $CXX -std=c++20 -O3 -march=native -I.. \
+        $tool.cpp \
+        -DXDW_FAST_FMA \
+        src/test_func.cpp \
+        -I/opt/homebrew/include \
+        -L/opt/homebrew/lib -lmpfr -lgmp -lm \
+        -o exec/$tool
+done
 
 # Examines the conditioning generator (generate_abcd_mp), writes res_cond/
 $CXX -std=c++20 -O3 -march=native -I.. \

@@ -1,12 +1,13 @@
 #ifndef BINNED_RESULTS_H
 #define BINNED_RESULTS_H
 
-// Checkpoint format shared by test_complex_dw_conditioning_binned.cpp (writes/resumes it) and
-// test_complex_dw_conditioning_replay.cpp (reads a stored worst case back).
+// Checkpoint format shared by the binned runs (write/resume it) and the replay tools (read a stored
+// worst case back). Generic over the operation under test, see binned_ops.h.
 
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <concepts>
 #include <cstdio>
 #include <ctime>
 #include <fstream>
@@ -15,7 +16,6 @@
 #include <string>
 
 #include "test_func.h"
-#include "combo_mul.h"
 
 constexpr double K_MIN = 10.0;
 constexpr double K_MAX = 1e30;
@@ -23,14 +23,27 @@ constexpr int NUM_BINS = 30;  // one per decade of K, [1e1,1e2), [1e2,1e3), ...,
 constexpr int ARG_COLS = 8;   // ar_h, ar_l, ai_h, ai_l, br_h, br_l, bi_h, bi_l
 constexpr double U2 = 0x1p-106;  // u^2 for double, u = 2^-53
 
-inline const std::string RESULTS_FILE = "res/binned_results.csv";
-inline const std::string LOG_FILE = "res/binned_log.txt";
-
 // The DW inputs (a, b) behind one particular result, so a worst case can be reproduced later
-// with test_complex_dw_conditioning_replay.
+// with the replay tool.
 struct Args {
     double ar_h = 0, ar_l = 0, ai_h = 0, ai_l = 0;
     double br_h = 0, br_l = 0, bi_h = 0, bi_l = 0;
+};
+
+// An operation a (op) b under test: its combos, the conditioning K the error is normalized by, the
+// relative error of every combo, how generate_abcd_mp's (a, b, c, d) map to the DW inputs, and
+// where its checkpoint lives.
+template <class Op>
+concept BinnedOp = requires(const Args& x, mpfr_ptr v) {
+    { Op::N_COMBOS } -> std::convertible_to<int>;
+    { Op::COMBO_NAMES[0] } -> std::convertible_to<const char*>;
+    { Op::NAME } -> std::convertible_to<const char*>;
+    { Op::K_DEFINITION } -> std::convertible_to<const char*>;
+    { Op::RESULTS_FILE } -> std::convertible_to<const char*>;
+    { Op::LOG_FILE } -> std::convertible_to<const char*>;
+    { Op::make_args(v, v, v, v) } -> std::same_as<Args>;
+    { Op::conditioning(x) } -> std::same_as<double>;
+    { Op::errors(x) } -> std::same_as<std::array<double, Op::N_COMBOS>>;
 };
 
 // Per (bin, combo): stats of the relative error, and of the relative error normalized by K*u^2
@@ -54,54 +67,33 @@ struct BinStats {
     }
 };
 
-// K = (|ar*bi| + |ai*br|) / |ar*bi + ai*br|, the conditioning of the imaginary part of a*b (the
-// definition generate_abcd_mp targets), evaluated on the DW inputs. Infinite if the sum is exactly 0.
-inline double conditioning(const Args& x)
+// Exact at MPFR_PREC.
+inline void args_to_mpfr(const Args& x, mpfr_t ar, mpfr_t ai, mpfr_t br, mpfr_t bi)
 {
-    mpfr_t ar, ai, br, bi, p, q, sum, abs_sum;
-    mpfr_inits2(MPFR_PREC, ar, ai, br, bi, p, q, sum, abs_sum, (mpfr_ptr) nullptr);
     mpfr_set_d(ar, x.ar_h, MPFR_RNDN); mpfr_add_d(ar, ar, x.ar_l, MPFR_RNDN);
     mpfr_set_d(ai, x.ai_h, MPFR_RNDN); mpfr_add_d(ai, ai, x.ai_l, MPFR_RNDN);
     mpfr_set_d(br, x.br_h, MPFR_RNDN); mpfr_add_d(br, br, x.br_l, MPFR_RNDN);
     mpfr_set_d(bi, x.bi_h, MPFR_RNDN); mpfr_add_d(bi, bi, x.bi_l, MPFR_RNDN);
-    mpfr_mul(p, ar, bi, MPFR_RNDN);
-    mpfr_mul(q, ai, br, MPFR_RNDN);
-    mpfr_add(sum, p, q, MPFR_RNDN);
-    mpfr_abs(p, p, MPFR_RNDN); mpfr_abs(q, q, MPFR_RNDN); mpfr_abs(abs_sum, sum, MPFR_RNDN);
-    mpfr_add(p, p, q, MPFR_RNDN);
-    mpfr_div(p, p, abs_sum, MPFR_RNDN);
-    double K = mpfr_get_d(p, MPFR_RNDN);
-    mpfr_clears(ar, ai, br, bi, p, q, sum, abs_sum, (mpfr_ptr) nullptr);
+}
+
+// (|p| + |q|) / |p + q|, infinite if p + q is exactly 0.
+inline double sum_conditioning(mpfr_srcptr p, mpfr_srcptr q)
+{
+    mpfr_t abs_p, abs_q, abs_sum;
+    mpfr_inits2(MPFR_PREC, abs_p, abs_q, abs_sum, (mpfr_ptr) nullptr);
+    mpfr_add(abs_sum, p, q, MPFR_RNDN);
+    mpfr_abs(abs_sum, abs_sum, MPFR_RNDN);
+    mpfr_abs(abs_p, p, MPFR_RNDN);
+    mpfr_abs(abs_q, q, MPFR_RNDN);
+    mpfr_add(abs_p, abs_p, abs_q, MPFR_RNDN);
+    mpfr_div(abs_p, abs_p, abs_sum, MPFR_RNDN);
+    double K = mpfr_get_d(abs_p, MPFR_RNDN);
+    mpfr_clears(abs_p, abs_q, abs_sum, (mpfr_ptr) nullptr);
     return K;
 }
 
-// Relative errors of all 6 mul<Add,Norm> combos for the product a*b, measured against the exact
-// product of the DW inputs themselves (not of the higher-precision numbers they were rounded from).
-// Shared by the run and the replay so a stored worst case reproduces its stored error bit-for-bit.
-inline std::array<double, N_COMBOS> combo_errors(const Args& x)
-{
-    mpfr_t ar, ai, br, bi, cr, ci;
-    mpfr_inits2(MPFR_PREC, ar, ai, br, bi, cr, ci, (mpfr_ptr) nullptr);
-    mpfr_set_d(ar, x.ar_h, MPFR_RNDN); mpfr_add_d(ar, ar, x.ar_l, MPFR_RNDN);
-    mpfr_set_d(ai, x.ai_h, MPFR_RNDN); mpfr_add_d(ai, ai, x.ai_l, MPFR_RNDN);
-    mpfr_set_d(br, x.br_h, MPFR_RNDN); mpfr_add_d(br, br, x.br_l, MPFR_RNDN);
-    mpfr_set_d(bi, x.bi_h, MPFR_RNDN); mpfr_add_d(bi, bi, x.bi_l, MPFR_RNDN);
-    mpfr_complex_mul(ar, ai, br, bi, cr, ci, MPFR_RNDN);
-
-    const auto c = mul_all_combos(ComplexDouble<double>(x.ar_h, x.ar_l, x.ai_h, x.ai_l),
-                                  ComplexDouble<double>(x.br_h, x.br_l, x.bi_h, x.bi_l));
-    std::array<double, N_COMBOS> err;
-    for (int k = 0; k < N_COMBOS; ++k) {
-        double err_re = relative_error(cr, c[k].re_h(), c[k].re_l(), cr, MPFR_RNDN);
-        double err_im = relative_error(ci, c[k].im_h(), c[k].im_l(), ci, MPFR_RNDN);
-        err[k] = std::max(err_re, err_im);
-    }
-    mpfr_clears(ar, ai, br, bi, cr, ci, (mpfr_ptr) nullptr);
-    return err;
-}
-
-using BinRow = std::array<BinStats, N_COMBOS>;
-using Bins = std::array<BinRow, NUM_BINS>;
+template <BinnedOp Op>
+using Bins = std::array<std::array<BinStats, Op::N_COMBOS>, NUM_BINS>;
 
 inline int bin_index(double K)
 {
@@ -112,12 +104,13 @@ inline int bin_index(double K)
 }
 
 // Returns {total_attempted, total_valid, elapsed_seconds} from a prior checkpoint, or zeros if
-// RESULTS_FILE doesn't exist. Fills `bins` with what it recovers. Throws (std::invalid_argument /
+// Op::RESULTS_FILE doesn't exist. Fills `bins` with what it recovers. Throws (std::invalid_argument /
 // std::out_of_range) on a malformed row, e.g. a checkpoint from before the worst-case args columns.
-inline std::array<long long, 3> load_checkpoint(Bins& bins)
+template <BinnedOp Op>
+std::array<long long, 3> load_checkpoint(Bins<Op>& bins)
 {
     std::array<long long, 3> totals = {0, 0, 0};
-    std::ifstream in(RESULTS_FILE);
+    std::ifstream in(Op::RESULTS_FILE);
     if (!in) return totals;
 
     std::string line;
@@ -142,7 +135,7 @@ inline std::array<long long, 3> load_checkpoint(Bins& bins)
         next(); next();  // K_lo, K_hi: unused on load
         long long count = static_cast<long long>(next());
 
-        for (int k = 0; k < N_COMBOS; ++k) {
+        for (int k = 0; k < Op::N_COMBOS; ++k) {
             BinStats& s = bins[b][k];
             s.min = next(); s.max = next(); s.mean = next(); s.nmax = next(); s.nmean = next();
             Args& w = s.worst_args;
@@ -150,24 +143,28 @@ inline std::array<long long, 3> load_checkpoint(Bins& bins)
             w.br_h = next(); w.br_l = next(); w.bi_h = next(); w.bi_l = next();
             s.count = count;
         }
+        if (std::getline(row, cell, ',')) throw std::invalid_argument("checkpoint row too long");
     }
     return totals;
 }
 
-inline void write_checkpoint(const Bins& bins, long long total_attempted, long long total_valid,
-                              long long elapsed_seconds)
+template <BinnedOp Op>
+void write_checkpoint(const Bins<Op>& bins, long long total_attempted, long long total_valid,
+                      long long elapsed_seconds)
 {
     static const char* ARG_NAMES[ARG_COLS] = {"ar_h", "ar_l", "ai_h", "ai_l", "br_h", "br_l", "bi_h", "bi_l"};
 
-    std::ofstream out(RESULTS_FILE);
-    out << "# Binned complex DW multiplication conditioning results (accumulated across possibly multiple runs)\n";
-    out << "# combos: 0=" << COMBO_NAMES[0] << " 1=" << COMBO_NAMES[1] << " 2=" << COMBO_NAMES[2]
-        << " 3=" << COMBO_NAMES[3] << " 4=" << COMBO_NAMES[4] << " 5=" << COMBO_NAMES[5] << "\n";
+    std::ofstream out(Op::RESULTS_FILE);
+    out << "# Binned complex DW " << Op::NAME << " conditioning results (accumulated across possibly multiple runs)\n";
+    out << "# combos:";
+    for (int k = 0; k < Op::N_COMBOS; ++k) out << " " << k << "=" << Op::COMBO_NAMES[k];
+    out << "\n";
     out << "# total_attempted=" << total_attempted << " total_valid=" << total_valid
         << " elapsed_seconds=" << elapsed_seconds << "\n";
-    out << "# nmax/nmean = max/mean of (relative error / (K * u^2)), u^2 = 2^-106, K = conditioning of the DW inputs\n";
+    out << "# K = " << Op::K_DEFINITION << ", evaluated on the DW inputs\n";
+    out << "# nmax/nmean = max/mean of (relative error / (K * u^2)), u^2 = 2^-106\n";
     out << "# columns: bin,K_lo,K_hi,count";
-    for (int k = 0; k < N_COMBOS; ++k) {
+    for (int k = 0; k < Op::N_COMBOS; ++k) {
         out << ",c" << k << "_min,c" << k << "_max,c" << k << "_mean,c" << k << "_nmax,c" << k << "_nmean";
         for (const char* name : ARG_NAMES) out << ",c" << k << "_worst_" << name;
     }
@@ -176,7 +173,7 @@ inline void write_checkpoint(const Bins& bins, long long total_attempted, long l
     out << std::scientific << std::setprecision(MPFR_DISPLAY_PREC);
     for (int b = 0; b < NUM_BINS; ++b) {
         out << b << "," << std::pow(10.0, b + 1) << "," << std::pow(10.0, b + 2) << "," << bins[b][0].count;
-        for (int k = 0; k < N_COMBOS; ++k) {
+        for (int k = 0; k < Op::N_COMBOS; ++k) {
             const BinStats& s = bins[b][k];
             const Args& w = s.worst_args;
             out << "," << s.min << "," << s.max << "," << s.mean << "," << s.nmax << "," << s.nmean
@@ -187,7 +184,7 @@ inline void write_checkpoint(const Bins& bins, long long total_attempted, long l
     }
     out.close();
 
-    std::ofstream log(LOG_FILE, std::ios::app);
+    std::ofstream log(Op::LOG_FILE, std::ios::app);
     auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     char timestamp[32];
     std::strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%SZ", std::gmtime(&now));

@@ -18,7 +18,7 @@
 
 #include "../ComplexDouble.h"
 #include "src/test_func.h"
-#include "src/binned_results.h"
+#include "src/binned_ops.h"
 
 constexpr int MAX_TRIES = 100000;  // same as the binned run
 
@@ -55,12 +55,7 @@ int main(int argc, char** argv)
         double K_mpfr = NAN, K_dw = NAN;
         if (generate_abcd_mp(K, a, b, c, d, K_check, rng, MAX_TRIES, &st)) {
             K_mpfr = mpfr_get_d(K_check, MPFR_RNDN);
-            Args x;
-            mpfr_to_dw(a, MPFR_RNDN, &x.ar_h, &x.ar_l);
-            mpfr_to_dw(b, MPFR_RNDN, &x.ai_h, &x.ai_l);
-            mpfr_to_dw(c, MPFR_RNDN, &x.br_h, &x.br_l);
-            mpfr_to_dw(d, MPFR_RNDN, &x.bi_h, &x.bi_l);
-            K_dw = conditioning(x);
+            K_dw = MulOp::conditioning(MulOp::make_args(a, b, c, d));
         } else {
             ++failed;
         }
