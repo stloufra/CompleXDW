@@ -27,7 +27,7 @@ namespace XDW_ARTH{
 
 //implementation of basic operations to ensure round to nearest in CUDA/HIP, and no FMA contraction on the host
 
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE T
 add_rn( const T x, const T y )
@@ -39,6 +39,9 @@ add_rn( const T x, const T y )
    else if constexpr( std::is_same_v< T, float > ) {
       return __fadd_rn( x, y );
    }
+   else {
+      static_assert( std::is_same_v< T, float >, "XDW: SIMD vector T is host-only" );
+   }
 #else
 #if defined( __clang__ )
 #pragma clang fp contract( off )
@@ -47,7 +50,7 @@ add_rn( const T x, const T y )
 #endif
 }
 
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE T
 mul_rn( const T x, const T y )
@@ -58,6 +61,9 @@ mul_rn( const T x, const T y )
    }
    else if constexpr( std::is_same_v< T, float > ) {
       return __fmul_rn( x, y );
+   }
+   else {
+      static_assert( std::is_same_v< T, float >, "XDW: SIMD vector T is host-only" );
    }
 #else
 #if defined( __clang__ )
@@ -72,7 +78,7 @@ mul_rn( const T x, const T y )
 #endif
 }
 
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE T
 div_rn( const T x, const T y )
@@ -84,12 +90,15 @@ div_rn( const T x, const T y )
    else if constexpr( std::is_same_v< T, float > ) {
       return __fdiv_rn( x, y );
    }
+   else {
+      static_assert( std::is_same_v< T, float >, "XDW: SIMD vector T is host-only" );
+   }
 #else
    return x / y;
 #endif
 }
 
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE T
 fma_rn( const T x, const T y, const T z )
@@ -101,8 +110,22 @@ fma_rn( const T x, const T y, const T z )
    else if constexpr( std::is_same_v< T, float > ) {
       return __fmaf_rn( x, y, z );
    }
+   else {
+      static_assert( std::is_same_v< T, float >, "XDW: SIMD vector T is host-only" );
+   }
 #else
-    return std::fma( x, y, z );
+   if constexpr( XDWVector< T > ) {
+#if defined( __clang__ )
+      return __builtin_elementwise_fma( x, y, z );
+#else
+      // g++ turns the lane loop into vector FMAs.
+      T r;
+      for( int i = 0; i < lanes< T >; ++i ) r[ i ] = std::fma( x[ i ], y[ i ], z[ i ] );
+      return r;
+#endif
+   }
+   else
+      return std::fma( x, y, z );
 #endif
 }
 

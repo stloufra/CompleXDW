@@ -4,6 +4,9 @@
 #pragma once
 
 #include <cfloat>
+#include <concepts>
+#include <type_traits>
+#include <utility>
 
 #if defined( __CUDACC__ ) || defined( __HIPCC__ )
 #define XDW_CUDA_CALLABLE \
@@ -64,6 +67,58 @@ namespace XDW_ARTH {
 enum class AddMode { Accurate, Madd, Sloppy };
 enum class NormMode { Normalized, Unnormalized };
 enum class DivMode { Div2, Div3 };
+
+// A compiler SIMD vector of float/double (clang ext_vector_type, GCC vector_size): each lane is an
+// independent number. Host only.
+template< typename T >
+concept XDWVector = !std::is_arithmetic_v< T > && requires( T v ) { v[ 0 ]; }
+                    && std::floating_point< std::remove_cvref_t< decltype( std::declval< T >()[ 0 ] ) > >;
+
+template< typename T >
+concept XDWReal = std::floating_point< T > || XDWVector< T >;
+
+namespace detail {
+template< typename T >
+struct lane { using type = T; };
+
+template< XDWVector T >
+struct lane< T > { using type = std::remove_cvref_t< decltype( std::declval< T >()[ 0 ] ) >; };
+}
+
+template< XDWReal T >
+using lane_t = typename detail::lane< T >::type;
+
+template< XDWReal T >
+inline constexpr int lanes = sizeof( T ) / sizeof( lane_t< T > );
+
+// c in every lane.
+template< XDWReal T >
+XDW_CUDA_CALLABLE constexpr T splat( lane_t< T > c )
+{
+   if constexpr( XDWVector< T > )
+      return T{} + c;
+   else
+      return c;
+}
+
+// && and || for scalar comparisons (bool), & and | lane by lane for vector masks.
+template< typename M >
+XDW_CUDA_CALLABLE constexpr M mask_and( M a, M b )
+{
+   if constexpr( std::is_same_v< M, bool > )
+      return a && b;
+   else
+      return a & b;
+}
+
+template< typename M >
+XDW_CUDA_CALLABLE constexpr M mask_or( M a, M b )
+{
+   if constexpr( std::is_same_v< M, bool > )
+      return a || b;
+   else
+      return a | b;
+}
 
 }
 

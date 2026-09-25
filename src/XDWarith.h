@@ -11,7 +11,7 @@ namespace XDW_ARTH{
 
 // SloppyDWPlusDW — 11 flops
 // Relative error <= 1 (abs 7u^2)
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 SloppyDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
@@ -30,7 +30,7 @@ SloppyDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ z
 
 // AccurateDWPlusDW — 20 flops
 // Relative error <= 3u^2
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 AccurateDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
@@ -53,7 +53,7 @@ AccurateDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__
 
 // maddDWPlusDW — 20 flops
 // Relative error <= 2u^2 
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 MaddDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
@@ -75,7 +75,7 @@ MaddDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh,
 }
 
 // Selects mode
-template< std::floating_point T, AddMode Add >
+template< XDWReal T, AddMode Add >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 DWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
@@ -95,7 +95,7 @@ DWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* 
 // (ah,al,bh,bl) op (ch,cl,dh,dl) componentwise -> (reh,rel,imh,iml)
 
 
-template< std::floating_point T, AddMode Add >
+template< XDWReal T, AddMode Add >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 XDWadd(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
@@ -104,7 +104,7 @@ XDWadd(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, c
    DWPlusDW<T, Add>(bh, bl, dh, dl, imh, iml);
 }
 
-template< std::floating_point T, AddMode Add >
+template< XDWReal T, AddMode Add >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 XDWsub(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
@@ -117,7 +117,7 @@ XDWsub(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, c
 
 // DWTimesDW2 — 8 flops
 // Relative error <= 5u^2 
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 DWTimesDW2(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
@@ -140,7 +140,7 @@ DWTimesDW2(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T
 // Unnormalized DW product, skips final Fast2Sum. 
 // Returns (ph, pl) where pl may not satisfy |pl| <= u*|ph|.
 // Overlap of o=3u·|zl|  
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 DWTimesDW2Unnorm(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
@@ -160,7 +160,7 @@ DWTimesDW2Unnorm(const T xh, const T xl, const T yh, const T yl, T* __restrict__
 //-------------------- POW ---------------------
 
 // DWPow2Unnorm — x^2, 4 flops 
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 DWPow2Unnorm(const T xh, const T xl, T* __restrict__ zh, T* __restrict__ zl)
@@ -168,7 +168,7 @@ DWPow2Unnorm(const T xh, const T xl, T* __restrict__ zh, T* __restrict__ zl)
    // 2ProdFMA(xh, xh, &p0, &p1)
    rne<T> p = two_prod(xh, xh);
    // t = 2*xh, exact
-   T t = mul_rn(xh, T(2));
+   T t = mul_rn(xh, splat< T >(2));
    // v = 2*xh*xl + p1 
    T v = fma_rn(t, xl, p.error);
 
@@ -176,7 +176,7 @@ DWPow2Unnorm(const T xh, const T xl, T* __restrict__ zh, T* __restrict__ zl)
 }
 
 // DWPow2 — x^2, 7 flops
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 DWPow2(const T xh, const T xl, T* __restrict__ zh, T* __restrict__ zl)
@@ -190,7 +190,7 @@ DWPow2(const T xh, const T xl, T* __restrict__ zh, T* __restrict__ zl)
 }
 
 // DWPowAdd — (ah,al)^2 + (bh,bl)^2 -> (rh,rl)
-template< std::floating_point T, AddMode Add, NormMode Norm >
+template< XDWReal T, AddMode Add, NormMode Norm >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 DWPowAdd(const T ah, const T al, const T bh, const T bl, T* __restrict__ rh, T* __restrict__ rl)
@@ -211,7 +211,7 @@ DWPowAdd(const T ah, const T al, const T bh, const T bl, T* __restrict__ rh, T* 
 
 // DWTimesDW3 — 9 flops
 // Relative error <= 5u^2 (4u^2, Muller & Rideau 2022)
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 DWTimesDW3(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
@@ -237,7 +237,7 @@ DWTimesDW3(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T
 
 // DWPlusFP — 10 flops
 // Relative error <= 3u^2
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 DWPlusFP(const T xh, const T xl, const T y, T* __restrict__ zh, T* __restrict__ zl)
@@ -254,7 +254,7 @@ DWPlusFP(const T xh, const T xl, const T y, T* __restrict__ zh, T* __restrict__ 
 
 // DWTimesFP1 — 10 flops, no FMA
 // Relative error <= 2u^2
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 DWTimesFP1(const T xh, const T xl, const T y, T* __restrict__ zh, T* __restrict__ zl)
@@ -275,7 +275,7 @@ DWTimesFP1(const T xh, const T xl, const T y, T* __restrict__ zh, T* __restrict_
 
 // DWTimesFP3 — 6 flops, needs FMA
 // Relative error <= 2u^2
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 DWTimesFP3(const T xh, const T xl, const T y, T* __restrict__ zh, T* __restrict__ zl)
@@ -295,7 +295,7 @@ DWTimesFP3(const T xh, const T xl, const T y, T* __restrict__ zh, T* __restrict_
 
 // DWDivDW2 — 18 flops, no FMA
 // Relative error <= 15u^2 (+56u^3)
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 DWDivDW2(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
@@ -319,15 +319,15 @@ DWDivDW2(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* 
 
 // DWRecip — 1/(yh,yl), 22 flops, needs FMA
 // First part of DWDivDW3, split out so one reciprocal can serve several divisions
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 DWRecip(const T yh, const T yl, T* __restrict__ rh, T* __restrict__ rl)
 {
    // t = 1 / yh, an initial approximation of 1/y
-   T t = div_rn(T(1), yh);
+   T t = div_rn(splat< T >(1), yh);
    // r = 1 - y*t, the residual of that approximation, as a DW
-   T r0 = fma_rn(-yh, t, T(1));
+   T r0 = fma_rn(-yh, t, splat< T >(1));
    T r1 = -mul_rn(yl, t);
    rne<T> r01 = quick_two_sum(r0, r1);
    // d = r * t via DWTimesFP3
@@ -339,7 +339,7 @@ DWRecip(const T yh, const T yl, T* __restrict__ rh, T* __restrict__ rl)
 
 // DWDivDW3 — 31 flops, needs FMA
 // Relative error <= 9.8u^2
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 DWDivDW3(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
@@ -355,7 +355,7 @@ DWDivDW3(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* 
 
 // DWMulAdd_Madd_N — 36 flops
 // Relative error bound K·7u^2.
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 DWMulAdd_Madd_N(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
@@ -374,7 +374,7 @@ DWMulAdd_Madd_N(const T ah, const T al, const T bh, const T bl, const T ch, cons
 
 // DWMulAdd_Accu_N — 36 flops
 // Relative error bound K·8u^2.
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 DWMulAdd_Accu_N(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
@@ -393,7 +393,7 @@ DWMulAdd_Accu_N(const T ah, const T al, const T bh, const T bl, const T ch, cons
 
 // DWMulAdd_Slop_N — 27 flops
 // Relative error bound K·8u^2. (in proper region) 
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 DWMulAdd_Slop_N(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
@@ -414,7 +414,7 @@ DWMulAdd_Slop_N(const T ah, const T al, const T bh, const T bl, const T ch, cons
 
 // DWMulAdd_Madd_U — 30 flops
 // Relative error bound K·8u^2.
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 DWMulAdd_Madd_U(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
@@ -433,7 +433,7 @@ DWMulAdd_Madd_U(const T ah, const T al, const T bh, const T bl, const T ch, cons
 
 // DWMulAdd_Accu_U — 30 flops
 // Relative error bound K·10u^2.
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 DWMulAdd_Accu_U(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
@@ -452,7 +452,7 @@ DWMulAdd_Accu_U(const T ah, const T al, const T bh, const T bl, const T ch, cons
 
 // DWMulAdd_Slop_U — 21 flops
 // Relative error bound K·12u^2. (in proper region) 
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 DWMulAdd_Slop_U(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
@@ -470,7 +470,7 @@ DWMulAdd_Slop_U(const T ah, const T al, const T bh, const T bl, const T ch, cons
 }
 
 // Selects mode
-template< std::floating_point T, AddMode Add >
+template< XDWReal T, AddMode Add >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 DWMulAdd(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ rh, T* __restrict__ rl)
@@ -490,7 +490,7 @@ DWMulAdd(const T ah, const T al, const T bh, const T bl, const T ch, const T cl,
 // (ah,al,bh,bl) * (ch,cl,dh,dl), real = ac-bd, imag = ad+bc -> (reh,rel,imh,iml)
 
 // Selects mode
-template< std::floating_point T, AddMode Add, NormMode Norm >
+template< XDWReal T, AddMode Add, NormMode Norm >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 XDWmul(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)
@@ -530,7 +530,7 @@ XDWmul(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, c
 // (ah,al,bh,bl) / (ch,cl,dh,dl), real = (ac+bd)/(c^2+d^2), imag = (bc-ad)/(c^2+d^2) -> (reh,rel,imh,iml)
 //  Div selects DWDivDW2 vs DWDivDW3 for the two final divisions; Div3 shares one DWRecip of the denominator
 
-template< std::floating_point T, DivMode Div, AddMode Add, NormMode Norm >
+template< XDWReal T, DivMode Div, AddMode Add, NormMode Norm >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
 XDWDiv(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, const T dh, const T dl, T* __restrict__ reh, T* __restrict__ rel, T* __restrict__ imh, T* __restrict__ iml)

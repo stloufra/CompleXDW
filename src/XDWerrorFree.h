@@ -74,7 +74,7 @@ split( T value )
    }
 }
 
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 constexpr XDW_INLINE rne< T >
 quick_two_sum( const T a, const T b )
@@ -85,7 +85,7 @@ quick_two_sum( const T a, const T b )
   return {s, err};
 }
 
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 constexpr XDW_INLINE rne< T >
 quick_two_diff( const T a, const T b )
@@ -97,7 +97,7 @@ quick_two_diff( const T a, const T b )
 }
 
 
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 constexpr XDW_INLINE rne< T >
 two_sum( const T a, const T b )
@@ -112,7 +112,7 @@ two_sum( const T a, const T b )
 }
 
 
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 constexpr XDW_INLINE rne< T >
 two_diff( const T a, const T b )
@@ -126,7 +126,7 @@ two_diff( const T a, const T b )
    return {s, err};
 }
 
-template< std::floating_point T >
+template< XDWReal T >
 XDW_CUDA_CALLABLE
 constexpr XDW_INLINE rne< T >
 two_prod( const T a, const T b )
@@ -137,22 +137,29 @@ two_prod( const T a, const T b )
    return { p, err };
 
 #else
-   const T p = mul_rn( a, b );
-   const auto sp = split< T, T >( a );
-   const T a_hi = sp.sum;
-   const T a_lo = sp.error;
-   const auto sp2 = split< T, T >( b );
-   const T b_hi = sp2.sum;
-   const T b_lo = sp2.error;
-   const T ab_hh = mul_rn(a_hi, b_hi);           // a_hi * b_hi
-   const T tmp1 = add_rn(ab_hh, -p);             // (a_hi * b_hi - p)
-   const T ab_hl = mul_rn(a_hi, b_lo);           // a_hi * b_lo
-   const T tmp2 = add_rn(tmp1, ab_hl);           // (a_hi * b_hi - p) + a_hi * b_lo
-   const T ab_lh = mul_rn(a_lo, b_hi);           // a_lo * b_hi
-   const T tmp3 = add_rn(tmp2, ab_lh);           // ((a_hi * b_hi - p) + a_hi * b_lo + a_lo * b_hi)
-   const T ab_ll = mul_rn(a_lo, b_lo);           // a_lo * b_lo
-   const T err = add_rn(tmp3, ab_ll);            // ((a_hi * b_hi - p) + a_hi * b_lo + a_lo * b_hi) + a_lo * b_lo
-   return { p, err };
+   // Dekker's split branches on magnitude, so vectors keep the FMA.
+   if constexpr( XDWVector< T > ) {
+      const T p = mul_rn( a, b );
+      return { p, fma_rn( a, b, -p ) };
+   }
+   else {
+      const T p = mul_rn( a, b );
+      const auto sp = split< T, T >( a );
+      const T a_hi = sp.sum;
+      const T a_lo = sp.error;
+      const auto sp2 = split< T, T >( b );
+      const T b_hi = sp2.sum;
+      const T b_lo = sp2.error;
+      const T ab_hh = mul_rn(a_hi, b_hi);           // a_hi * b_hi
+      const T tmp1 = add_rn(ab_hh, -p);             // (a_hi * b_hi - p)
+      const T ab_hl = mul_rn(a_hi, b_lo);           // a_hi * b_lo
+      const T tmp2 = add_rn(tmp1, ab_hl);           // (a_hi * b_hi - p) + a_hi * b_lo
+      const T ab_lh = mul_rn(a_lo, b_hi);           // a_lo * b_hi
+      const T tmp3 = add_rn(tmp2, ab_lh);           // ((a_hi * b_hi - p) + a_hi * b_lo + a_lo * b_hi)
+      const T ab_ll = mul_rn(a_lo, b_lo);           // a_lo * b_lo
+      const T err = add_rn(tmp3, ab_ll);            // ((a_hi * b_hi - p) + a_hi * b_lo + a_lo * b_hi) + a_lo * b_lo
+      return { p, err };
+   }
 #endif
 }
 

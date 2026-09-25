@@ -10,18 +10,19 @@
 // Real double-word number hi + lo, |lo| <= ulp(hi)/2.
 // + and - use MaddDWPlusDW, * DWTimesDW2, / DWDivDW2.
 // Operators are hidden friends so a plain float/double/integer converts on either side (x + 0.5, 2 * x, x == 0.).
+// T may be a SIMD vector of float/double: one independent number per lane, comparisons return the lane mask.
 template< typename T >
-class alignas( 2 * sizeof( T ) ) DW
+class alignas( XDW_ARTH::XDWVector< T > ? alignof( T ) : 2 * sizeof( T ) ) DW
 {
 
-  static_assert( std::is_same_v< T, float > || std::is_same_v< T, double >
-                 ,"DW<T> can only be instantiated with float or double." );
+  static_assert( XDW_ARTH::XDWReal< T >, "DW<T>: T must be float, double, or a SIMD vector of them." );
 
   private:
   T data[ 2 ];
 
   public:
   using BaseType = T;
+  using Lane = XDW_ARTH::lane_t< T >;
 
   XDW_CUDA_CALLABLE
   constexpr DW() = default;
@@ -30,10 +31,22 @@ class alignas( 2 * sizeof( T ) ) DW
   constexpr DW( T hi, T lo ) : data{ hi, lo } {}
 
   // A wider value is split into its high and low parts, e.g. a double into DW<float> keeps 48 of its 53 bits.
+  // For a vector T, the same value in every lane.
   template< typename U >
   requires std::is_arithmetic_v< U >
   XDW_CUDA_CALLABLE
   constexpr DW( U x );
+
+  // A scalar DW in every lane.
+  template< typename S >
+  requires XDW_ARTH::XDWVector< T > && std::same_as< S, XDW_ARTH::lane_t< T > >
+  constexpr DW( const DW< S >& x ) : data{ XDW_ARTH::splat< T >( x.hi() ), XDW_ARTH::splat< T >( x.lo() ) } {}
+
+  constexpr DW< Lane > lane( int i ) const
+  requires XDW_ARTH::XDWVector< T >
+  {
+    return DW< Lane >( data[ 0 ][ i ], data[ 1 ][ i ] );
+  }
 
   XDW_CUDA_CALLABLE
   constexpr T hi() const { return data[ 0 ]; }
@@ -53,7 +66,7 @@ class alignas( 2 * sizeof( T ) ) DW
 
   // Exact into a wider type (DW<float> -> double); otherwise hi, the rounded value.
   template< typename U >
-  requires std::is_floating_point_v< U >
+  requires std::is_floating_point_v< U > && std::floating_point< T >
   XDW_CUDA_CALLABLE
   explicit constexpr operator U() const;
 
@@ -103,24 +116,36 @@ class alignas( 2 * sizeof( T ) ) DW
   XDW_CUDA_CALLABLE
   friend constexpr XDW_INLINE DW< T > operator/( const DW< T >& a, const DW< T >& b ) { return div( a, b ); }
 
-  // Lexicographic on (hi, lo), which orders normalized values.
+  // Lexicographic on (hi, lo), which orders normalized values. bool for a scalar T, the lane mask for a vector T.
   XDW_CUDA_CALLABLE
-  friend constexpr bool operator==( const DW< T >& a, const DW< T >& b ) { return a.hi() == b.hi() && a.lo() == b.lo(); }
+  friend constexpr auto operator==( const DW< T >& a, const DW< T >& b )
+  {
+    return XDW_ARTH::mask_and( a.hi() == b.hi(), a.lo() == b.lo() );
+  }
 
   XDW_CUDA_CALLABLE
-  friend constexpr bool operator!=( const DW< T >& a, const DW< T >& b ) { return !( a == b ); }
+  friend constexpr auto operator!=( const DW< T >& a, const DW< T >& b )
+  {
+    return XDW_ARTH::mask_or( a.hi() != b.hi(), a.lo() != b.lo() );
+  }
 
   XDW_CUDA_CALLABLE
-  friend constexpr bool operator<( const DW< T >& a, const DW< T >& b ) { return a.hi() < b.hi() || ( a.hi() == b.hi() && a.lo() < b.lo() ); }
+  friend constexpr auto operator<( const DW< T >& a, const DW< T >& b )
+  {
+    return XDW_ARTH::mask_or( a.hi() < b.hi(), XDW_ARTH::mask_and( a.hi() == b.hi(), a.lo() < b.lo() ) );
+  }
 
   XDW_CUDA_CALLABLE
-  friend constexpr bool operator>( const DW< T >& a, const DW< T >& b ) { return b < a; }
+  friend constexpr auto operator<=( const DW< T >& a, const DW< T >& b )
+  {
+    return XDW_ARTH::mask_or( a.hi() < b.hi(), XDW_ARTH::mask_and( a.hi() == b.hi(), a.lo() <= b.lo() ) );
+  }
 
   XDW_CUDA_CALLABLE
-  friend constexpr bool operator<=( const DW< T >& a, const DW< T >& b ) { return !( b < a ); }
+  friend constexpr auto operator>( const DW< T >& a, const DW< T >& b ) { return b < a; }
 
   XDW_CUDA_CALLABLE
-  friend constexpr bool operator>=( const DW< T >& a, const DW< T >& b ) { return !( a < b ); }
+  friend constexpr auto operator>=( const DW< T >& a, const DW< T >& b ) { return b <= a; }
 };
 
 template< typename T >
@@ -131,16 +156,17 @@ constexpr DW< T >::DW( U x )
 {
    using Wide = std::conditional_t< std::is_integral_v< U >, double, U >;
    const Wide w = static_cast< Wide >( x );
-   data[ 0 ] = static_cast< T >( w );
-   if constexpr( sizeof( Wide ) > sizeof( T ) )
-      data[ 1 ] = static_cast< T >( w - static_cast< Wide >( data[ 0 ] ) );
-   else
-      data[ 1 ] = T( 0 );
+   const Lane hi = static_cast< Lane >( w );
+   Lane lo = Lane( 0 );
+   if constexpr( sizeof( Wide ) > sizeof( Lane ) )
+      lo = static_cast< Lane >( w - static_cast< Wide >( hi ) );
+   data[ 0 ] = XDW_ARTH::splat< T >( hi );
+   data[ 1 ] = XDW_ARTH::splat< T >( lo );
 }
 
 template< typename T >
 template< typename U >
-requires std::is_floating_point_v< U >
+requires std::is_floating_point_v< U > && std::floating_point< T >
 XDW_CUDA_CALLABLE
 constexpr DW< T >::operator U() const
 {

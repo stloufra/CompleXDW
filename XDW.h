@@ -8,12 +8,12 @@
 #include <complex>
 #include <type_traits>
 
+// T may be a SIMD vector of float/double: one independent complex number per lane.
 template< typename T >
-class alignas( 4 * sizeof( T ) ) XDW
+class alignas( XDW_ARTH::XDWVector< T > ? alignof( T ) : 4 * sizeof( T ) ) XDW
 {
 
-  static_assert( std::is_same_v< T, float > || std::is_same_v< T, double >
-                 ,"XDW<T> can only be instantiated with float or double." );
+  static_assert( XDW_ARTH::XDWReal< T >, "XDW<T>: T must be float, double, or a SIMD vector of them." );
 
   private:
   T data[ 4 ];
@@ -43,7 +43,7 @@ class alignas( 4 * sizeof( T ) ) XDW
   template< typename U >
   requires std::is_arithmetic_v< U >
   XDW_CUDA_CALLABLE
-  constexpr XDW( U re ) : XDW( DW< T >( re ), DW< T >( T( 0 ), T( 0 ) ) ) {}
+  constexpr XDW( U re ) : XDW( DW< T >( re ), DW< T >( T{}, T{} ) ) {}
 
   template< typename U, typename V >
   requires std::is_arithmetic_v< U > && std::is_arithmetic_v< V >
@@ -51,8 +51,21 @@ class alignas( 4 * sizeof( T ) ) XDW
   constexpr XDW( U re, V im ) : XDW( DW< T >( re ), DW< T >( im ) ) {}
 
   XDW_CUDA_CALLABLE
-  constexpr XDW( const DW< T >& re, const DW< T >& im = DW< T >( T( 0 ), T( 0 ) ) )
+  constexpr XDW( const DW< T >& re, const DW< T >& im = DW< T >( T{}, T{} ) )
   : data{ re.hi(), re.lo(), im.hi(), im.lo() } {}
+
+  // A scalar XDW in every lane.
+  template< typename S >
+  requires XDW_ARTH::XDWVector< T > && std::same_as< S, XDW_ARTH::lane_t< T > >
+  constexpr XDW( const XDW< S >& z )
+  : data{ XDW_ARTH::splat< T >( z.re_h() ), XDW_ARTH::splat< T >( z.re_l() ),
+          XDW_ARTH::splat< T >( z.im_h() ), XDW_ARTH::splat< T >( z.im_l() ) } {}
+
+  constexpr XDW< XDW_ARTH::lane_t< T > > lane( int i ) const
+  requires XDW_ARTH::XDWVector< T >
+  {
+    return XDW< XDW_ARTH::lane_t< T > >( data[ 0 ][ i ], data[ 1 ][ i ], data[ 2 ][ i ], data[ 3 ][ i ] );
+  }
 
   XDW_CUDA_CALLABLE
   constexpr XDW( T re_h, T re_l, T im_h, T im_l );
@@ -135,9 +148,9 @@ XDW_CUDA_CALLABLE
 constexpr XDW< T >::XDW( const std::complex< T >& c )
 {
    data[ 0 ] = c.real();
-   data[ 1 ] = static_cast< T >(0.0F);
+   data[ 1 ] = T{};
    data[ 2 ] = c.imag();
-   data[ 3 ] = static_cast< T >(0.0F);
+   data[ 3 ] = T{};
 }
 
 template< typename T >
@@ -270,12 +283,15 @@ operator/( const XDW< T >& a, const XDW< T >& b )
    return XDW< T >::div( a, b );
 }
 
+// bool for a scalar T, the lane mask for a vector T.
 template< typename T >
 XDW_CUDA_CALLABLE
-constexpr XDW_INLINE bool
+constexpr XDW_INLINE auto
 operator==( const XDW< T >& a, const XDW< T >& b )
 {
-   return a.re_h() == b.re_h() && a.re_l() == b.re_l() && a.im_h() == b.im_h() && a.im_l() == b.im_l();
+   using XDW_ARTH::mask_and;
+   return mask_and( mask_and( a.re_h() == b.re_h(), a.re_l() == b.re_l() ),
+                    mask_and( a.im_h() == b.im_h(), a.im_l() == b.im_l() ) );
 }
 
 template< typename T >

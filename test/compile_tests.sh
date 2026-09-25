@@ -20,6 +20,11 @@ $CXX -std=c++20 -O2 -ffp-contract=off -march=native -I.. \
     -L/opt/homebrew/lib -lmpfr -lgmp -lm \
     -o exec/test_complex_dw_conditioning
 
+# Compile SIMD vector T tests (lanes vs scalar DW/XDW, no MPFR)
+$CXX -std=c++20 -O2 -ffp-contract=off -march=native -I.. \
+    test_simd.cpp \
+    -o exec/test_simd
+
 # Compile DW tests
 $CXX -std=c++20 -O2 -ffp-contract=off -march=native -I.. \
     test_dw.cpp \
