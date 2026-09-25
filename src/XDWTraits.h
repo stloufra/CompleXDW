@@ -61,7 +61,7 @@ enum class DivMode { Div2, Div3 };
 // XDW_ADD_MODE:  A = Accurate, M = Madd, S = Sloppy
 // XDW_NORM_MODE: N = Normalized, U = Unnormalized
 // XDW_DIV_MODE:  2 = Div2, 3 = Div3
-// Unset macros default to Madd, Normalized, Div2
+// Unset macros default to Madd, Normalized, Div3
 
 #if !defined( XDW_ADD_MODE )
 #define XDW_ADD_MODE M
@@ -72,7 +72,7 @@ enum class DivMode { Div2, Div3 };
 #endif
 
 #if !defined( XDW_DIV_MODE )
-#define XDW_DIV_MODE 2
+#define XDW_DIV_MODE 3
 #endif
 
 #define XDW_STRINGIFY_( x ) #x

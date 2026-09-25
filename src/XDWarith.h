@@ -317,12 +317,12 @@ DWDivDW2(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* 
    *zh = r2.sum; *zl = r2.error;
 }
 
-// DWDivDW3 — 31 flops, needs FMA
-// Relative error <= 9.8u^2
+// DWRecip — 1/(yh,yl), 22 flops, needs FMA
+// First part of DWDivDW3, split out so one reciprocal can serve several divisions
 template< std::floating_point T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
-DWDivDW3(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
+DWRecip(const T yh, const T yl, T* __restrict__ rh, T* __restrict__ rl)
 {
    // t = 1 / yh, an initial approximation of 1/y
    T t = div_rn(T(1), yh);
@@ -334,8 +334,18 @@ DWDivDW3(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* 
    T dh, dl;
    DWTimesFP3(r01.sum, r01.error, t, &dh, &dl);
    // (rh,rl) = d + t via DWPlusFP, a refined approximation of 1/y
+   DWPlusFP(dh, dl, t, rh, rl);
+}
+
+// DWDivDW3 — 31 flops, needs FMA
+// Relative error <= 9.8u^2
+template< std::floating_point T >
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
+DWDivDW3(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* __restrict__ zl)
+{
    T rh, rl;
-   DWPlusFP(dh, dl, t, &rh, &rl);
+   DWRecip(yh, yl, &rh, &rl);
    // z = x * r via DWTimesDW3
    DWTimesDW3(xh, xl, rh, rl, zh, zl);
 }
@@ -518,7 +528,7 @@ XDWmul(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, c
 
 //-------------------- COMPLEX DIV ---------------------
 // (ah,al,bh,bl) / (ch,cl,dh,dl), real = (ac+bd)/(c^2+d^2), imag = (bc-ad)/(c^2+d^2) -> (reh,rel,imh,iml)
-//  Div selects DWDivDW2 vs DWDivDW3 for the two final divisions
+//  Div selects DWDivDW2 vs DWDivDW3 for the two final divisions; Div3 shares one DWRecip of the denominator
 
 template< std::floating_point T, DivMode Div, AddMode Add, NormMode Norm >
 XDW_CUDA_CALLABLE
@@ -539,8 +549,11 @@ XDWDiv(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, c
       DWDivDW2(numreh, numrel, denomh, denoml, reh, rel);
       DWDivDW2(numimh, numiml, denomh, denoml, imh, iml);
    } else if constexpr (Div == DivMode::Div3) {
-      DWDivDW3(numreh, numrel, denomh, denoml, reh, rel);
-      DWDivDW3(numimh, numiml, denomh, denoml, imh, iml);
+      // DWDivDW3 on both components, sharing the reciprocal: 22 + 2*9 flops
+      T recih, recil;
+      DWRecip(denomh, denoml, &recih, &recil);
+      DWTimesDW3(numreh, numrel, recih, recil, reh, rel);
+      DWTimesDW3(numimh, numiml, recih, recil, imh, iml);
    } else {
       static_assert(Div == DivMode::Div3, "XDWDiv: unhandled DivMode");
    }
