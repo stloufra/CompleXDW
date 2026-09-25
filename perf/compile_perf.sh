@@ -10,7 +10,6 @@ OMP_LIB="/opt/homebrew/Cellar/libomp/22.1.1/lib"
 #$CXX -std=c++20 -O2 -ffp-contract=off -march=native -mcpu=apple-m4 -Rpass=loop-vectorize -Rpass-missed=loop-vectorize -I.. -I../test/src \
 #    perf_test.cpp \
 #    ../test/src/test_func.cpp \
-#    -DXDW_FAST_FMA \
 #    -I/opt/homebrew/include \
 #    -I$OMP_INCLUDE \
 #    -L/opt/homebrew/lib -L$OMP_LIB -lmpfr -lgmp -lm -lomp \
@@ -20,7 +19,6 @@ OMP_LIB="/opt/homebrew/Cellar/libomp/22.1.1/lib"
 $CXX -std=c++20 -O2 -ffp-contract=off -march=native -mcpu=apple-m4 -Rpass=loop-vectorize -Rpass-missed=loop-vectorize -I.. -I../test/src \
     perf_test.cpp \
     ../test/src/test_func.cpp \
-    -DXDW_FAST_FMA \
     -I/opt/homebrew/include \
     -I$OMP_INCLUDE \
     -L/opt/homebrew/lib -L$OMP_LIB -lmpfr -lgmp -lm -lomp \
@@ -30,7 +28,6 @@ $CXX -std=c++20 -O2 -ffp-contract=off -march=native -mcpu=apple-m4 -Rpass=loop-v
 #$CXX -std=c++20 -O2 -ffp-contract=off -fno-vectorize -fno-slp-vectorize -I.. -I../test/src \
 #    perf_test.cpp \
 #    ../test/src/test_func.cpp \
-#    -DXDW_FAST_FMA \
 #    -I/opt/homebrew/include \
 #    -I$OMP_INCLUDE \
 #    -L/opt/homebrew/lib -L$OMP_LIB -lmpfr -lgmp -lm -lomp \

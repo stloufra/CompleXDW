@@ -6,7 +6,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 CXX="${1:-clang++}"
-FLAGS=(-std=c++20 -O2 -ffp-contract=off -march=native -DNDEBUG -DXDW_FAST_FMA -I..)
+FLAGS=(-std=c++20 -O2 -ffp-contract=off -march=native -DNDEBUG -I..)
 
 mkdir -p exec results
 $CXX "${FLAGS[@]}" -DBENCH_BUILD='"vec"' bench_elementwise.cpp -o exec/bench_elementwise_vec

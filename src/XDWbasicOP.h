@@ -10,6 +10,12 @@
 
 #include "XDWTraits.h"
 
+#if defined( __GNUC__ ) && defined( __has_builtin )
+#if __has_builtin( __builtin_assoc_barrier )
+#define XDW_HAS_ASSOC_BARRIER
+#endif
+#endif
+
 #if defined( __HIPCC__ )
 #include <hip/hip_runtime.h>
 #elif defined( __CUDACC__ )
@@ -19,7 +25,7 @@
 
 namespace XDW_ARTH{
 
-//implementation of basic operations to ensure round to nearest in CUDA/HIP
+//implementation of basic operations to ensure round to nearest in CUDA/HIP, and no FMA contraction on the host
 
 template< std::floating_point T >
 XDW_CUDA_CALLABLE
@@ -34,6 +40,9 @@ add_rn( const T x, const T y )
       return __fadd_rn( x, y );
    }
 #else
+#if defined( __clang__ )
+#pragma clang fp contract( off )
+#endif
    return x + y;
 #endif
 }
@@ -51,7 +60,15 @@ mul_rn( const T x, const T y )
       return __fmul_rn( x, y );
    }
 #else
+#if defined( __clang__ )
+#pragma clang fp contract( off )
    return x * y;
+#elif defined( XDW_HAS_ASSOC_BARRIER )
+   // g++ has no per-region fp-contract; the barrier keeps the product rounded so it can't be fused into an add.
+   return __builtin_assoc_barrier( x * y );
+#else
+   return x * y;
+#endif
 #endif
 }
 

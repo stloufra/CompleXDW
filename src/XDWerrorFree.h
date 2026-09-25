@@ -131,20 +131,12 @@ XDW_CUDA_CALLABLE
 constexpr XDW_INLINE rne< T >
 two_prod( const T a, const T b )
 {
-#ifdef __CUDA_ARCH__
+#if defined( __CUDA_ARCH__ ) || defined( __HIP_DEVICE_COMPILE__ ) || !defined( XDW_DEKKER_TWO_PROD )
    const T p = mul_rn( a, b );
    const T err = fma_rn( a, b, -p );
    return { p, err };
 
 #else
-   #ifdef XDW_FAST_FMA
-
-   const T p = mul_rn( a, b );
-   const T err = fma_rn( a, b, -p );
-   return { p, err };
-
-   #else
-
    const T p = mul_rn( a, b );
    const auto sp = split< T, T >( a );
    const T a_hi = sp.sum;
@@ -161,8 +153,6 @@ two_prod( const T a, const T b )
    const T ab_ll = mul_rn(a_lo, b_lo);           // a_lo * b_lo
    const T err = add_rn(tmp3, ab_ll);            // ((a_hi * b_hi - p) + a_hi * b_lo + a_lo * b_hi) + a_lo * b_lo
    return { p, err };
-   #endif
-
 #endif
 }
 

@@ -15,7 +15,6 @@ mkdir -p exec res
 # Compile conditioning test
 $CXX -std=c++20 -O2 -ffp-contract=off -march=native -I.. \
     test_complex_dw_conditioning.cpp \
-    -DXDW_FAST_FMA \
     src/test_func.cpp \
     -I/opt/homebrew/include \
     -L/opt/homebrew/lib -lmpfr -lgmp -lm \
@@ -24,7 +23,6 @@ $CXX -std=c++20 -O2 -ffp-contract=off -march=native -I.. \
 # Compile function tests
 $CXX -std=c++20 -O2 -ffp-contract=off -march=native -I.. \
     test_complex_dw_functions.cpp \
-    -DXDW_FAST_FMA \
     src/test_func.cpp \
     -I/opt/homebrew/include \
     -L/opt/homebrew/lib -lmpfr -lgmp -lm \
@@ -33,7 +31,6 @@ $CXX -std=c++20 -O2 -ffp-contract=off -march=native -I.. \
 # Compile the long-running binned conditioning sweep (meant for a multi-day cluster job)
 $CXX -std=c++20 -O2 -ffp-contract=off -march=native -I.. \
     test_complex_dw_conditioning_binned.cpp \
-    -DXDW_FAST_FMA \
     src/test_func.cpp \
     -I/opt/homebrew/include \
     -L/opt/homebrew/lib -lmpfr -lgmp -lm \
@@ -46,7 +43,6 @@ one
 
 $CXX -std=c++20 -O2 -ffp-contract=off -march=native -I.. \
     test_complex_dw_division_binned.cpp \
-    -DXDW_FAST_FMA \
     src/test_func.cpp \
     -I/opt/homebrew/include \
     -L/opt/homebrew/lib -lmpfr -lgmp -lm \
@@ -55,7 +51,6 @@ $CXX -std=c++20 -O2 -ffp-contract=off -march=native -I.. \
 # Examines the conditioning generator (generate_abcd_mp), writes res_cond/
 $CXX -std=c++20 -O2 -ffp-contract=off -march=native -I.. \
     test_conditioning_generator.cpp \
-    -DXDW_FAST_FMA \
     src/test_func.cpp \
     -I/opt/homebrew/include \
     -L/opt/homebrew/lib -lmpfr -lgmp -lm \

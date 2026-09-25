@@ -47,6 +47,16 @@ static_assert( __FLT_EVAL_METHOD__ != 2,
                "the round-to-nearest error-free transforms; build with SSE2 math instead." );
 #endif
 
+// Without a hardware-FMA target, std::fma (fma_rn) is a libm call, emulated in software on CPUs without FMA.
+#if !defined( __FMA__ ) && !defined( __ARM_FEATURE_FMA ) && !defined( __FP_FAST_FMA ) \
+    && !( defined( _MSC_VER ) && defined( __AVX2__ ) ) && !defined( XDW_ALLOW_SOFTWARE_FMA )
+#if defined( _MSC_VER ) && !defined( __clang__ )
+#pragma message( "CompleXDW: target has no hardware FMA, so every fma_rn is a slow libm call. Build with /arch:AVX2; define XDW_ALLOW_SOFTWARE_FMA to silence." )
+#else
+#warning "CompleXDW: target has no hardware FMA, so every fma_rn is a slow libm call. Build with -march=native (or -mfma on x86-64); define XDW_ALLOW_SOFTWARE_FMA to silence."
+#endif
+#endif
+
 #endif
 
 namespace XDW_ARTH {
@@ -62,6 +72,7 @@ enum class DivMode { Div2, Div3 };
 // XDW_NORM_MODE: N = Normalized, U = Unnormalized
 // XDW_DIV_MODE:  2 = Div2, 3 = Div3
 // Unset macros default to Madd, Normalized, Div3
+// XDW_DEKKER_TWO_PROD: TwoProd via Dekker's split instead of one FMA (host only)
 
 #if !defined( XDW_ADD_MODE )
 #define XDW_ADD_MODE M
