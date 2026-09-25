@@ -1,10 +1,14 @@
 #include <algorithm>
 #include <iostream>
 #include <random>
+#include <source_location>
+#include <stdexcept>
+#include <vector>
 
 #include <mpfr.h>
 
 #include "../ComplexDouble.h"
+#include "../ComplexDWSpan.h"
 #include "src/test_func.h"
 
 using namespace XDW_ARTH;
@@ -173,6 +177,93 @@ static void test_div( std::mt19937_64& rng )
     std::cout << "div worst relative error / u^2 = " << worst_error / UNIT_ROUNDOFF_SQUARED << '\n';
 }
 
+struct SoA
+{
+    std::vector< double > re_h, re_l, im_h, im_l;
+
+    explicit SoA( std::size_t n ) : re_h( n ), re_l( n ), im_h( n ), im_l( n ) {}
+
+    ComplexDWSpan< double > span() { return { re_h.data(), re_l.data(), im_h.data(), im_l.data(), re_h.size() }; }
+};
+
+static bool identical( const ComplexDouble< double >& x, const ComplexDouble< double >& y )
+{
+    return has_parts( x, y.re_h(), y.re_l(), y.im_h(), y.im_l() );
+}
+
+// Span mul/div must match the per-element ComplexDouble ops bit for bit.
+template< AddMode Add, NormMode Norm >
+static void check_span_mul( SoA& a, SoA& b )
+{
+    SoA out( a.re_h.size() );
+    mul< Add, Norm >( out.span(), a.span(), b.span() );
+    bool same = true;
+    for( std::size_t i = 0; i < out.re_h.size(); ++i )
+        same &= identical( out.span().load( i ), ComplexDouble< double >::mul< Add, Norm >( a.span().load( i ), b.span().load( i ) ) );
+    check( same, std::source_location::current().function_name() );
+}
+
+template< DivMode Div, AddMode Add, NormMode Norm >
+static void check_span_div( SoA& a, SoA& b )
+{
+    SoA out( a.re_h.size() );
+    div< Div, Add, Norm >( out.span(), a.span(), b.span() );
+    bool same = true;
+    for( std::size_t i = 0; i < out.re_h.size(); ++i )
+        same &= identical( out.span().load( i ), ComplexDouble< double >::div< Div, Add, Norm >( a.span().load( i ), b.span().load( i ) ) );
+    check( same, std::source_location::current().function_name() );
+}
+
+template< AddMode Add, NormMode Norm >
+static void check_span_modes( SoA& a, SoA& b )
+{
+    check_span_mul< Add, Norm >( a, b );
+    check_span_div< DivMode::Div2, Add, Norm >( a, b );
+    check_span_div< DivMode::Div3, Add, Norm >( a, b );
+}
+
+static void test_span( std::mt19937_64& rng )
+{
+    constexpr std::size_t n = 1000;
+    SoA a( n ), b( n );
+    for( std::size_t i = 0; i < n; ++i ) {
+        a.span().store( i, generate_random_dw_single( rng ) );
+        b.span().store( i, generate_random_dw_single( rng ) );
+    }
+
+    check_span_modes< AddMode::Madd, NormMode::Normalized >( a, b );
+    check_span_modes< AddMode::Madd, NormMode::Unnormalized >( a, b );
+    check_span_modes< AddMode::Accurate, NormMode::Normalized >( a, b );
+    check_span_modes< AddMode::Accurate, NormMode::Unnormalized >( a, b );
+    check_span_modes< AddMode::Sloppy, NormMode::Normalized >( a, b );
+    check_span_modes< AddMode::Sloppy, NormMode::Unnormalized >( a, b );
+
+    SoA product( n ), quotient( n );
+    mul( product.span(), a.span(), b.span() );
+    div( quotient.span(), a.span(), b.span() );
+    SoA in_place = a;
+    mul( in_place.span(), in_place.span(), b.span() );
+    div( in_place.span(), in_place.span(), b.span() );
+    bool defaults = true, round_trip = true;
+    for( std::size_t i = 0; i < n; ++i ) {
+        defaults &= identical( product.span().load( i ), a.span().load( i ) * b.span().load( i ) );
+        defaults &= identical( quotient.span().load( i ), a.span().load( i ) / b.span().load( i ) );
+        round_trip &= identical( in_place.span().load( i ), product.span().load( i ) / b.span().load( i ) );
+    }
+    check( defaults, "span mul/div defaults match operator* and operator/" );
+    check( round_trip, "span mul/div in place" );
+
+    SoA shorter( n - 1 );
+    bool threw = false;
+    try {
+        mul( shorter.span(), a.span(), b.span() );
+    }
+    catch( const std::invalid_argument& ) {
+        threw = true;
+    }
+    check( threw, "span mul with mismatched sizes throws" );
+}
+
 int main()
 {
     std::mt19937_64 rng( 42 );
@@ -180,6 +271,7 @@ int main()
 
     test_conj_real_imag_norm( rng );
     test_div( rng );
+    test_span( rng );
 
     mpfr_free_cache();
     return failures == 0 ? 0 : 1;

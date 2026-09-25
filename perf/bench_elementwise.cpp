@@ -1,5 +1,6 @@
 // Throughput of element-wise c[i] = a[i] * b[i] and c[i] = a[i] / b[i] for every mul<Add,Norm> and
 // div<Div,Add,Norm> variant, against plain std::complex and naive (no inf/nan check) baselines, for double and float.
+// Each DW variant runs on both layouts: AoS = array of ComplexDouble, SoA = ComplexDWSpan over four arrays.
 //
 // Each (variant, length) is timed SAMPLES times; a sample repeats the kernel for at least
 // MIN_SAMPLE_TIME so the clock resolution doesn't affect it and the variant order rotates between
@@ -22,6 +23,7 @@
 #endif
 
 #include "ComplexDouble.h"
+#include "ComplexDWSpan.h"
 #include "random_dw.h"
 
 #ifndef BENCH_BUILD
@@ -39,15 +41,28 @@ constexpr int SAMPLES = 31;
 constexpr std::chrono::nanoseconds MIN_SAMPLE_TIME = std::chrono::milliseconds(1);
 
 template <std::floating_point T>
+struct SoA {
+    std::vector<T> re_h, re_l, im_h, im_l;
+
+    explicit SoA(std::size_t n) : re_h(n), re_l(n), im_h(n), im_l(n) {}
+
+    ComplexDWSpan<T> span() { return {re_h.data(), re_l.data(), im_h.data(), im_l.data(), re_h.size()}; }
+};
+
+template <std::floating_point T>
 struct Buffers {
     std::vector<ComplexDouble<T>> a, b, c;
+    SoA<T> soa_a, soa_b, soa_c;               // same values as a, b
     std::vector<std::complex<T>> sa, sb, sc;  // high words of a, b for the baselines
 
-    Buffers(std::size_t n, std::mt19937_64& rng) : a(n), b(n), c(n), sa(n), sb(n), sc(n)
+    Buffers(std::size_t n, std::mt19937_64& rng)
+    : a(n), b(n), c(n), soa_a(n), soa_b(n), soa_c(n), sa(n), sb(n), sc(n)
     {
         for (std::size_t i = 0; i < n; ++i) {
             a[i] = random_dw_complex<T>(rng);
             b[i] = random_dw_complex<T>(rng);
+            soa_a.span().store(i, a[i]);
+            soa_b.span().store(i, b[i]);
             sa[i] = {a[i].re_h(), a[i].im_h()};
             sb[i] = {b[i].re_h(), b[i].im_h()};
         }
@@ -73,6 +88,19 @@ template <std::floating_point T, DivMode Div, AddMode Add, NormMode Norm>
     const ComplexDouble<T>* __restrict__ b = buf.b.data();
     ComplexDouble<T>* __restrict__ c = buf.c.data();
     for (std::size_t i = 0; i < n; ++i) c[i] = ComplexDouble<T>::template div<Div, Add, Norm>(a[i], b[i]);
+}
+
+// Buffers are allocated per length, so the spans already have size n.
+template <std::floating_point T, AddMode Add, NormMode Norm>
+[[gnu::noinline]] void span_mul(Buffers<T>& buf, std::size_t)
+{
+    mul<Add, Norm>(buf.soa_c.span(), buf.soa_a.span(), buf.soa_b.span());
+}
+
+template <std::floating_point T, DivMode Div, AddMode Add, NormMode Norm>
+[[gnu::noinline]] void span_div(Buffers<T>& buf, std::size_t)
+{
+    div<Div, Add, Norm>(buf.soa_c.span(), buf.soa_a.span(), buf.soa_b.span());
 }
 
 // like std:: but no check undeflow/overflow so vectorizes 
@@ -148,7 +176,8 @@ constexpr int div_divisions(DivMode div) { return div == DivMode::Div2 ? 4 : 1; 
 
 template <std::floating_point T>
 struct Variant {
-    const char* op;  // "mul" or "div"
+    const char* op;      // "mul" or "div"
+    const char* layout;  // "AoS" or "SoA"
     std::string name;
     int flops;       // 0 if unknown
     int divisions;
@@ -156,47 +185,53 @@ struct Variant {
 };
 
 template <std::floating_point T, AddMode Add, NormMode Norm>
-Variant<T> mul_variant()
+std::array<Variant<T>, 2> mul_variants()
 {
-    return {"mul", std::string(name(Add)) + "/" + name(Norm), 2 * mul_add_flops(Add, Norm), 0, dw_mul<T, Add, Norm>};
+    std::string n = std::string(name(Add)) + "/" + name(Norm);
+    int flops = 2 * mul_add_flops(Add, Norm);
+    return {{{"mul", "AoS", n, flops, 0, dw_mul<T, Add, Norm>}, {"mul", "SoA", n, flops, 0, span_mul<T, Add, Norm>}}};
 }
 
 template <std::floating_point T, DivMode Div, AddMode Add, NormMode Norm>
-Variant<T> div_variant()
+std::array<Variant<T>, 2> div_variants()
 {
-    return {"div", std::string(name(Div)) + "/" + name(Add) + "/" + name(Norm), div_flops(Div, Add, Norm),
-            div_divisions(Div), dw_div<T, Div, Add, Norm>};
+    std::string n = std::string(name(Div)) + "/" + name(Add) + "/" + name(Norm);
+    int flops = div_flops(Div, Add, Norm);
+    return {{{"div", "AoS", n, flops, div_divisions(Div), dw_div<T, Div, Add, Norm>},
+             {"div", "SoA", n, flops, div_divisions(Div), span_div<T, Div, Add, Norm>}}};
 }
 
-// The first DW variant of each op is the reference the others are compared to.
+// The first variant of each op (AoS Madd/Normalized, AoS Div2/Madd/Normalized) is the reference.
 template <std::floating_point T>
 std::vector<Variant<T>> variants()
 {
-    return {
-        mul_variant<T, AddMode::Madd, NormMode::Normalized>(),
-        mul_variant<T, AddMode::Madd, NormMode::Unnormalized>(),
-        mul_variant<T, AddMode::Accurate, NormMode::Normalized>(),
-        mul_variant<T, AddMode::Accurate, NormMode::Unnormalized>(),
-        mul_variant<T, AddMode::Sloppy, NormMode::Normalized>(),
-        mul_variant<T, AddMode::Sloppy, NormMode::Unnormalized>(),
-        {"mul", "naive", 6, 0, naive_mul<T>},
-        {"mul", "std::complex", 0, 0, std_mul<T>},
+    std::vector<Variant<T>> vs;
+    auto add = [&](const std::array<Variant<T>, 2>& pair) { vs.insert(vs.end(), pair.begin(), pair.end()); };
 
-        div_variant<T, DivMode::Div2, AddMode::Madd, NormMode::Normalized>(),
-        div_variant<T, DivMode::Div2, AddMode::Madd, NormMode::Unnormalized>(),
-        div_variant<T, DivMode::Div2, AddMode::Accurate, NormMode::Normalized>(),
-        div_variant<T, DivMode::Div2, AddMode::Accurate, NormMode::Unnormalized>(),
-        div_variant<T, DivMode::Div2, AddMode::Sloppy, NormMode::Normalized>(),
-        div_variant<T, DivMode::Div2, AddMode::Sloppy, NormMode::Unnormalized>(),
-        div_variant<T, DivMode::Div3, AddMode::Madd, NormMode::Normalized>(),
-        div_variant<T, DivMode::Div3, AddMode::Madd, NormMode::Unnormalized>(),
-        div_variant<T, DivMode::Div3, AddMode::Accurate, NormMode::Normalized>(),
-        div_variant<T, DivMode::Div3, AddMode::Accurate, NormMode::Unnormalized>(),
-        div_variant<T, DivMode::Div3, AddMode::Sloppy, NormMode::Normalized>(),
-        div_variant<T, DivMode::Div3, AddMode::Sloppy, NormMode::Unnormalized>(),
-        {"div", "naive", 11, 2, naive_div<T>},
-        {"div", "std::complex", 0, 0, std_div<T>},
-    };
+    add(mul_variants<T, AddMode::Madd, NormMode::Normalized>());
+    add(mul_variants<T, AddMode::Madd, NormMode::Unnormalized>());
+    add(mul_variants<T, AddMode::Accurate, NormMode::Normalized>());
+    add(mul_variants<T, AddMode::Accurate, NormMode::Unnormalized>());
+    add(mul_variants<T, AddMode::Sloppy, NormMode::Normalized>());
+    add(mul_variants<T, AddMode::Sloppy, NormMode::Unnormalized>());
+    vs.push_back({"mul", "AoS", "naive", 6, 0, naive_mul<T>});
+    vs.push_back({"mul", "AoS", "std::complex", 0, 0, std_mul<T>});
+
+    add(div_variants<T, DivMode::Div2, AddMode::Madd, NormMode::Normalized>());
+    add(div_variants<T, DivMode::Div2, AddMode::Madd, NormMode::Unnormalized>());
+    add(div_variants<T, DivMode::Div2, AddMode::Accurate, NormMode::Normalized>());
+    add(div_variants<T, DivMode::Div2, AddMode::Accurate, NormMode::Unnormalized>());
+    add(div_variants<T, DivMode::Div2, AddMode::Sloppy, NormMode::Normalized>());
+    add(div_variants<T, DivMode::Div2, AddMode::Sloppy, NormMode::Unnormalized>());
+    add(div_variants<T, DivMode::Div3, AddMode::Madd, NormMode::Normalized>());
+    add(div_variants<T, DivMode::Div3, AddMode::Madd, NormMode::Unnormalized>());
+    add(div_variants<T, DivMode::Div3, AddMode::Accurate, NormMode::Normalized>());
+    add(div_variants<T, DivMode::Div3, AddMode::Accurate, NormMode::Unnormalized>());
+    add(div_variants<T, DivMode::Div3, AddMode::Sloppy, NormMode::Normalized>());
+    add(div_variants<T, DivMode::Div3, AddMode::Sloppy, NormMode::Unnormalized>());
+    vs.push_back({"div", "AoS", "naive", 11, 2, naive_div<T>});
+    vs.push_back({"div", "AoS", "std::complex", 0, 0, std_div<T>});
+    return vs;
 }
 
 template <std::floating_point T>
@@ -236,7 +271,7 @@ void print_summary(const char* type, const std::vector<Variant<T>>& vs, const st
         const Variant<T>& v = vs[k];
         double m = median(ns[k]);
         if (!ref || ref->op != std::string(v.op)) { ref = &v; ref_median = m; }
-        std::cout << "  " << v.op << "  " << std::left << std::setw(28) << v.name << std::right
+        std::cout << "  " << v.op << "  " << v.layout << "  " << std::left << std::setw(28) << v.name << std::right
                   << std::setprecision(3) << std::setw(8) << m << "  min " << std::setw(8)
                   << *std::min_element(ns[k].begin(), ns[k].end()) << "   x" << std::setprecision(2)
                   << m / ref_median;
@@ -261,7 +296,7 @@ void run(const char* type, std::ofstream& csv, std::mt19937_64& rng)
                 vs[k].kernel(buf, n);
                 double t = time_reps(vs[k], buf, n, reps[k]) / (static_cast<double>(reps[k]) * n);
                 ns[k].push_back(t);
-                csv << BENCH_BUILD << "," << type << "," << vs[k].op << "," << vs[k].name << "," << vs[k].flops
+                csv << BENCH_BUILD << "," << type << "," << vs[k].op << "," << vs[k].layout << "," << vs[k].name << "," << vs[k].flops
                     << "," << vs[k].divisions << "," << n << "," << s << "," << t << "\n";
             }
         }
@@ -283,7 +318,7 @@ int main()
         std::cerr << "Cannot write " << path << " (run from perf/)\n";
         return 1;
     }
-    csv << "build,type,op,variant,flops,divisions,n,sample,ns_per_elem\n";
+    csv << "build,type,op,layout,variant,flops,divisions,n,sample,ns_per_elem\n";
     csv << std::setprecision(6);
 
     run<double>("double", csv, rng);

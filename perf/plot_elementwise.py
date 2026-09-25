@@ -1,7 +1,8 @@
 # Plots results/elementwise_<build>.csv written by bench_elementwise:
-#   results/elementwise_<type>.png            median ns/element per variant at REFERENCE_SIZE, per build;
+#   results/elementwise_<type>.png            median ns/element per variant at REFERENCE_SIZE, per build (AoS);
 #                                             black ticks = time the flop count predicts from the reference
-#   results/elementwise_size_sweep_<type>.png  median ns/element vs array length (vec build)
+#   results/elementwise_layout_<type>.png      AoS (ComplexDouble[]) vs SoA (ComplexDWSpan), vec build
+#   results/elementwise_size_sweep_<type>.png  median ns/element vs array length (vec build, AoS + SoA reference)
 #   results/elementwise_cost_vs_accuracy.png   double, vec build: ns/element vs error / (K u^2) from the
 #                                             binned conditioning runs in ../test/res/, if present
 
@@ -22,9 +23,12 @@ paths = sorted(glob.glob('results/elementwise_*.csv'))
 if not paths:
     raise SystemExit('No results/elementwise_*.csv found, run bench_elementwise first')
 df = pd.concat([pd.read_csv(p) for p in paths], ignore_index=True)
+if 'layout' not in df:
+    df['layout'] = 'AoS'  # results from before the SoA variants
 
-stats = (df.groupby(['build', 'type', 'op', 'variant', 'flops', 'divisions', 'n'], sort=False)['ns_per_elem']
+stats = (df.groupby(['build', 'type', 'op', 'layout', 'variant', 'flops', 'divisions', 'n'], sort=False)['ns_per_elem']
            .agg(median='median', min='min').reset_index())
+aos = stats[stats['layout'] == 'AoS']
 builds = [b for b in BUILD_COLORS if b in stats['build'].unique()]
 
 
@@ -60,7 +64,7 @@ def bars(ax, s, op):
 
 
 for T in stats['type'].unique():
-    s = stats[(stats['type'] == T) & (stats['n'] == REFERENCE_SIZE)]
+    s = aos[(aos['type'] == T) & (aos['n'] == REFERENCE_SIZE)]
     fig, axes = plt.subplots(2, 1, figsize=(20, 13), gridspec_kw={'height_ratios': [1, 1.3]})
     for ax, op in zip(axes, OPS):
         bars(ax, s, op)
@@ -72,11 +76,16 @@ for T in stats['type'].unique():
     plt.savefig(f'results/elementwise_{T}.png', dpi=150)
     plt.close(fig)
 
-    s = stats[(stats['type'] == T) & (stats['build'] == builds[0])]
+    s = aos[(aos['type'] == T) & (aos['build'] == builds[0])]
+    soa = stats[(stats['type'] == T) & (stats['build'] == builds[0]) & (stats['layout'] == 'SoA')]
     fig, axes = plt.subplots(1, 2, figsize=(18, 7))
     for ax, op in zip(axes, OPS):
         for variant, sv in s[s['op'] == op].groupby('variant', sort=False):
             ax.plot(sv['n'], sv['median'], 's--' if variant in BASELINES else 'o-', ms=3, lw=1, label=variant)
+        ref_name = s[s['op'] == op]['variant'].iloc[0]
+        sv = soa[(soa['op'] == op) & (soa['variant'] == ref_name)]
+        if len(sv):
+            ax.plot(sv['n'], sv['median'], 'k^-.', ms=4, lw=1.5, label=f'SoA {ref_name}')
         ax.set_xscale('log', base=2)
         ax.set_yscale('log')
         ax.set_xlabel('array length n')
@@ -87,6 +96,39 @@ for T in stats['type'].unique():
     fig.suptitle(f'Element-wise complex {T} vs array length ({builds[0]} build)')
     plt.tight_layout()
     plt.savefig(f'results/elementwise_size_sweep_{T}.png', dpi=150)
+    plt.close(fig)
+
+
+def layout_bars(ax, s, op):
+    """AoS vs SoA median per DW variant, annotated with the SoA speedup."""
+    s = s[(s['op'] == op) & ~s['variant'].isin(BASELINES)]
+    order = s[s['layout'] == 'AoS']['variant'].tolist()
+    x = np.arange(len(order))
+    width = 0.4
+    t = {layout: s[s['layout'] == layout].set_index('variant').loc[order]['median'].values for layout in ('AoS', 'SoA')}
+    ax.bar(x - width / 2, t['AoS'], width, color='steelblue', label='AoS: ComplexDouble[]')
+    rects = ax.bar(x + width / 2, t['SoA'], width, color='seagreen', label='SoA: ComplexDWSpan')
+    for rect, a, b in zip(rects, t['AoS'], t['SoA']):
+        ax.annotate(f'{b:.2f}\nx{a / b:.2f}', (rect.get_x() + rect.get_width() / 2, b), ha='center', va='bottom', fontsize=7)
+    ax.set_xticks(x)
+    ax.set_xticklabels([v.replace('/', '\n') for v in order], fontsize=7)
+    ax.set_ylabel('median ns / element')
+    ax.set_title(f'{op}: SoA time and speedup over AoS')
+    ax.set_ylim(0, 1.25 * max(t['AoS'].max(), t['SoA'].max()))
+    ax.grid(axis='y', alpha=0.3)
+    ax.legend(fontsize=8, loc='upper right', ncol=2)
+
+
+for T in stats['type'].unique():
+    s = stats[(stats['type'] == T) & (stats['build'] == 'vec') & (stats['n'] == REFERENCE_SIZE)]
+    if not (s['layout'] == 'SoA').any():
+        continue
+    fig, axes = plt.subplots(2, 1, figsize=(16, 11))
+    for ax, op in zip(axes, OPS):
+        layout_bars(ax, s, op)
+    fig.suptitle(f'Element-wise complex {T}, n = {REFERENCE_SIZE}, vec build: array of ComplexDouble vs ComplexDWSpan')
+    plt.tight_layout()
+    plt.savefig(f'results/elementwise_layout_{T}.png', dpi=150)
     plt.close(fig)
 
 
@@ -109,7 +151,7 @@ def binned_bounds(op):
 
 bounds = {op: binned_bounds(op) for op in OPS}
 if any(bounds.values()):
-    s = stats[(stats['type'] == 'double') & (stats['build'] == 'vec') & (stats['n'] == REFERENCE_SIZE)]
+    s = aos[(aos['type'] == 'double') & (aos['build'] == 'vec') & (aos['n'] == REFERENCE_SIZE)]
     fig, axes = plt.subplots(1, 2, figsize=(18, 7))
     for ax, op in zip(axes, OPS):
         if not bounds[op]:
@@ -140,5 +182,5 @@ if any(bounds.values()):
 else:
     print('No ../test/res/binned_results_{mul,div}.csv, skipped the cost vs accuracy plot')
 
-print('Wrote ' + ', '.join(f'results/elementwise_{T}.png, results/elementwise_size_sweep_{T}.png'
-                           for T in stats['type'].unique()))
+print('Wrote ' + ', '.join(f'results/elementwise_{T}.png, results/elementwise_layout_{T}.png, '
+                           f'results/elementwise_size_sweep_{T}.png' for T in stats['type'].unique()))
