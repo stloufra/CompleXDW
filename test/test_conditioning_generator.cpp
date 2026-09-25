@@ -16,7 +16,7 @@
 
 #include <mpfr.h>
 
-#include "../ComplexDouble.h"
+#include "../XDW.h"
 #include "src/test_func.h"
 #include "src/binned_ops.h"
 

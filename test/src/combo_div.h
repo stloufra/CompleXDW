@@ -3,9 +3,9 @@
 
 #include <array>
 
-#include "ComplexDouble.h"
+#include "XDW.h"
 
-// All 12 (DivMode, AddMode, NormMode) combinations ComplexDouble::div<Div,Add,Norm> can be instantiated with.
+// All 12 (DivMode, AddMode, NormMode) combinations XDW::div<Div,Add,Norm> can be instantiated with.
 constexpr int N_DIV_COMBOS = 12;
 constexpr const char* DIV_COMBO_NAMES[N_DIV_COMBOS] = {
     "Div2/Madd/Normalized", "Div2/Madd/Unnormalized",
@@ -16,11 +16,11 @@ constexpr const char* DIV_COMBO_NAMES[N_DIV_COMBOS] = {
     "Div3/Sloppy/Normalized", "Div3/Sloppy/Unnormalized",
 };
 
-inline std::array<ComplexDouble<double>, N_DIV_COMBOS>
-div_all_combos(const ComplexDouble<double>& a, const ComplexDouble<double>& b)
+inline std::array<XDW<double>, N_DIV_COMBOS>
+div_all_combos(const XDW<double>& a, const XDW<double>& b)
 {
     using namespace XDW_ARTH;
-    using C = ComplexDouble<double>;
+    using C = XDW<double>;
     return {
         C::div<DivMode::Div2, AddMode::Madd, NormMode::Normalized>(a, b),
         C::div<DivMode::Div2, AddMode::Madd, NormMode::Unnormalized>(a, b),

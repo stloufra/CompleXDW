@@ -6,7 +6,7 @@
 #include <limits>
 #include <random>
 
-#include "ComplexDouble.h"
+#include "XDW.h"
 
 // Normalized double-word value with a random ~2p-bit significand, random sign and exponent in
 // [-20, 20]: small enough that no operand or intermediate of a mul/div is subnormal, even for float.
@@ -26,12 +26,12 @@ void random_dw(std::mt19937_64& rng, T* hi, T* lo)
 }
 
 template <std::floating_point T>
-ComplexDouble<T> random_dw_complex(std::mt19937_64& rng)
+XDW<T> random_dw_complex(std::mt19937_64& rng)
 {
     T rh, rl, ih, il;
     random_dw(rng, &rh, &rl);
     random_dw(rng, &ih, &il);
-    return ComplexDouble<T>(rh, rl, ih, il);
+    return XDW<T>(rh, rl, ih, il);
 }
 
 #endif  //RANDOM_DW_H

@@ -9,7 +9,7 @@
 #include <fstream>
 #include <omp.h>
 
-#include "../ComplexDouble.h"
+#include "../XDW.h"
 #include "../test/src/test_func.h"
 
 constexpr int MEASUREMENTS = 100;
@@ -31,13 +31,13 @@ void save_results(std::array<double, MEASUREMENTS>& times_acc_norm,
 }
 
 template<size_t N, size_t ITER>
-double measure_time_norm_acc(ComplexDouble<double>* __restrict__ a, 
-                              ComplexDouble<double>* __restrict__ b,
-                              ComplexDouble<double>* __restrict__ c) {
+double measure_time_norm_acc(XDW<double>* __restrict__ a, 
+                              XDW<double>* __restrict__ b,
+                              XDW<double>* __restrict__ c) {
     auto start = std::chrono::high_resolution_clock::now();
     for (size_t r = 0; r < ITER; ++r) {
         for (size_t i = 0; i < N; ++i) {
-            c[i] = ComplexDouble<double>::mul<AddMode::Madd, NormMode::Normalized>(a[i], b[i]);
+            c[i] = XDW<double>::mul<AddMode::Madd, NormMode::Normalized>(a[i], b[i]);
         }
     }
     auto end = std::chrono::high_resolution_clock::now();
@@ -47,13 +47,13 @@ double measure_time_norm_acc(ComplexDouble<double>* __restrict__ a,
 }
 
 template<size_t N, size_t ITER>
-double measure_time_un_acc(ComplexDouble<double>* __restrict__ a, 
-                           ComplexDouble<double>* __restrict__ b,
-                           ComplexDouble<double>* __restrict__ c) {
+double measure_time_un_acc(XDW<double>* __restrict__ a, 
+                           XDW<double>* __restrict__ b,
+                           XDW<double>* __restrict__ c) {
     auto start = std::chrono::high_resolution_clock::now();
     for (size_t r = 0; r < ITER; ++r) {
         for (size_t i = 0; i < N; ++i) {
-            c[i] = ComplexDouble<double>::mul<AddMode::Madd, NormMode::Unnormalized>(a[i], b[i]);
+            c[i] = XDW<double>::mul<AddMode::Madd, NormMode::Unnormalized>(a[i], b[i]);
         }
     }
     auto end = std::chrono::high_resolution_clock::now();
@@ -63,13 +63,13 @@ double measure_time_un_acc(ComplexDouble<double>* __restrict__ a,
 }
 
 template<size_t N, size_t ITER>
-double measure_time_un_sloppy(ComplexDouble<double>* __restrict__ a, 
-                              ComplexDouble<double>* __restrict__ b,
-                              ComplexDouble<double>* __restrict__ c) {
+double measure_time_un_sloppy(XDW<double>* __restrict__ a, 
+                              XDW<double>* __restrict__ b,
+                              XDW<double>* __restrict__ c) {
     auto start = std::chrono::high_resolution_clock::now();
     for (size_t r = 0; r < ITER; ++r) {
         for (size_t i = 0; i < N; ++i) {
-            c[i] = ComplexDouble<double>::mul<AddMode::Sloppy, NormMode::Unnormalized>(a[i], b[i]);
+            c[i] = XDW<double>::mul<AddMode::Sloppy, NormMode::Unnormalized>(a[i], b[i]);
         }
     }
     auto end = std::chrono::high_resolution_clock::now();
@@ -82,9 +82,9 @@ template<size_t N>
 void run_benchmark() {
     std::mt19937_64 rng(std::chrono::high_resolution_clock::now().time_since_epoch().count());
     
-    auto a = std::make_unique<std::array<ComplexDouble<double>, N>>();
-    auto b = std::make_unique<std::array<ComplexDouble<double>, N>>();
-    auto c = std::make_unique<std::array<ComplexDouble<double>, N>>();
+    auto a = std::make_unique<std::array<XDW<double>, N>>();
+    auto b = std::make_unique<std::array<XDW<double>, N>>();
+    auto c = std::make_unique<std::array<XDW<double>, N>>();
     
     generate_random_dw_complex<N>(*a, *b, rng);
     

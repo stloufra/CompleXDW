@@ -7,8 +7,8 @@
 
 #include <mpfr.h>
 
-#include "../ComplexDouble.h"
-#include "../ComplexDWSpan.h"
+#include "../XDW.h"
+#include "../XDWSpan.h"
 #include "src/test_func.h"
 
 using namespace XDW_ARTH;
@@ -34,7 +34,7 @@ static void check( bool condition, const char* what )
     ++failures;
 }
 
-static bool has_parts( const ComplexDouble< double >& z, double reh, double rel, double imh, double iml )
+static bool has_parts( const XDW< double >& z, double reh, double rel, double imh, double iml )
 {
     return z.re_h() == reh && z.re_l() == rel && z.im_h() == imh && z.im_l() == iml;
 }
@@ -53,11 +53,10 @@ static void test_conj_real_imag_norm( std::mt19937_64& rng )
         const auto z = generate_random_dw_single( rng );
 
         check( has_parts( conj( z ), z.re_h(), z.re_l(), -z.im_h(), -z.im_l() ), "conj" );
-        check( has_parts( real( z ), z.re_h(), z.re_l(), 0.0, 0.0 ), "real" );
-        check( has_parts( imag( z ), z.im_h(), z.im_l(), 0.0, 0.0 ), "imag" );
+        check( real( z ) == DW< double >( z.re_h(), z.re_l() ), "real" );
+        check( imag( z ) == DW< double >( z.im_h(), z.im_l() ), "imag" );
 
-        const auto n = norm( z );
-        check( n.im_h() == 0.0 && n.im_l() == 0.0, "norm has zero imaginary part" );
+        const DW< double > n = norm( z );
 
         mpfr_t re, im, reference, term;
         mpfr_inits2( MPFR_PREC, re, im, reference, term, (mpfr_ptr) nullptr );
@@ -67,7 +66,7 @@ static void test_conj_real_imag_norm( std::mt19937_64& rng )
         mpfr_mul( term, im, im, MPFR_RNDN );
         mpfr_add( reference, reference, term, MPFR_RNDN );
 
-        worst_norm_error = std::max( worst_norm_error, relative_error( reference, n.re_h(), n.re_l(), reference, MPFR_RNDN ) );
+        worst_norm_error = std::max( worst_norm_error, relative_error( reference, n.hi(), n.lo(), reference, MPFR_RNDN ) );
         mpfr_clears( re, im, reference, term, (mpfr_ptr) nullptr );
     }
 
@@ -78,20 +77,20 @@ static void test_conj_real_imag_norm( std::mt19937_64& rng )
 static void test_div_exact()
 {
     // (3+4i)/(1+2i) = 2.2 - 0.4i, exact in double, across a representative set of (Div,Add,Norm).
-    const ComplexDouble< double > a( 3.0, 4.0 ), b( 1.0, 2.0 );
+    const XDW< double > a( 3.0, 4.0 ), b( 1.0, 2.0 );
 
-    auto check_exact = [&]( const ComplexDouble< double >& q, const char* what ) {
+    auto check_exact = [&]( const XDW< double >& q, const char* what ) {
         check( q.re_h() == 2.2 && q.im_h() == -0.4, what );
     };
 
     check_exact( a / b, "operator/ default" );
-    check_exact( ComplexDouble< double >::div( a, b ), "div<> default" );
-    check_exact( ( ComplexDouble< double >::div< DivMode::Div2, AddMode::Madd, NormMode::Normalized >( a, b ) ), "div<Div2,Madd,Normalized>" );
-    check_exact( ( ComplexDouble< double >::div< DivMode::Div2, AddMode::Accurate, NormMode::Unnormalized >( a, b ) ), "div<Div2,Accurate,Unnormalized>" );
-    check_exact( ( ComplexDouble< double >::div< DivMode::Div2, AddMode::Sloppy, NormMode::Unnormalized >( a, b ) ), "div<Div2,Sloppy,Unnormalized>" );
-    check_exact( ( ComplexDouble< double >::div< DivMode::Div3, AddMode::Madd, NormMode::Normalized >( a, b ) ), "div<Div3,Madd,Normalized>" );
-    check_exact( ( ComplexDouble< double >::div< DivMode::Div3, AddMode::Accurate, NormMode::Normalized >( a, b ) ), "div<Div3,Accurate,Normalized>" );
-    check_exact( ( ComplexDouble< double >::div< DivMode::Div3, AddMode::Sloppy, NormMode::Unnormalized >( a, b ) ), "div<Div3,Sloppy,Unnormalized>" );
+    check_exact( XDW< double >::div( a, b ), "div<> default" );
+    check_exact( ( XDW< double >::div< DivMode::Div2, AddMode::Madd, NormMode::Normalized >( a, b ) ), "div<Div2,Madd,Normalized>" );
+    check_exact( ( XDW< double >::div< DivMode::Div2, AddMode::Accurate, NormMode::Unnormalized >( a, b ) ), "div<Div2,Accurate,Unnormalized>" );
+    check_exact( ( XDW< double >::div< DivMode::Div2, AddMode::Sloppy, NormMode::Unnormalized >( a, b ) ), "div<Div2,Sloppy,Unnormalized>" );
+    check_exact( ( XDW< double >::div< DivMode::Div3, AddMode::Madd, NormMode::Normalized >( a, b ) ), "div<Div3,Madd,Normalized>" );
+    check_exact( ( XDW< double >::div< DivMode::Div3, AddMode::Accurate, NormMode::Normalized >( a, b ) ), "div<Div3,Accurate,Normalized>" );
+    check_exact( ( XDW< double >::div< DivMode::Div3, AddMode::Sloppy, NormMode::Unnormalized >( a, b ) ), "div<Div3,Sloppy,Unnormalized>" );
 
     auto c = a; c /= b;
     check( c.re_h() == 2.2 && c.im_h() == -0.4, "operator/=" );
@@ -159,16 +158,16 @@ static void test_div( std::mt19937_64& rng )
         mpfr_div( ref_re, num_re, denom, MPFR_RNDN );
         mpfr_div( ref_im, num_im, denom, MPFR_RNDN );
 
-        auto measure = [&]( const ComplexDouble< double >& q ) {
+        auto measure = [&]( const XDW< double >& q ) {
             double err_re = relative_error( ref_re, q.re_h(), q.re_l(), ref_re, MPFR_RNDN );
             double err_im = relative_error( ref_im, q.im_h(), q.im_l(), ref_im, MPFR_RNDN );
             worst_error = std::max( { worst_error, err_re, err_im } );
         };
 
         measure( z1 / z2 );
-        measure( ( ComplexDouble< double >::div< DivMode::Div2, AddMode::Madd, NormMode::Unnormalized >( z1, z2 ) ) );
-        measure( ( ComplexDouble< double >::div< DivMode::Div3, AddMode::Accurate, NormMode::Normalized >( z1, z2 ) ) );
-        measure( ( ComplexDouble< double >::div< DivMode::Div3, AddMode::Sloppy, NormMode::Unnormalized >( z1, z2 ) ) );
+        measure( ( XDW< double >::div< DivMode::Div2, AddMode::Madd, NormMode::Unnormalized >( z1, z2 ) ) );
+        measure( ( XDW< double >::div< DivMode::Div3, AddMode::Accurate, NormMode::Normalized >( z1, z2 ) ) );
+        measure( ( XDW< double >::div< DivMode::Div3, AddMode::Sloppy, NormMode::Unnormalized >( z1, z2 ) ) );
 
         mpfr_clears( A, B, C, D, num_re, num_im, denom, ref_re, ref_im, t1, t2, (mpfr_ptr) nullptr );
     }
@@ -183,15 +182,15 @@ struct SoA
 
     explicit SoA( std::size_t n ) : re_h( n ), re_l( n ), im_h( n ), im_l( n ) {}
 
-    ComplexDWSpan< double > span() { return { re_h.data(), re_l.data(), im_h.data(), im_l.data(), re_h.size() }; }
+    XDWSpan< double > span() { return { re_h.data(), re_l.data(), im_h.data(), im_l.data(), re_h.size() }; }
 };
 
-static bool identical( const ComplexDouble< double >& x, const ComplexDouble< double >& y )
+static bool identical( const XDW< double >& x, const XDW< double >& y )
 {
     return has_parts( x, y.re_h(), y.re_l(), y.im_h(), y.im_l() );
 }
 
-// Span mul/div must match the per-element ComplexDouble ops bit for bit.
+// Span mul/div must match the per-element XDW ops bit for bit.
 template< AddMode Add, NormMode Norm >
 static void check_span_mul( SoA& a, SoA& b )
 {
@@ -199,7 +198,7 @@ static void check_span_mul( SoA& a, SoA& b )
     mul< Add, Norm >( out.span(), a.span(), b.span() );
     bool same = true;
     for( std::size_t i = 0; i < out.re_h.size(); ++i )
-        same &= identical( out.span().load( i ), ComplexDouble< double >::mul< Add, Norm >( a.span().load( i ), b.span().load( i ) ) );
+        same &= identical( out.span().load( i ), XDW< double >::mul< Add, Norm >( a.span().load( i ), b.span().load( i ) ) );
     check( same, std::source_location::current().function_name() );
 }
 
@@ -210,7 +209,7 @@ static void check_span_div( SoA& a, SoA& b )
     div< Div, Add, Norm >( out.span(), a.span(), b.span() );
     bool same = true;
     for( std::size_t i = 0; i < out.re_h.size(); ++i )
-        same &= identical( out.span().load( i ), ComplexDouble< double >::div< Div, Add, Norm >( a.span().load( i ), b.span().load( i ) ) );
+        same &= identical( out.span().load( i ), XDW< double >::div< Div, Add, Norm >( a.span().load( i ), b.span().load( i ) ) );
     check( same, std::source_location::current().function_name() );
 }
 

@@ -1,7 +1,7 @@
 # Plots results/elementwise_<build>.csv written by bench_elementwise:
 #   results/elementwise_<type>.png            median ns/element per variant at REFERENCE_SIZE, per build (AoS);
 #                                             black ticks = time the flop count predicts from the reference
-#   results/elementwise_layout_<type>.png      AoS (ComplexDouble[]) vs SoA (ComplexDWSpan), vec build
+#   results/elementwise_layout_<type>.png      AoS (XDW[]) vs SoA (XDWSpan), vec build
 #   results/elementwise_size_sweep_<type>.png  median ns/element vs array length (vec build, AoS + SoA reference)
 #   results/elementwise_cost_vs_accuracy.png   double, vec build: ns/element vs error / (K u^2) from the
 #                                             binned conditioning runs in ../test/res/, if present
@@ -106,8 +106,8 @@ def layout_bars(ax, s, op):
     x = np.arange(len(order))
     width = 0.4
     t = {layout: s[s['layout'] == layout].set_index('variant').loc[order]['median'].values for layout in ('AoS', 'SoA')}
-    ax.bar(x - width / 2, t['AoS'], width, color='steelblue', label='AoS: ComplexDouble[]')
-    rects = ax.bar(x + width / 2, t['SoA'], width, color='seagreen', label='SoA: ComplexDWSpan')
+    ax.bar(x - width / 2, t['AoS'], width, color='steelblue', label='AoS: XDW[]')
+    rects = ax.bar(x + width / 2, t['SoA'], width, color='seagreen', label='SoA: XDWSpan')
     for rect, a, b in zip(rects, t['AoS'], t['SoA']):
         ax.annotate(f'{b:.2f}\nx{a / b:.2f}', (rect.get_x() + rect.get_width() / 2, b), ha='center', va='bottom', fontsize=7)
     ax.set_xticks(x)
@@ -126,7 +126,7 @@ for T in stats['type'].unique():
     fig, axes = plt.subplots(2, 1, figsize=(16, 11))
     for ax, op in zip(axes, OPS):
         layout_bars(ax, s, op)
-    fig.suptitle(f'Element-wise complex {T}, n = {REFERENCE_SIZE}, vec build: array of ComplexDouble vs ComplexDWSpan')
+    fig.suptitle(f'Element-wise complex {T}, n = {REFERENCE_SIZE}, vec build: array of XDW vs XDWSpan')
     plt.tight_layout()
     plt.savefig(f'results/elementwise_layout_{T}.png', dpi=150)
     plt.close(fig)

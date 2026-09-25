@@ -9,7 +9,7 @@
 
 #include <mpfr.h>
 
-#include "../ComplexDouble.h"
+#include "../XDW.h"
 #include "src/test_func.h"
 
 using namespace XDW_ARTH;
@@ -73,11 +73,11 @@ int main() {
         mpfr_to_dw(br, MPFR_RNDN, &br_h, &br_l);
         mpfr_to_dw(bi, MPFR_RNDN, &bi_h, &bi_l);
 
-        ComplexDouble<double> a(ar_h, ar_l, ai_h, ai_l);
-        ComplexDouble<double> b(br_h, br_l, bi_h, bi_l);
+        XDW<double> a(ar_h, ar_l, ai_h, ai_l);
+        XDW<double> b(br_h, br_l, bi_h, bi_l);
 
-        ComplexDouble<double> c_norm = a * b;
-        ComplexDouble<double> c_fast = mul_fast(a, b);
+        XDW<double> c_norm = a * b;
+        XDW<double> c_fast = mul_fast(a, b);
 
         mpfr_complex_mul(ar, ai, br, bi, cr, ci, MPFR_RNDN);
 

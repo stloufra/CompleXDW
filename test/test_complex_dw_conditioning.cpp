@@ -10,7 +10,7 @@
 
 #include <mpfr.h>
 
-#include "../ComplexDouble.h"
+#include "../XDW.h"
 #include "src/test_func.h"
 #include "src/combo_mul.h"
 
@@ -22,7 +22,7 @@ struct ConditioningResult {
     double br_h, br_l, bi_h, bi_l;
     double ref_re_h, ref_re_l, ref_im_h, ref_im_l;
     std::array<double, N_COMBOS> rel_err;
-    std::array<ComplexDouble<double>, N_COMBOS> result;
+    std::array<XDW<double>, N_COMBOS> result;
 };
 
 static void print_statistics_6(const std::vector<ConditioningResult>& results)
@@ -143,10 +143,10 @@ int main() {
         mpfr_to_dw(br, MPFR_RNDN, &br_h, &br_l);
         mpfr_to_dw(bi, MPFR_RNDN, &bi_h, &bi_l);
 
-        ComplexDouble<double> a(ar_h, ar_l, ai_h, ai_l);
-        ComplexDouble<double> b(br_h, br_l, bi_h, bi_l);
+        XDW<double> a(ar_h, ar_l, ai_h, ai_l);
+        XDW<double> b(br_h, br_l, bi_h, bi_l);
 
-        std::array<ComplexDouble<double>, N_COMBOS> c = mul_all_combos(a, b);
+        std::array<XDW<double>, N_COMBOS> c = mul_all_combos(a, b);
 
         mpfr_complex_mul(ar, ai, br, bi, cr, ci, MPFR_RNDN);
 

@@ -6,7 +6,7 @@
 
 using namespace XDW_ARTH;
 
-ComplexDouble<double> generate_random_dw_single(std::mt19937_64& rng) {
+XDW<double> generate_random_dw_single(std::mt19937_64& rng) {
     static gmp_randstate_t state;
     static bool initialized = false;
     
@@ -41,7 +41,7 @@ ComplexDouble<double> generate_random_dw_single(std::mt19937_64& rng) {
     mpfr_clear(ar);
     mpfr_clear(ai);
     
-    return ComplexDouble<double>(ar_h, ar_l, ai_h, ai_l);
+    return XDW<double>(ar_h, ar_l, ai_h, ai_l);
 }
 
 void mpfr_to_dw(mpfr_t x, mpfr_rnd_t rnd, double* high, double* low) {

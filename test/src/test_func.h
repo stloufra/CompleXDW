@@ -12,7 +12,7 @@
 
 #include <mpfr.h>
 
-#include "ComplexDouble.h"
+#include "XDW.h"
 
 constexpr int MPFR_PREC = 1024;
 constexpr int N_ITERATIONS = 10000000;
@@ -54,11 +54,11 @@ void mpfr_to_dw(mpfr_t x, mpfr_rnd_t rnd, double* high, double* low);
 void mpfr_complex_mul(mpfr_t ar, mpfr_t ai, mpfr_t br, mpfr_t bi, 
                       mpfr_t cr, mpfr_t ci, mpfr_rnd_t rnd);
 
-ComplexDouble<double> generate_random_dw_single(std::mt19937_64& rng);
+XDW<double> generate_random_dw_single(std::mt19937_64& rng);
 
 template<size_t N>
-void generate_random_dw_complex(std::array<ComplexDouble<double>, N>& a,
-                                 std::array<ComplexDouble<double>, N>& b,
+void generate_random_dw_complex(std::array<XDW<double>, N>& a,
+                                 std::array<XDW<double>, N>& b,
                                  std::mt19937_64& rng) {
     for (size_t i = 0; i < N; ++i) {
         a[i] = generate_random_dw_single(rng);

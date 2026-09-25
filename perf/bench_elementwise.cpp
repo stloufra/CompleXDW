@@ -1,6 +1,6 @@
 // Throughput of element-wise c[i] = a[i] * b[i] and c[i] = a[i] / b[i] for every mul<Add,Norm> and
 // div<Div,Add,Norm> variant, against plain std::complex and naive (no inf/nan check) baselines, for double and float.
-// Each DW variant runs on both layouts: AoS = array of ComplexDouble, SoA = ComplexDWSpan over four arrays.
+// Each DW variant runs on both layouts: AoS = array of XDW, SoA = XDWSpan over four arrays.
 //
 // Each (variant, length) is timed SAMPLES times; a sample repeats the kernel for at least
 // MIN_SAMPLE_TIME so the clock resolution doesn't affect it and the variant order rotates between
@@ -22,8 +22,8 @@
 #include <pthread/qos.h>
 #endif
 
-#include "ComplexDouble.h"
-#include "ComplexDWSpan.h"
+#include "XDW.h"
+#include "XDWSpan.h"
 #include "random_dw.h"
 
 #ifndef BENCH_BUILD
@@ -46,12 +46,12 @@ struct SoA {
 
     explicit SoA(std::size_t n) : re_h(n), re_l(n), im_h(n), im_l(n) {}
 
-    ComplexDWSpan<T> span() { return {re_h.data(), re_l.data(), im_h.data(), im_l.data(), re_h.size()}; }
+    XDWSpan<T> span() { return {re_h.data(), re_l.data(), im_h.data(), im_l.data(), re_h.size()}; }
 };
 
 template <std::floating_point T>
 struct Buffers {
-    std::vector<ComplexDouble<T>> a, b, c;
+    std::vector<XDW<T>> a, b, c;
     SoA<T> soa_a, soa_b, soa_c;               // same values as a, b
     std::vector<std::complex<T>> sa, sb, sc;  // high words of a, b for the baselines
 
@@ -75,19 +75,19 @@ using Kernel = void (*)(Buffers<T>&, std::size_t);
 template <std::floating_point T, AddMode Add, NormMode Norm>
 [[gnu::noinline]] void dw_mul(Buffers<T>& buf, std::size_t n)
 {
-    const ComplexDouble<T>* __restrict__ a = buf.a.data();
-    const ComplexDouble<T>* __restrict__ b = buf.b.data();
-    ComplexDouble<T>* __restrict__ c = buf.c.data();
-    for (std::size_t i = 0; i < n; ++i) c[i] = ComplexDouble<T>::template mul<Add, Norm>(a[i], b[i]);
+    const XDW<T>* __restrict__ a = buf.a.data();
+    const XDW<T>* __restrict__ b = buf.b.data();
+    XDW<T>* __restrict__ c = buf.c.data();
+    for (std::size_t i = 0; i < n; ++i) c[i] = XDW<T>::template mul<Add, Norm>(a[i], b[i]);
 }
 
 template <std::floating_point T, DivMode Div, AddMode Add, NormMode Norm>
 [[gnu::noinline]] void dw_div(Buffers<T>& buf, std::size_t n)
 {
-    const ComplexDouble<T>* __restrict__ a = buf.a.data();
-    const ComplexDouble<T>* __restrict__ b = buf.b.data();
-    ComplexDouble<T>* __restrict__ c = buf.c.data();
-    for (std::size_t i = 0; i < n; ++i) c[i] = ComplexDouble<T>::template div<Div, Add, Norm>(a[i], b[i]);
+    const XDW<T>* __restrict__ a = buf.a.data();
+    const XDW<T>* __restrict__ b = buf.b.data();
+    XDW<T>* __restrict__ c = buf.c.data();
+    for (std::size_t i = 0; i < n; ++i) c[i] = XDW<T>::template div<Div, Add, Norm>(a[i], b[i]);
 }
 
 // Buffers are allocated per length, so the spans already have size n.

@@ -24,7 +24,7 @@ inline Args dw_args(mpfr_ptr ar, mpfr_ptr ai, mpfr_ptr br, mpfr_ptr bi)
 }
 
 template <std::size_t N>
-std::array<double, N> max_component_errors(const std::array<ComplexDouble<double>, N>& c, mpfr_t re, mpfr_t im)
+std::array<double, N> max_component_errors(const std::array<XDW<double>, N>& c, mpfr_t re, mpfr_t im)
 {
     std::array<double, N> err;
     for (std::size_t k = 0; k < N; ++k) {
@@ -65,8 +65,8 @@ struct MulOp {
         mpfr_inits2(MPFR_PREC, ar, ai, br, bi, cr, ci, (mpfr_ptr) nullptr);
         args_to_mpfr(x, ar, ai, br, bi);
         mpfr_complex_mul(ar, ai, br, bi, cr, ci, MPFR_RNDN);
-        auto err = max_component_errors(mul_all_combos(ComplexDouble<double>(x.ar_h, x.ar_l, x.ai_h, x.ai_l),
-                                                       ComplexDouble<double>(x.br_h, x.br_l, x.bi_h, x.bi_l)),
+        auto err = max_component_errors(mul_all_combos(XDW<double>(x.ar_h, x.ar_l, x.ai_h, x.ai_l),
+                                                       XDW<double>(x.br_h, x.br_l, x.bi_h, x.bi_l)),
                                         cr, ci);
         mpfr_clears(ar, ai, br, bi, cr, ci, (mpfr_ptr) nullptr);
         return err;
@@ -127,8 +127,8 @@ struct DivOp {
         mpfr_mul(t, ar, bi, MPFR_RNDN);
         mpfr_sub(qi, qi, t, MPFR_RNDN);
         mpfr_div(qi, qi, denom, MPFR_RNDN);
-        auto err = max_component_errors(div_all_combos(ComplexDouble<double>(x.ar_h, x.ar_l, x.ai_h, x.ai_l),
-                                                       ComplexDouble<double>(x.br_h, x.br_l, x.bi_h, x.bi_l)),
+        auto err = max_component_errors(div_all_combos(XDW<double>(x.ar_h, x.ar_l, x.ai_h, x.ai_l),
+                                                       XDW<double>(x.br_h, x.br_l, x.bi_h, x.bi_l)),
                                         qr, qi);
         mpfr_clears(ar, ai, br, bi, t, denom, qr, qi, (mpfr_ptr) nullptr);
         return err;
