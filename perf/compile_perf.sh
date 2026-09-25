@@ -7,7 +7,7 @@ echo "Using compiler: $CXX"
 OMP_INCLUDE="/opt/homebrew/Cellar/libomp/22.1.1/include"
 OMP_LIB="/opt/homebrew/Cellar/libomp/22.1.1/lib"
 
-#$CXX -std=c++20 -O3 -march=native -mcpu=apple-m4 -Rpass=loop-vectorize -Rpass-missed=loop-vectorize -I.. -I../test/src \
+#$CXX -std=c++20 -O2 -ffp-contract=off -march=native -mcpu=apple-m4 -Rpass=loop-vectorize -Rpass-missed=loop-vectorize -I.. -I../test/src \
 #    perf_test.cpp \
 #    ../test/src/test_func.cpp \
 #    -DXDW_FAST_FMA \
@@ -17,7 +17,7 @@ OMP_LIB="/opt/homebrew/Cellar/libomp/22.1.1/lib"
 #    -o perf_test
 
 #assembly generation 
-$CXX -std=c++20 -O3 -march=native -mcpu=apple-m4 -Rpass=loop-vectorize -Rpass-missed=loop-vectorize -I.. -I../test/src \
+$CXX -std=c++20 -O2 -ffp-contract=off -march=native -mcpu=apple-m4 -Rpass=loop-vectorize -Rpass-missed=loop-vectorize -I.. -I../test/src \
     perf_test.cpp \
     ../test/src/test_func.cpp \
     -DXDW_FAST_FMA \
@@ -27,7 +27,7 @@ $CXX -std=c++20 -O3 -march=native -mcpu=apple-m4 -Rpass=loop-vectorize -Rpass-mi
     -S -fverbose-asm perf_test.cpp
 
 ##no vectorize
-#$CXX -std=c++20 -O3 -fno-vectorize -fno-slp-vectorize -I.. -I../test/src \
+#$CXX -std=c++20 -O2 -ffp-contract=off -fno-vectorize -fno-slp-vectorize -I.. -I../test/src \
 #    perf_test.cpp \
 #    ../test/src/test_func.cpp \
 #    -DXDW_FAST_FMA \
