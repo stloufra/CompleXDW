@@ -20,6 +20,14 @@ $CXX -std=c++20 -O2 -ffp-contract=off -march=native -I.. \
     -L/opt/homebrew/lib -lmpfr -lgmp -lm \
     -o exec/test_complex_dw_conditioning
 
+# Compile DW tests
+$CXX -std=c++20 -O2 -ffp-contract=off -march=native -I.. \
+    test_dw.cpp \
+    src/test_func.cpp \
+    -I/opt/homebrew/include \
+    -L/opt/homebrew/lib -lmpfr -lgmp -lm \
+    -o exec/test_dw
+
 # Compile function tests
 $CXX -std=c++20 -O2 -ffp-contract=off -march=native -I.. \
     test_complex_dw_functions.cpp \
