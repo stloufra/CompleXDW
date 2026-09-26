@@ -209,6 +209,7 @@ static void run( const char* type, unsigned long seed )
 int main()
 {
    mpfr_set_default_prec( MPFR_BITS );
+   describe_inputs();
    run< double >( "double", 42 );
    run< float >( "float", 43 );
    Source src( 44 );

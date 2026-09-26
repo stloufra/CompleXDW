@@ -202,7 +202,7 @@ static void test_mul_add( Source& src, const char* name, double bound, F f )
          set( b, y );
          set( c, z );
          mpfr_mul( ab, a, b, MPFR_RNDN );
-         src.near_negation( cd, ab );
+         src.near_negation< T >( cd, ab );
          mpfr_div( d, cd, c, MPFR_RNDN );
          w = to_dw< T >( d );
       }
@@ -257,6 +257,7 @@ static void run( const char* type, unsigned long seed )
 int main()
 {
    mpfr_set_default_prec( MPFR_BITS );
+   describe_inputs();
    run< double >( "double", 101 );
    run< float >( "float", 102 );
    mpfr_free_cache();

@@ -88,33 +88,67 @@ struct Trial
    }
 };
 
+// Counts compared lane results and those that differ.
+struct Tally
+{
+   long bad = 0, total = 0;
+
+   void operator()( bool same )
+   {
+      ++total;
+      bad += !same;
+   }
+};
+
+// Lane i of a vector result equals the scalar result.
+template< typename Vector, typename Scalar >
+static bool same( const Vector& vector_result, int i, const Scalar& scalar_result )
+{
+   return vector_result.lane( i ) == scalar_result;
+}
+
+// Lane i of a comparison mask agrees with the scalar comparison.
+template< typename Mask >
+static bool agrees( const Mask& mask, int i, bool scalar_result )
+{
+   return ( mask[ i ] != 0 ) == scalar_result;
+}
+
 // Runs `check` on TRIALS fresh trials (same seed for every group) and reports the differing lanes.
 template< typename V, typename Check >
 static void group( const std::string& name, const std::string& note, Check check )
 {
    unit::announce( name, note );
    std::mt19937_64 rng( 7 );
-   long bad = 0, total = 0;
+   Tally tally;
    for( int t = 0; t < TRIALS; ++t ) {
       const Trial< V > trial( rng, t );
-      check( trial, t, bad, total );
+      check( trial, t, tally );
    }
-   unit::verdict( bad == 0, std::to_string( bad ) + " / " + std::to_string( total ) + " lanes differ" );
+   unit::verdict( tally.bad == 0, std::to_string( tally.bad ) + " / " + std::to_string( tally.total ) + " lanes differ" );
 }
 
+// mul, div (Div2, Div3) and norm in one (Add, Norm) mode.
 template< typename V, AddMode A, NormMode Nm >
-static void check_modes( const Trial< V >& c, long& bad )
+static void check_modes( const Trial< V >& c, Tally& tally )
 {
-   const XDW< V > m = XDW< V >::template mul< A, Nm >( c.z, c.w );
-   const XDW< V > d2 = XDW< V >::template div< DivMode::Div2, A, Nm >( c.z, c.w );
-   const XDW< V > d3 = XDW< V >::template div< DivMode::Div3, A, Nm >( c.z, c.w );
-   const DW< V > n = norm< V, A, Nm >( c.z );
    using S = lane_t< V >;
-   for( int i = 0; i < Trial< V >::N; ++i ) {
-      bad += !( m.lane( i ) == XDW< S >::template mul< A, Nm >( c.zs[ i ], c.ws[ i ] ) );
-      bad += !( d2.lane( i ) == XDW< S >::template div< DivMode::Div2, A, Nm >( c.zs[ i ], c.ws[ i ] ) );
-      bad += !( d3.lane( i ) == XDW< S >::template div< DivMode::Div3, A, Nm >( c.zs[ i ], c.ws[ i ] ) );
-      bad += !( n.lane( i ) == norm< S, A, Nm >( c.zs[ i ] ) );
+   using CV = XDW< V >;
+   using CS = XDW< S >;
+
+   // Vector results.
+   const CV m = CV::template mul< A, Nm >( c.z, c.w );
+   const CV d2 = CV::template div< DivMode::Div2, A, Nm >( c.z, c.w );
+   const CV d3 = CV::template div< DivMode::Div3, A, Nm >( c.z, c.w );
+   const DW< V > n = norm< V, A, Nm >( c.z );
+
+   // Each lane against the scalar XDW.
+   for( int i = 0; i < lanes< V >; ++i ) {
+      const CS a = c.zs[ i ], b = c.ws[ i ];
+      tally( same( m, i, CS::template mul< A, Nm >( a, b ) ) );
+      tally( same( d2, i, CS::template div< DivMode::Div2, A, Nm >( a, b ) ) );
+      tally( same( d3, i, CS::template div< DivMode::Div3, A, Nm >( a, b ) ) );
+      tally( same( n, i, norm< S, A, Nm >( a ) ) );
    }
 }
 
@@ -124,101 +158,153 @@ static void run( const char* name )
    using S = lane_t< V >;
    unit::section( name, std::to_string( TRIALS ) + " trials per check, every lane vs scalar DW/XDW" );
 
-   group< V >( "DW arithmetic, comparisons", "+ - * /, -x, numbers, masks",
-               []( const Trial< V >& c, int, long& bad, long& total ) {
-                  const DW< V > add = c.x + c.y, sub = c.x - c.y, mul = c.x * c.y, div = c.x / c.y, neg = -c.x;
-                  const DW< V > mixed = ( c.x + 0.5 ) * 2 - 1.0 / c.y;
-                  const auto lt = c.x < c.y, le = c.x <= c.y, gt = c.x > c.y, ge = c.x >= c.y, eq = c.x == c.y, ne = c.x != c.y;
-                  for( int i = 0; i < lanes< V >; ++i ) {
-                     const DW< S > a = c.xs[ i ], b = c.ys[ i ];
-                     bad += !( add.lane( i ) == a + b ) + !( sub.lane( i ) == a - b ) + !( mul.lane( i ) == a * b )
-                          + !( div.lane( i ) == a / b ) + !( neg.lane( i ) == -a ) + !( mixed.lane( i ) == ( a + 0.5 ) * 2 - 1.0 / b );
-                     bad += ( ( lt[ i ] != 0 ) != ( a < b ) ) + ( ( le[ i ] != 0 ) != ( a <= b ) ) + ( ( gt[ i ] != 0 ) != ( a > b ) )
-                          + ( ( ge[ i ] != 0 ) != ( a >= b ) ) + ( ( eq[ i ] != 0 ) != ( a == b ) ) + ( ( ne[ i ] != 0 ) != ( a != b ) );
-                  }
-                  total += 12 * lanes< V >;
-               } );
+   group< V >( "DW arithmetic, comparisons", "+ - * /, -x, numbers, masks", []( const Trial< V >& c, int, Tally& tally ) {
+      // Vector results, all lanes at once.
+      const DW< V > add = c.x + c.y, sub = c.x - c.y, mul = c.x * c.y, div = c.x / c.y, neg = -c.x;
+      const DW< V > mixed = ( c.x + 0.5 ) * 2 - 1.0 / c.y;  // plain numbers go to every lane
+      const auto lt = c.x < c.y, le = c.x <= c.y, gt = c.x > c.y, ge = c.x >= c.y, eq = c.x == c.y, ne = c.x != c.y;
 
-   group< V >( "DW, XDW functions, +-0 lanes", "sqrt abs signbit min max select",
-               []( const Trial< V >& c, int t, long& bad, long& total ) {
-                  DW< S > ps[ lanes< V > ];
-                  for( int i = 0; i < lanes< V >; ++i ) ps[ i ] = c.xs[ i ];
-                  if( t % 3 == 0 )
-                     ps[ lanes< V > - 1 ] = t % 2 ? DW< S >( S( 0 ), S( 0 ) ) : DW< S >( -S( 0 ), -S( 0 ) );
-                  const DW< V > p = pack< V >( ps );
-                  const DW< V > sq = sqrt( abs( p ) ), ab = abs( p ), mn = min( p, c.y ), mx = max( p, 0.5 ), sl = select( p < c.y, p, c.y );
-                  const auto sb = signbit( p );
-                  const XDW< V > zsel = select( p < c.y, c.z, c.w );
-                  for( int i = 0; i < lanes< V >; ++i ) {
-                     const DW< S > a = ps[ i ], b = c.ys[ i ];
-                     bad += !( sq.lane( i ) == sqrt( abs( a ) ) ) + !( ab.lane( i ) == abs( a ) ) + !( mn.lane( i ) == min( a, b ) )
-                          + !( mx.lane( i ) == max( a, 0.5 ) ) + !( sl.lane( i ) == select( a < b, a, b ) )
-                          + ( ( sb[ i ] != 0 ) != signbit( a ) ) + !( zsel.lane( i ) == select( a < b, c.zs[ i ], c.ws[ i ] ) );
-                     // abs(-0) is +0: == treats -0 and +0 as equal, so check the sign too.
-                     bad += signbit( ab.lane( i ) );
-                  }
-                  total += 8 * lanes< V >;
-               } );
+      for( int i = 0; i < lanes< V >; ++i ) {
+         const DW< S > a = c.xs[ i ], b = c.ys[ i ];
 
-   group< V >( "XDW operators", "+-*/, conj, real, imag, ==, DW",
-               []( const Trial< V >& c, int, long& bad, long& total ) {
-                  const XDW< V > ops = c.z * c.w / c.w + c.z - c.w;
-                  const XDW< V > zx = c.z * c.x, xz = c.x * c.z, zdx = c.z / c.x, zpx = c.z + c.x, xmz = c.x - c.z, zh = c.z * 0.5 + 1;
-                  const XDW< V > cz = conj( c.z );
-                  const auto zeq = c.z == c.w;
-                  for( int i = 0; i < lanes< V >; ++i ) {
-                     const XDW< S > a = c.zs[ i ], b = c.ws[ i ];
-                     const DW< S > r = c.xs[ i ];
-                     bad += !( ops.lane( i ) == a * b / b + a - b );
-                     bad += !( zx.lane( i ) == a * r ) + !( xz.lane( i ) == r * a ) + !( zdx.lane( i ) == a / r ) + !( zpx.lane( i ) == a + r )
-                          + !( xmz.lane( i ) == r - a ) + !( zh.lane( i ) == a * 0.5 + 1 );
-                     bad += !( cz.lane( i ) == conj( a ) ) + !( real( c.z ).lane( i ) == real( a ) ) + !( imag( c.z ).lane( i ) == imag( a ) );
-                     bad += ( ( zeq[ i ] != 0 ) != ( a == b ) );
-                  }
-                  total += 11 * lanes< V >;
-               } );
+         // Arithmetic.
+         tally( same( add, i, a + b ) );
+         tally( same( sub, i, a - b ) );
+         tally( same( mul, i, a * b ) );
+         tally( same( div, i, a / b ) );
+         tally( same( neg, i, -a ) );
+         tally( same( mixed, i, ( a + 0.5 ) * 2 - 1.0 / b ) );
 
-   group< V >( "XDW modes", "6 mul, 12 div, 6 norm",
-               []( const Trial< V >& c, int, long& bad, long& total ) {
-                  check_modes< V, AddMode::Madd, NormMode::Normalized >( c, bad );
-                  check_modes< V, AddMode::Madd, NormMode::Unnormalized >( c, bad );
-                  check_modes< V, AddMode::Accurate, NormMode::Normalized >( c, bad );
-                  check_modes< V, AddMode::Accurate, NormMode::Unnormalized >( c, bad );
-                  check_modes< V, AddMode::Sloppy, NormMode::Normalized >( c, bad );
-                  check_modes< V, AddMode::Sloppy, NormMode::Unnormalized >( c, bad );
-                  total += 24 * lanes< V >;
-               } );
+         // Comparisons: mask lane vs scalar bool.
+         tally( agrees( lt, i, a < b ) );
+         tally( agrees( le, i, a <= b ) );
+         tally( agrees( gt, i, a > b ) );
+         tally( agrees( ge, i, a >= b ) );
+         tally( agrees( eq, i, a == b ) );
+         tally( agrees( ne, i, a != b ) );
+      }
+   } );
 
-   group< V >( "broadcasts", "number, scalar DW, scalar XDW",
-               []( const Trial< V >& c, int, long& bad, long& total ) {
-                  const DW< V > bx( c.xs[ 0 ] ), b01( 0.1 );
-                  const XDW< V > bz( c.zs[ 0 ] ), b12( 0.1, 2 );
-                  for( int i = 0; i < lanes< V >; ++i )
-                     bad += !( bx.lane( i ) == c.xs[ 0 ] ) + !( b01.lane( i ) == DW< S >( 0.1 ) ) + !( bz.lane( i ) == c.zs[ 0 ] )
-                          + !( b12.lane( i ) == XDW< S >( 0.1, 2 ) );
-                  total += 4 * lanes< V >;
-               } );
+   group< V >( "DW, XDW functions, +-0 lanes", "sqrt abs signbit min max select", []( const Trial< V >& c, int t, Tally& tally ) {
+      // x, with +0 or -0 in the last lane every third trial.
+      DW< S > ps[ lanes< V > ];
+      for( int i = 0; i < lanes< V >; ++i )
+         ps[ i ] = c.xs[ i ];
+      if( t % 3 == 0 )
+         ps[ lanes< V > - 1 ] = t % 2 ? DW< S >( S( 0 ), S( 0 ) ) : DW< S >( -S( 0 ), -S( 0 ) );
+      const DW< V > p = pack< V >( ps );
 
-   group< V >( "mixed operands", "scalar next to vector, DW / XDW",
-               []( const Trial< V >& c, int, long& bad, long& total ) {
-                  const DW< S > rs = c.us[ 0 ];
-                  const XDW< S > cs = c.ws[ 0 ];
-                  const XDW< V > m1 = c.z + cs, m2 = cs - c.z, m3 = c.z * cs, m4 = cs / c.z;
-                  const XDW< V > m5 = c.x + cs, m6 = cs - c.x, m7 = c.x * cs, m8 = cs / c.x;
-                  const XDW< V > m9 = rs + c.z, m10 = c.z - rs, m11 = rs * c.z, m12 = c.z / rs;
-                  const XDW< V > m13 = c.z * 0.5 + 2, m14 = 3 - c.z / 0.25, m15 = c.x / c.z;
-                  const DW< V > m16 = c.x * rs - rs / c.x;
-                  for( int i = 0; i < lanes< V >; ++i ) {
-                     const XDW< S > a = c.zs[ i ];
-                     const DW< S > r = c.xs[ i ];
-                     bad += !( m1.lane( i ) == a + cs ) + !( m2.lane( i ) == cs - a ) + !( m3.lane( i ) == a * cs ) + !( m4.lane( i ) == cs / a );
-                     bad += !( m5.lane( i ) == XDW< S >( r ) + cs ) + !( m6.lane( i ) == cs - r ) + !( m7.lane( i ) == r * cs ) + !( m8.lane( i ) == cs / r );
-                     bad += !( m9.lane( i ) == rs + a ) + !( m10.lane( i ) == a - rs ) + !( m11.lane( i ) == rs * a ) + !( m12.lane( i ) == a / rs );
-                     bad += !( m13.lane( i ) == a * DW< S >( 0.5 ) + DW< S >( 2 ) ) + !( m14.lane( i ) == DW< S >( 3 ) - a / DW< S >( 0.25 ) )
-                          + !( m15.lane( i ) == r / a ) + !( m16.lane( i ) == r * rs - rs / r );
-                  }
-                  total += 16 * lanes< V >;
-               } );
+      // Vector results.
+      const DW< V > sq = sqrt( abs( p ) ), ab = abs( p ), mn = min( p, c.y ), mx = max( p, 0.5 );
+      const DW< V > sel = select( p < c.y, p, c.y );
+      const XDW< V > zsel = select( p < c.y, c.z, c.w );
+      const auto sb = signbit( p );
+
+      for( int i = 0; i < lanes< V >; ++i ) {
+         const DW< S > a = ps[ i ], b = c.ys[ i ];
+         tally( same( sq, i, sqrt( abs( a ) ) ) );
+         tally( same( ab, i, abs( a ) ) );
+         tally( !signbit( ab.lane( i ) ) );  // abs(-0) is +0; == alone can't tell -0 from +0
+         tally( same( mn, i, min( a, b ) ) );
+         tally( same( mx, i, max( a, 0.5 ) ) );
+         tally( same( sel, i, select( a < b, a, b ) ) );
+         tally( same( zsel, i, select( a < b, c.zs[ i ], c.ws[ i ] ) ) );
+         tally( agrees( sb, i, signbit( a ) ) );
+      }
+   } );
+
+   group< V >( "XDW operators", "+-*/, conj, real, imag, ==, DW", []( const Trial< V >& c, int, Tally& tally ) {
+      // Vector results: complex z, w and the real DW x.
+      const XDW< V > ops = c.z * c.w / c.w + c.z - c.w;
+      const XDW< V > zx = c.z * c.x, xz = c.x * c.z, zdx = c.z / c.x, zpx = c.z + c.x, xmz = c.x - c.z;
+      const XDW< V > zh = c.z * 0.5 + 1;
+      const XDW< V > cz = conj( c.z );
+      const auto zeq = c.z == c.w;
+
+      for( int i = 0; i < lanes< V >; ++i ) {
+         const XDW< S > a = c.zs[ i ], b = c.ws[ i ];
+         const DW< S > r = c.xs[ i ];
+
+         // Complex with complex.
+         tally( same( ops, i, a * b / b + a - b ) );
+         tally( agrees( zeq, i, a == b ) );
+
+         // Complex with a real DW and plain numbers.
+         tally( same( zx, i, a * r ) );
+         tally( same( xz, i, r * a ) );
+         tally( same( zdx, i, a / r ) );
+         tally( same( zpx, i, a + r ) );
+         tally( same( xmz, i, r - a ) );
+         tally( same( zh, i, a * 0.5 + 1 ) );
+
+         // Parts.
+         tally( same( cz, i, conj( a ) ) );
+         tally( same( real( c.z ), i, real( a ) ) );
+         tally( same( imag( c.z ), i, imag( a ) ) );
+      }
+   } );
+
+   group< V >( "XDW modes", "6 mul, 12 div, 6 norm", []( const Trial< V >& c, int, Tally& tally ) {
+      check_modes< V, AddMode::Madd, NormMode::Normalized >( c, tally );
+      check_modes< V, AddMode::Madd, NormMode::Unnormalized >( c, tally );
+      check_modes< V, AddMode::Accurate, NormMode::Normalized >( c, tally );
+      check_modes< V, AddMode::Accurate, NormMode::Unnormalized >( c, tally );
+      check_modes< V, AddMode::Sloppy, NormMode::Normalized >( c, tally );
+      check_modes< V, AddMode::Sloppy, NormMode::Unnormalized >( c, tally );
+   } );
+
+   group< V >( "broadcasts", "number, scalar DW, scalar XDW", []( const Trial< V >& c, int, Tally& tally ) {
+      // One value copied into every lane.
+      const DW< V > from_dw( c.xs[ 0 ] ), from_number( 0.1 );
+      const XDW< V > from_xdw( c.zs[ 0 ] ), from_numbers( 0.1, 2 );
+
+      for( int i = 0; i < lanes< V >; ++i ) {
+         tally( same( from_dw, i, c.xs[ 0 ] ) );
+         tally( same( from_number, i, DW< S >( 0.1 ) ) );
+         tally( same( from_xdw, i, c.zs[ 0 ] ) );
+         tally( same( from_numbers, i, XDW< S >( 0.1, 2 ) ) );
+      }
+   } );
+
+   group< V >( "mixed operands", "scalar next to vector, DW / XDW", []( const Trial< V >& c, int, Tally& tally ) {
+      // A scalar real rs and complex cs next to the vector z (complex) and x (real).
+      const DW< S > rs = c.us[ 0 ];
+      const XDW< S > cs = c.ws[ 0 ];
+      const XDW< V > z_cs[] = { c.z + cs, cs - c.z, c.z * cs, cs / c.z };
+      const XDW< V > x_cs[] = { c.x + cs, cs - c.x, c.x * cs, cs / c.x };
+      const XDW< V > z_rs[] = { rs + c.z, c.z - rs, rs * c.z, c.z / rs };
+      const XDW< V > z_numbers = c.z * 0.5 + 2, numbers_z = 3 - c.z / 0.25, x_over_z = c.x / c.z;
+      const DW< V > x_rs = c.x * rs - rs / c.x;
+
+      for( int i = 0; i < lanes< V >; ++i ) {
+         const XDW< S > a = c.zs[ i ];
+         const DW< S > r = c.xs[ i ];
+
+         // Vector XDW with a scalar XDW.
+         tally( same( z_cs[ 0 ], i, a + cs ) );
+         tally( same( z_cs[ 1 ], i, cs - a ) );
+         tally( same( z_cs[ 2 ], i, a * cs ) );
+         tally( same( z_cs[ 3 ], i, cs / a ) );
+
+         // Vector DW with a scalar XDW.
+         tally( same( x_cs[ 0 ], i, XDW< S >( r ) + cs ) );
+         tally( same( x_cs[ 1 ], i, cs - r ) );
+         tally( same( x_cs[ 2 ], i, r * cs ) );
+         tally( same( x_cs[ 3 ], i, cs / r ) );
+
+         // Vector XDW with a scalar DW.
+         tally( same( z_rs[ 0 ], i, rs + a ) );
+         tally( same( z_rs[ 1 ], i, a - rs ) );
+         tally( same( z_rs[ 2 ], i, rs * a ) );
+         tally( same( z_rs[ 3 ], i, a / rs ) );
+
+         // Plain numbers, DW / XDW, vector DW with a scalar DW.
+         tally( same( z_numbers, i, a * DW< S >( 0.5 ) + DW< S >( 2 ) ) );
+         tally( same( numbers_z, i, DW< S >( 3 ) - a / DW< S >( 0.25 ) ) );
+         tally( same( x_over_z, i, r / a ) );
+         tally( same( x_rs, i, r * rs - rs / r ) );
+      }
+   } );
 }
 
 int main()

@@ -115,7 +115,7 @@ static void test_mul_mode( Source& src, const char* name, double bound )
       set( br, real( w ) );
       if( i % 2 ) {
          mpfr_mul( p, ai, br, MPFR_RNDN );
-         src.near_negation( q, p );
+         src.near_negation< T >( q, p );
          mpfr_div( q, q, ar, MPFR_RNDN );
          w = XDW< T >( real( w ), to_dw< T >( q ) );
       }
@@ -392,6 +392,7 @@ static void run( const char* type, unsigned long seed )
 int main()
 {
    mpfr_set_default_prec( MPFR_BITS );
+   describe_inputs();
    run< double >( "double", 52 );
    run< float >( "float", 53 );
    mpfr_free_cache();

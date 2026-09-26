@@ -4,6 +4,7 @@
 // Exact references for the unit tests: random double-word inputs and MPFR arithmetic on them.
 
 #include <cmath>
+#include <iostream>
 #include <limits>
 #include <random>
 #include <type_traits>
@@ -12,6 +13,7 @@
 #include <mpfr.h>
 
 #include "XDW.h"
+#include "unit_test.h"
 
 constexpr int MPFR_BITS = 1024;
 constexpr int SAMPLES = 200000;
@@ -85,7 +87,8 @@ struct Source
 {
    std::mt19937_64 rng;
    gmp_randstate_t state;
-   std::uniform_int_distribution< int > exponent{ -20, 20 };
+   static constexpr int MIN_EXPONENT = -20, MAX_EXPONENT = 20;
+   std::uniform_int_distribution< int > exponent{ MIN_EXPONENT, MAX_EXPONENT };
 
    explicit Source( unsigned long seed ) : rng( seed )
    {
@@ -103,10 +106,11 @@ struct Source
          mpfr_neg( x, x, MPFR_RNDN );
    }
 
-   // -x * (1 + 2^-k r) with k in [1, 100]: adding it to x cancels about k bits.
+   // -x * (1 + 2^-k r) with k up to the 2p bits of DW<T>: adding it to x cancels about k bits.
+   template< typename T >
    void near_negation( mpfr_ptr out, mpfr_srcptr x )
    {
-      const int k = std::uniform_int_distribution< int >( 1, 100 )( rng );
+      const int k = std::uniform_int_distribution< int >( 1, 2 * std::numeric_limits< T >::digits )( rng );
       mpfr_urandom( out, state, MPFR_RNDN );
       mpfr_mul_2si( out, out, -k, MPFR_RNDN );
       mpfr_add_ui( out, out, 1, MPFR_RNDN );
@@ -122,13 +126,13 @@ struct Source
       return to_dw< T >( x );
    }
 
-   // A DW nearly cancelling `x`: x + result loses up to 100 bits.
+   // A DW nearly cancelling `x`: x + result loses up to 2p bits.
    template< typename T >
    DW< T > dw_near_negation( const DW< T >& x )
    {
       Big a, b;
       set( a, x );
-      near_negation( b, a );
+      near_negation< T >( b, a );
       return to_dw< T >( b );
    }
 
@@ -138,5 +142,15 @@ struct Source
       return dw< T >().hi();
    }
 };
+
+inline void describe_inputs()
+{
+   unit::section( "Inputs", "references in MPFR at " + std::to_string( MPFR_BITS ) + " bits" );
+   std::cout << "  random          full 2p-bit significand, random sign, exponent in [" << Source::MIN_EXPONENT << ", "
+             << Source::MAX_EXPONENT << "]\n"
+             << "  cancelling      every other sample y = -x (1 + 2^-k r), k in [1, 2p]: x + y loses about k bits\n"
+             << "                  2p = " << 2 * std::numeric_limits< float >::digits << " for float, "
+             << 2 * std::numeric_limits< double >::digits << " for double\n";
+}
 
 #endif
