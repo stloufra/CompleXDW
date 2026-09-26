@@ -159,7 +159,8 @@ DWTimesDW2Unnorm(const T xh, const T xl, const T yh, const T yl, T* __restrict__
 
 //-------------------- POW ---------------------
 
-// DWPow2Unnorm — x^2, 4 flops 
+// DWPow2Unnorm — x^2, 4 flops
+// Relative error <= 5u^2 (taken as DWTimesDW2Unnorm's)
 template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
@@ -176,6 +177,7 @@ DWPow2Unnorm(const T xh, const T xl, T* __restrict__ zh, T* __restrict__ zl)
 }
 
 // DWPow2 — x^2, 7 flops
+// Relative error <= 5u^2 (taken as DWTimesDW2's)
 template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
@@ -190,6 +192,8 @@ DWPow2(const T xh, const T xl, T* __restrict__ zh, T* __restrict__ zl)
 }
 
 // DWPowAdd — (ah,al)^2 + (bh,bl)^2 -> (rh,rl)
+// Relative error <= the mul-add bound 
+// Madd 7 (N) / 8 (U), Accurate 8 / 10, Sloppy 8 / 12 u^2
 template< XDWReal T, AddMode Add, NormMode Norm >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
