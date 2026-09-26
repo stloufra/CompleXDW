@@ -1,6 +1,7 @@
 #ifndef DW_H
 #define DW_H
 
+#include <cmath>
 #include <type_traits>
 
 #include "src/XDWerrorFree.h"
@@ -36,6 +37,12 @@ class alignas( XDW_ARTH::XDWVector< T > ? alignof( T ) : 2 * sizeof( T ) ) DW
   requires std::is_arithmetic_v< U >
   XDW_CUDA_CALLABLE
   constexpr DW( U x );
+
+  // DW<double> from DW<float> is exact; DW<float> from DW<double> rounds to 48 bits.
+  template< typename U >
+  requires std::floating_point< T > && std::floating_point< U > && ( !std::same_as< T, U > )
+  XDW_CUDA_CALLABLE
+  explicit constexpr DW( const DW< U >& x );
 
   // A scalar DW in every lane.
   template< typename S >
@@ -146,6 +153,21 @@ class alignas( XDW_ARTH::XDWVector< T > ? alignof( T ) : 2 * sizeof( T ) ) DW
 
   XDW_CUDA_CALLABLE
   friend constexpr auto operator>=( const DW< T >& a, const DW< T >& b ) { return b <= a; }
+
+  // a where mask is set, else b; lane by lane for a vector T.
+  template< typename M >
+  XDW_CUDA_CALLABLE
+  friend constexpr XDW_INLINE DW< T > select( const M& mask, const DW< T >& a, const DW< T >& b )
+  {
+    return DW< T >( mask ? a.hi() : b.hi(), mask ? a.lo() : b.lo() );
+  }
+
+  // As std::min/std::max: a unless the other is strictly smaller/larger.
+  XDW_CUDA_CALLABLE
+  friend constexpr XDW_INLINE DW< T > min( const DW< T >& a, const DW< T >& b ) { return select( b < a, b, a ); }
+
+  XDW_CUDA_CALLABLE
+  friend constexpr XDW_INLINE DW< T > max( const DW< T >& a, const DW< T >& b ) { return select( a < b, b, a ); }
 };
 
 template< typename T >
@@ -162,6 +184,27 @@ constexpr DW< T >::DW( U x )
       lo = static_cast< Lane >( w - static_cast< Wide >( hi ) );
    data[ 0 ] = XDW_ARTH::splat< T >( hi );
    data[ 1 ] = XDW_ARTH::splat< T >( lo );
+}
+
+template< typename T >
+template< typename U >
+requires std::floating_point< T > && std::floating_point< U > && ( !std::same_as< T, U > )
+XDW_CUDA_CALLABLE
+constexpr DW< T >::DW( const DW< U >& x )
+{
+   // Up: hi and lo may be far apart, so keep both (Fast2Sum is exact). Down: round hi, fold the rest into lo.
+   T h, l;
+   if constexpr( sizeof( U ) < sizeof( T ) ) {
+      h = static_cast< T >( x.hi() );
+      l = static_cast< T >( x.lo() );
+   }
+   else {
+      h = static_cast< T >( x.hi() );
+      l = static_cast< T >( ( x.hi() - static_cast< U >( h ) ) + x.lo() );
+   }
+   const XDW_ARTH::rne< T > r = XDW_ARTH::quick_two_sum( h, l );
+   data[ 0 ] = r.sum;
+   data[ 1 ] = r.error;
 }
 
 template< typename T >
@@ -213,6 +256,42 @@ DW< T >::div( const DW< T >& a, const DW< T >& b )
 {
    T h, l;
    XDW_ARTH::DWDivDW2( a.hi(), a.lo(), b.hi(), b.lo(), &h, &l );
+   return DW< T >( h, l );
+}
+
+// Functions below work lane by lane for a vector T; masks come from DW comparisons.
+
+// As std::signbit on the value: hi carries the sign, including -0.
+template< typename T >
+XDW_CUDA_CALLABLE
+XDW_INLINE auto
+signbit( const DW< T >& x )
+{
+   if constexpr( XDW_ARTH::XDWVector< T > ) {
+      decltype( x.hi() < x.hi() ) mask{};
+      for( int i = 0; i < XDW_ARTH::lanes< T >; ++i ) mask[ i ] = std::signbit( x.hi()[ i ] ) ? -1 : 0;
+      return mask;
+   }
+   else
+      return std::signbit( x.hi() );
+}
+
+template< typename T >
+XDW_CUDA_CALLABLE
+XDW_INLINE DW< T >
+abs( const DW< T >& x )
+{
+   return select( signbit( x ), -x, x );
+}
+
+// SQRTDWtoDW, relative error <= 25/8 u^2; sqrt(0) = 0.
+template< typename T >
+XDW_CUDA_CALLABLE
+constexpr XDW_INLINE DW< T >
+sqrt( const DW< T >& x )
+{
+   T h, l;
+   XDW_ARTH::DWSqrt( x.hi(), x.lo(), &h, &l );
    return DW< T >( h, l );
 }
 

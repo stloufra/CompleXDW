@@ -129,6 +129,36 @@ fma_rn( const T x, const T y, const T z )
 #endif
 }
 
+template< XDWReal T >
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE T
+sqrt_rn( const T x )
+{
+#if defined( __HIP_DEVICE_COMPILE__ ) || defined( __CUDA_ARCH__ )
+   if constexpr( std::is_same_v< T, double > ) {
+      return __dsqrt_rn( x );
+   }
+   else if constexpr( std::is_same_v< T, float > ) {
+      return __fsqrt_rn( x );
+   }
+   else {
+      static_assert( std::is_same_v< T, float >, "XDW: SIMD vector T is host-only" );
+   }
+#else
+   if constexpr( XDWVector< T > ) {
+#if defined( __clang__ )
+      return __builtin_elementwise_sqrt( x );
+#else
+      T r;
+      for( int i = 0; i < lanes< T >; ++i ) r[ i ] = std::sqrt( x[ i ] );
+      return r;
+#endif
+   }
+   else
+      return std::sqrt( x );
+#endif
+}
+
 }
 
 #endif  //XDW_BASIC_OPS_H

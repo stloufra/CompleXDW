@@ -350,6 +350,30 @@ DWDivDW3(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T* 
    DWTimesDW3(xh, xl, rh, rl, zh, zl);
 }
 
+//-------------------- SQRT ---------------------
+
+// DWSqrt — SQRTDWtoDW (Lefevre, Louvet, Muller, Picot, Rideau 2023), 1 sqrt + 6 flops, needs FMA
+// Relative error <= 25/8 u^2
+template< XDWReal T >
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
+DWSqrt(const T xh, const T xl, T* __restrict__ zh, T* __restrict__ zl)
+{
+   // sh = RN(sqrt(xh))
+   const T sh = sqrt_rn(xh);
+   // rho1 = xh - sh^2, exact with an FMA
+   const T rho1 = fma_rn(-sh, sh, xh);
+   // rho2 = xl + rho1
+   const T rho2 = add_rn(xl, rho1);
+   // sl = rho2 / (2 sh); divide by 1 where sh = 0, so sqrt(0) = 0 without 0/0
+   const T twosh = mul_rn(splat< T >(2), sh);
+   const T sl = div_rn(rho2, twosh == T{} ? splat< T >(1) : twosh);
+   // Fast2Sum(sh, sl, &zh, &zl)
+   rne<T> r = quick_two_sum(sh, sl);
+
+   *zh = r.sum; *zl = r.error;
+}
+
 //-------------------- MUL ADD ---------------------
 //-------------------- NORMALIZED ---------------------
 
