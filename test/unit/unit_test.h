@@ -54,14 +54,20 @@ inline bool verdict( bool ok, const std::string& detail = "" )
 {
    ++checks;
    failures += !ok;
-   std::cout << std::left << std::setw( DETAIL_WIDTH ) << detail << ( ok ? green( "PASS" ) : red( "FAIL" ) ) << '\n';
+   const int detail_width = std::max< int >( DETAIL_WIDTH, detail.size() + 2 );
+   std::cout << std::left << std::setw( detail_width ) << detail << ( ok ? green( "PASS" ) : red( "FAIL" ) ) << '\n';
    return ok;
 }
 
 inline std::string measured( double worst, const char* unit )
 {
    std::ostringstream s;
-   s << "worst " << std::fixed << std::setprecision( 2 ) << std::setw( 5 ) << worst << ' ' << unit;
+   s << "worst ";
+   if( worst < 1e4 )
+      s << std::fixed << std::setprecision( 2 ) << std::setw( 5 ) << worst;
+   else
+      s << std::scientific << std::setprecision( 1 ) << worst;
+   s << ' ' << unit;
    return s.str();
 }
 
