@@ -9,8 +9,8 @@
 
 #include <mpfr.h>
 
-#include "../XDW.h"
-#include "src/test_func.h"
+#include "XDW.h"
+#include "test_func.h"
 
 using namespace XDW_ARTH;
 

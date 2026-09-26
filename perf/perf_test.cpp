@@ -10,7 +10,7 @@
 #include <omp.h>
 
 #include "../XDW.h"
-#include "../test/src/test_func.h"
+#include "../test/common/test_func.h"
 
 constexpr int MEASUREMENTS = 100;
 constexpr int WARMUPS = 10;

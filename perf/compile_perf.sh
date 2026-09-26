@@ -7,27 +7,27 @@ echo "Using compiler: $CXX"
 OMP_INCLUDE="/opt/homebrew/Cellar/libomp/22.1.1/include"
 OMP_LIB="/opt/homebrew/Cellar/libomp/22.1.1/lib"
 
-#$CXX -std=c++20 -O2 -ffp-contract=off -march=native -mcpu=apple-m4 -Rpass=loop-vectorize -Rpass-missed=loop-vectorize -I.. -I../test/src \
+#$CXX -std=c++20 -O2 -ffp-contract=off -march=native -mcpu=apple-m4 -Rpass=loop-vectorize -Rpass-missed=loop-vectorize -I.. -I../test/common \
 #    perf_test.cpp \
-#    ../test/src/test_func.cpp \
+#    ../test/common/test_func.cpp \
 #    -I/opt/homebrew/include \
 #    -I$OMP_INCLUDE \
 #    -L/opt/homebrew/lib -L$OMP_LIB -lmpfr -lgmp -lm -lomp \
 #    -o perf_test
 
 #assembly generation 
-$CXX -std=c++20 -O2 -ffp-contract=off -march=native -mcpu=apple-m4 -Rpass=loop-vectorize -Rpass-missed=loop-vectorize -I.. -I../test/src \
+$CXX -std=c++20 -O2 -ffp-contract=off -march=native -mcpu=apple-m4 -Rpass=loop-vectorize -Rpass-missed=loop-vectorize -I.. -I../test/common \
     perf_test.cpp \
-    ../test/src/test_func.cpp \
+    ../test/common/test_func.cpp \
     -I/opt/homebrew/include \
     -I$OMP_INCLUDE \
     -L/opt/homebrew/lib -L$OMP_LIB -lmpfr -lgmp -lm -lomp \
     -S -fverbose-asm perf_test.cpp
 
 ##no vectorize
-#$CXX -std=c++20 -O2 -ffp-contract=off -fno-vectorize -fno-slp-vectorize -I.. -I../test/src \
+#$CXX -std=c++20 -O2 -ffp-contract=off -fno-vectorize -fno-slp-vectorize -I.. -I../test/common \
 #    perf_test.cpp \
-#    ../test/src/test_func.cpp \
+#    ../test/common/test_func.cpp \
 #    -I/opt/homebrew/include \
 #    -I$OMP_INCLUDE \
 #    -L/opt/homebrew/lib -L$OMP_LIB -lmpfr -lgmp -lm -lomp \

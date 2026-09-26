@@ -1,4 +1,6 @@
 exec/
 res/
 res_cond/
-COND*
+CONDITIONING_GENERATOR.md
+RUN_BINNED_ON_SERVER.md
+plot_binned_results.py

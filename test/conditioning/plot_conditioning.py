@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Must match COMBO_NAMES / combo order in test/src/combo_mul.h.
+# Must match COMBO_NAMES / combo order in src/combo_mul.h.
 COMBO_NAMES = ['Madd/Normalized', 'Madd/Unnormalized', 'Accurate/Normalized',
                'Accurate/Unnormalized', 'Sloppy/Normalized', 'Sloppy/Unnormalized']
 ERR_COLS = [f'rel_err_{i}' for i in range(6)]

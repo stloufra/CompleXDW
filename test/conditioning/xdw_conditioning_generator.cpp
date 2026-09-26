@@ -1,8 +1,8 @@
 // Examines generate_abcd_mp: which branch produces each pair, how many attempts it takes, and how
 // well the achieved K fill [K_MIN, K_MAX]. Target K is drawn exactly as in
-// test_complex_dw_conditioning_binned (log-uniform), so this describes the long run's inputs.
+// xdw_binned_mul (log-uniform), so this describes the long run's inputs.
 //
-// Usage: test_conditioning_generator [samples, default 100000]
+// Usage: xdw_conditioning_generator [samples, default 100000]
 // Writes res_cond/generator_samples.csv; plot with plot_conditioning_generator.py.
 
 #include <chrono>
@@ -16,9 +16,9 @@
 
 #include <mpfr.h>
 
-#include "../XDW.h"
-#include "src/test_func.h"
-#include "src/binned_ops.h"
+#include "XDW.h"
+#include "test_func.h"
+#include "binned_ops.h"
 
 constexpr int MAX_TRIES = 100000;  // same as the binned run
 

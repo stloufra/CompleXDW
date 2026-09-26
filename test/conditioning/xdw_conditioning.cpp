@@ -10,9 +10,9 @@
 
 #include <mpfr.h>
 
-#include "../XDW.h"
-#include "src/test_func.h"
-#include "src/combo_mul.h"
+#include "XDW.h"
+#include "test_func.h"
+#include "combo_mul.h"
 
 using namespace XDW_ARTH;
 

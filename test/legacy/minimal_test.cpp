@@ -1,6 +1,6 @@
 #include <iomanip>
 #include <iostream>
-#include "../XDW.h"
+#include "XDW.h"
 
 using namespace XDW_ARTH;
 

@@ -1,4 +1,4 @@
-# Plots for res_cond/generator_samples.csv (from exec/test_conditioning_generator):
+# Plots for res_cond/generator_samples.csv (from exec/xdw_conditioning_generator):
 #   res_cond/branch_distribution.png  which branch i generate_abcd_mp draws and which one produces the pair
 #   res_cond/K_coverage.png           how well the achieved K fill [K_MIN, K_MAX], vs number of samples
 #   res_cond/attempts.png             attempts needed per generated pair
