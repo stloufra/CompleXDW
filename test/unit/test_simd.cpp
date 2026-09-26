@@ -90,16 +90,16 @@ struct Trial
 
 // Runs `check` on TRIALS fresh trials (same seed for every group) and reports the differing lanes.
 template< typename V, typename Check >
-static void group( const std::string& what, Check check )
+static void group( const std::string& name, const std::string& note, Check check )
 {
-   unit::announce( what );
+   unit::announce( name, note );
    std::mt19937_64 rng( 7 );
    long bad = 0, total = 0;
    for( int t = 0; t < TRIALS; ++t ) {
       const Trial< V > trial( rng, t );
       check( trial, t, bad, total );
    }
-   unit::verdict( bad == 0, std::to_string( bad ) + " of " + std::to_string( total ) + " lane results differ" );
+   unit::verdict( bad == 0, std::to_string( bad ) + " / " + std::to_string( total ) + " lanes differ" );
 }
 
 template< typename V, AddMode A, NormMode Nm >
@@ -122,9 +122,9 @@ template< typename V >
 static void run( const char* name )
 {
    using S = lane_t< V >;
-   unit::section( std::string( name ) + ": every lane vs scalar DW/XDW, " + std::to_string( TRIALS ) + " trials" );
+   unit::section( name, std::to_string( TRIALS ) + " trials per check, every lane vs scalar DW/XDW" );
 
-   group< V >( "DW + - * /, unary -, mixed with plain numbers, < <= > >= == != as lane masks",
+   group< V >( "DW arithmetic, comparisons", "+ - * /, -x, numbers, masks",
                []( const Trial< V >& c, int, long& bad, long& total ) {
                   const DW< V > add = c.x + c.y, sub = c.x - c.y, mul = c.x * c.y, div = c.x / c.y, neg = -c.x;
                   const DW< V > mixed = ( c.x + 0.5 ) * 2 - 1.0 / c.y;
@@ -139,7 +139,7 @@ static void run( const char* name )
                   total += 12 * lanes< V >;
                } );
 
-   group< V >( "sqrt, abs, signbit, min, max, select (DW and XDW), with +0 and -0 lanes",
+   group< V >( "DW, XDW functions, +-0 lanes", "sqrt abs signbit min max select",
                []( const Trial< V >& c, int t, long& bad, long& total ) {
                   DW< S > ps[ lanes< V > ];
                   for( int i = 0; i < lanes< V >; ++i ) ps[ i ] = c.xs[ i ];
@@ -160,7 +160,7 @@ static void run( const char* name )
                   total += 8 * lanes< V >;
                } );
 
-   group< V >( "XDW default operators, conj, real, imag, ==, and with a DW: * / + -",
+   group< V >( "XDW operators", "+-*/, conj, real, imag, ==, DW",
                []( const Trial< V >& c, int, long& bad, long& total ) {
                   const XDW< V > ops = c.z * c.w / c.w + c.z - c.w;
                   const XDW< V > zx = c.z * c.x, xz = c.x * c.z, zdx = c.z / c.x, zpx = c.z + c.x, xmz = c.x - c.z, zh = c.z * 0.5 + 1;
@@ -178,7 +178,7 @@ static void run( const char* name )
                   total += 11 * lanes< V >;
                } );
 
-   group< V >( "mul and norm in all 6 modes, div in all 12 modes",
+   group< V >( "XDW modes", "6 mul, 12 div, 6 norm",
                []( const Trial< V >& c, int, long& bad, long& total ) {
                   check_modes< V, AddMode::Madd, NormMode::Normalized >( c, bad );
                   check_modes< V, AddMode::Madd, NormMode::Unnormalized >( c, bad );
@@ -189,7 +189,7 @@ static void run( const char* name )
                   total += 24 * lanes< V >;
                } );
 
-   group< V >( "broadcasts: a plain number, a scalar DW and a scalar XDW in every lane",
+   group< V >( "broadcasts", "number, scalar DW, scalar XDW",
                []( const Trial< V >& c, int, long& bad, long& total ) {
                   const DW< V > bx( c.xs[ 0 ] ), b01( 0.1 );
                   const XDW< V > bz( c.zs[ 0 ] ), b12( 0.1, 2 );
@@ -199,7 +199,7 @@ static void run( const char* name )
                   total += 4 * lanes< V >;
                } );
 
-   group< V >( "mixed operands: scalar DW/XDW or a plain number next to a vector one, DW / XDW",
+   group< V >( "mixed operands", "scalar next to vector, DW / XDW",
                []( const Trial< V >& c, int, long& bad, long& total ) {
                   const DW< S > rs = c.us[ 0 ];
                   const XDW< S > cs = c.ws[ 0 ];

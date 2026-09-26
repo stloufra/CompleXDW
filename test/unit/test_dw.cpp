@@ -29,29 +29,28 @@ static double worst_op( Source& src, Op op, Exact exact, Partner partner )
 template< typename T >
 static void test_arithmetic( Source& src )
 {
-   const std::string n = std::to_string( SAMPLES );
    auto random = [&]( const DW< T >&, int ) { return src.dw< T >(); };
    auto cancels_sum = [&]( const DW< T >& x, int i ) { return i % 2 ? src.dw_near_negation( x ) : src.dw< T >(); };
    auto cancels_difference = [&]( const DW< T >& x, int i ) { return i % 2 ? -src.dw_near_negation( x ) : src.dw< T >(); };
 
-   unit::announce( "x + y (MaddDWPlusDW), " + n + " pairs, half nearly cancelling" );
+   unit::announce( "x + y (MaddDWPlusDW)", "half cancelling" );
    unit::verdict_bound( worst_op< T >( src, []( DW< T > x, DW< T > y ) { return x + y; },
                                        []( mpfr_ptr r, mpfr_srcptr a, mpfr_srcptr b ) { mpfr_add( r, a, b, MPFR_RNDN ); }, cancels_sum ), 2 );
 
-   unit::announce( "x - y (MaddDWPlusDW), " + n + " pairs, half nearly cancelling" );
+   unit::announce( "x - y (MaddDWPlusDW)", "half cancelling" );
    unit::verdict_bound( worst_op< T >( src, []( DW< T > x, DW< T > y ) { return x - y; },
                                        []( mpfr_ptr r, mpfr_srcptr a, mpfr_srcptr b ) { mpfr_sub( r, a, b, MPFR_RNDN ); }, cancels_difference ), 2 );
 
-   unit::announce( "x * y (DWTimesDW2), " + n + " pairs" );
+   unit::announce( "x * y (DWTimesDW2)" );
    unit::verdict_bound( worst_op< T >( src, []( DW< T > x, DW< T > y ) { return x * y; },
                                        []( mpfr_ptr r, mpfr_srcptr a, mpfr_srcptr b ) { mpfr_mul( r, a, b, MPFR_RNDN ); }, random ), 5 );
 
-   unit::announce( "x / y (DWDivDW2), " + n + " pairs" );
+   unit::announce( "x / y (DWDivDW2)" );
    unit::verdict_bound( worst_op< T >( src, []( DW< T > x, DW< T > y ) { return x / y; },
                                        []( mpfr_ptr r, mpfr_srcptr a, mpfr_srcptr b ) { mpfr_div( r, a, b, MPFR_RNDN ); }, random ),
                         15 + 56 * std::sqrt( U2< T > ) );
 
-   unit::announce( "sqrt(|x|) (DWSqrt), " + n + " values" );
+   unit::announce( "sqrt(|x|) (DWSqrt)" );
    unit::verdict_bound( worst_op< T >( src, []( DW< T > x, DW< T > ) { return sqrt( abs( x ) ); },
                                        []( mpfr_ptr r, mpfr_srcptr a, mpfr_srcptr ) { mpfr_abs( r, a, MPFR_RNDN ); mpfr_sqrt( r, r, MPFR_RNDN ); }, random ),
                         25.0 / 8 );
@@ -60,10 +59,9 @@ static void test_arithmetic( Source& src )
 template< typename T >
 static void test_exact_functions( Source& src )
 {
-   const std::string n = std::to_string( SAMPLES );
    Big a, b, r;
 
-   unit::announce( "abs(x) == |x| and signbit(x) == (x < 0), " + n + " values" );
+   unit::announce( "abs, signbit", "abs == |x|, signbit == (x < 0)" );
    bool abs_ok = true;
    for( int i = 0; i < SAMPLES; ++i ) {
       const DW< T > x = src.dw< T >();
@@ -73,7 +71,7 @@ static void test_exact_functions( Source& src )
    }
    unit::verdict( abs_ok );
 
-   unit::announce( "min/max return the smaller/larger operand, select(mask, a, b) picks a or b, " + n + " pairs" );
+   unit::announce( "min, max, select", "pick the right operand" );
    bool pick_ok = true;
    for( int i = 0; i < SAMPLES; ++i ) {
       const DW< T > x = src.dw< T >(), y = src.dw< T >();
@@ -85,7 +83,7 @@ static void test_exact_functions( Source& src )
    }
    unit::verdict( pick_ok );
 
-   unit::announce( "< <= > >= == != agree with MPFR, " + n + " pairs, a third sharing hi" );
+   unit::announce( "< <= > >= == !=", "a third of the pairs share hi" );
    bool order_ok = true;
    for( int i = 0; i < SAMPLES; ++i ) {
       src.draw( a );
@@ -110,25 +108,24 @@ static void test_exact_functions( Source& src )
    }
    unit::verdict( order_ok );
 
-   unit::announce( "sqrt(+0) = sqrt(-0) = 0 without floating-point exceptions, sqrt(4) = 2" );
+   unit::announce( "sqrt(+-0), sqrt(4)", "0 without FP exceptions, 2" );
    const DW< T > zero( T( 0 ), T( 0 ) ), negzero( -T( 0 ), -T( 0 ) );
    std::feclearexcept( FE_ALL_EXCEPT );
    const DW< T > r0 = sqrt( zero ), rn = sqrt( negzero );
    const bool quiet = !std::fetestexcept( FE_INVALID | FE_DIVBYZERO );
    unit::verdict( quiet && r0 == zero && rn == zero && sqrt( DW< T >( 4 ) ) == DW< T >( 2 ) );
 
-   unit::announce( "signbit(-0) is set, abs(-0) is +0" );
+   unit::announce( "signbit(-0), abs(-0)", "set, +0" );
    unit::verdict( signbit( negzero ) && !signbit( zero ) && !signbit( abs( negzero ) ) );
 }
 
 template< typename T >
 static void test_conversions( Source& src )
 {
-   const std::string n = std::to_string( SAMPLES );
    Big a, ref;
 
    if constexpr( std::is_same_v< T, float > ) {
-      unit::announce( "DW<float>(double) splits into hi + lo, " + n + " values" );
+      unit::announce( "DW<float>(double)", "split into hi + lo" );
       double worst = 0;
       for( int i = 0; i < SAMPLES; ++i ) {
          src.draw( a );
@@ -139,7 +136,7 @@ static void test_conversions( Source& src )
       unit::verdict_bound( worst / U2< float >, 1 );
    }
    else {
-      unit::announce( "DW<double>(double) is (d, 0), " + n + " values" );
+      unit::announce( "DW<double>(double)", "is (d, 0)" );
       bool ok = true;
       for( int i = 0; i < SAMPLES; ++i ) {
          src.draw( a );
@@ -149,7 +146,7 @@ static void test_conversions( Source& src )
       unit::verdict( ok );
    }
 
-   unit::announce( "static_cast<double>(DW<T>): hi + lo exactly for float, hi for double, " + n + " values" );
+   unit::announce( "static_cast<double>(DW)", "hi + lo for float, hi for double" );
    bool back = true;
    for( int i = 0; i < SAMPLES; ++i ) {
       const DW< T > x = src.dw< T >();
@@ -157,10 +154,10 @@ static void test_conversions( Source& src )
    }
    unit::verdict( back );
 
-   unit::announce( "an integer converts exactly: DW<T>(123456789)" );
+   unit::announce( "DW(123456789)", "integer converts exactly" );
    unit::verdict( static_cast< double >( DW< T >( 123456789 ) ) == 123456789.0 );
 
-   unit::announce( "plain numbers mix as their DW conversion: x + 0.5, 2 * x, x / 3, 1.0 - x, min/max(x, number), " + n + " values" );
+   unit::announce( "plain numbers", "x + 0.5, 2 * x, x / 3, min, max" );
    bool mixed = true;
    for( int i = 0; i < SAMPLES; ++i ) {
       const DW< T > x = src.dw< T >();
@@ -173,12 +170,11 @@ static void test_conversions( Source& src )
 
 static void test_precision_conversion( Source& src )
 {
-   const std::string n = std::to_string( SAMPLES );
    Big a, ref;
    double worst = 0;
    bool up_exact = true, normalized = true;
 
-   unit::announce( "DW<double>(DW<float>) is exact and normalized, " + n + " values" );
+   unit::announce( "DW<double>(DW<float>)", "exact, normalized" );
    for( int i = 0; i < SAMPLES; ++i ) {
       const DW< float > xf = src.dw< float >();
       const DW< double > up( xf );
@@ -187,7 +183,7 @@ static void test_precision_conversion( Source& src )
    }
    unit::verdict( up_exact );
 
-   unit::announce( "DW<float>(DW<double>) rounds to the nearest pair and is normalized, " + n + " values" );
+   unit::announce( "DW<float>(DW<double>)", "nearest pair, normalized" );
    for( int i = 0; i < SAMPLES; ++i ) {
       const DW< double > xd = src.dw< double >();
       const DW< float > down( xd );
@@ -202,11 +198,11 @@ template< typename T >
 static void run( const char* type, unsigned long seed )
 {
    Source src( seed );
-   unit::section( std::string( "DW<" ) + type + ">: arithmetic vs MPFR, relative error in units of u^2" );
+   unit::section( std::string( "DW<" ) + type + ">: arithmetic", std::to_string( SAMPLES ) + " samples per check, relative error vs MPFR" );
    test_arithmetic< T >( src );
-   unit::section( std::string( "DW<" ) + type + ">: abs, signbit, min, max, select, comparisons, zeros" );
+   unit::section( std::string( "DW<" ) + type + ">: exact functions", std::to_string( SAMPLES ) + " samples per check" );
    test_exact_functions< T >( src );
-   unit::section( std::string( "DW<" ) + type + ">: conversions" );
+   unit::section( std::string( "DW<" ) + type + ">: conversions", std::to_string( SAMPLES ) + " samples per check" );
    test_conversions< T >( src );
 }
 
@@ -216,7 +212,7 @@ int main()
    run< double >( "double", 42 );
    run< float >( "float", 43 );
    Source src( 44 );
-   unit::section( "DW<double> <-> DW<float>" );
+   unit::section( "DW<double> <-> DW<float>", std::to_string( SAMPLES ) + " samples per check" );
    test_precision_conversion( src );
    mpfr_free_cache();
    return unit::finish( "test_dw" );

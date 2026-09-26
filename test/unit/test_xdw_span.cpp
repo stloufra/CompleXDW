@@ -71,7 +71,7 @@ static bool modes_match( SoA< T >& a, SoA< T >& b )
 template< typename T >
 static void run( const char* type, unsigned long seed )
 {
-   unit::section( std::string( "XDWSpan<" ) + type + ">, " + std::to_string( N ) + " elements" );
+   unit::section( std::string( "XDWSpan<" ) + type + ">", std::to_string( N ) + " elements" );
    std::mt19937_64 rng( seed );
    SoA< T > a( N ), b( N );
    for( std::size_t i = 0; i < N; ++i ) {
@@ -79,7 +79,7 @@ static void run( const char* type, unsigned long seed )
       b.span().store( i, XDW< T >( random_dw< T >( rng ), random_dw< T >( rng ) ) );
    }
 
-   unit::announce( "store then load returns the same XDW" );
+   unit::announce( "store, load", "round-trip an XDW" );
    bool round_trip = true;
    for( std::size_t i = 0; i < N; ++i ) {
       const XDW< T > z( random_dw< T >( rng ), random_dw< T >( rng ) );
@@ -89,12 +89,12 @@ static void run( const char* type, unsigned long seed )
    }
    unit::verdict( round_trip );
 
-   unit::announce( "mul and div, all 6 + 12 modes, equal per-element XDW bit for bit" );
+   unit::announce( "mul, div in all 6 + 12 modes", "bit-identical to per-element XDW" );
    unit::verdict( modes_match< T, AddMode::Madd, NormMode::Normalized >( a, b ) && modes_match< T, AddMode::Madd, NormMode::Unnormalized >( a, b )
                   && modes_match< T, AddMode::Accurate, NormMode::Normalized >( a, b ) && modes_match< T, AddMode::Accurate, NormMode::Unnormalized >( a, b )
                   && modes_match< T, AddMode::Sloppy, NormMode::Normalized >( a, b ) && modes_match< T, AddMode::Sloppy, NormMode::Unnormalized >( a, b ) );
 
-   unit::announce( "mul and div with default modes equal operator* and operator/" );
+   unit::announce( "mul, div with default modes", "equal operator* and operator/" );
    SoA< T > product( N ), quotient( N );
    mul( product.span(), a.span(), b.span() );
    div( quotient.span(), a.span(), b.span() );
@@ -104,7 +104,7 @@ static void run( const char* type, unsigned long seed )
                && quotient.span().load( i ) == a.span().load( i ) / b.span().load( i );
    unit::verdict( defaults );
 
-   unit::announce( "in place: out may be one of the inputs" );
+   unit::announce( "in place", "out may be one of the inputs" );
    SoA< T > in_place = a;
    mul( in_place.span(), in_place.span(), b.span() );
    div( in_place.span(), in_place.span(), b.span() );
@@ -113,7 +113,7 @@ static void run( const char* type, unsigned long seed )
       same &= in_place.span().load( i ) == product.span().load( i ) / b.span().load( i );
    unit::verdict( same );
 
-   unit::announce( "operands of different sizes throw std::invalid_argument" );
+   unit::announce( "mismatched sizes", "throw std::invalid_argument" );
    SoA< T > shorter( N - 1 );
    bool threw = false;
    try {

@@ -56,12 +56,11 @@ static void exact_div( mpfr_ptr r, mpfr_srcptr a, mpfr_srcptr b ) { mpfr_div( r,
 template< typename T >
 static void test_error_free( Source& src )
 {
-   const int n = SAMPLES;
    bool sum = true, diff = true, fast = true, prod = true, split_ok = true;
    Big a, b, r, s;
 
-   unit::announce( "TwoSum: s + e == a + b exactly, " + std::to_string( n ) + " pairs, half nearly cancelling" );
-   for( int i = 0; i < n; ++i ) {
+   unit::announce( "TwoSum", "s + e == a + b, half cancelling" );
+   for( int i = 0; i < SAMPLES; ++i ) {
       const T x = src.fp< T >(), y = i % 2 ? src.dw_near_negation( DW< T >( x ) ).hi() : src.fp< T >();
       const rne< T > t = two_sum( x, y );
       mpfr_set_d( a, x, MPFR_RNDN );
@@ -71,8 +70,8 @@ static void test_error_free( Source& src )
    }
    unit::verdict( sum );
 
-   unit::announce( "TwoDiff: s + e == a - b exactly, " + std::to_string( n ) + " pairs, half nearly cancelling" );
-   for( int i = 0; i < n; ++i ) {
+   unit::announce( "TwoDiff", "s + e == a - b, half cancelling" );
+   for( int i = 0; i < SAMPLES; ++i ) {
       const T x = src.fp< T >(), y = i % 2 ? -src.dw_near_negation( DW< T >( x ) ).hi() : src.fp< T >();
       const rne< T > t = two_diff( x, y );
       mpfr_set_d( a, x, MPFR_RNDN );
@@ -82,8 +81,8 @@ static void test_error_free( Source& src )
    }
    unit::verdict( diff );
 
-   unit::announce( "Fast2Sum (|a| >= |b|): s + e == a + b exactly, " + std::to_string( n ) + " pairs" );
-   for( int i = 0; i < n; ++i ) {
+   unit::announce( "Fast2Sum", "s + e == a + b, |a| >= |b|" );
+   for( int i = 0; i < SAMPLES; ++i ) {
       T x = src.fp< T >(), y = src.fp< T >();
       if( std::fabs( x ) < std::fabs( y ) )
          std::swap( x, y );
@@ -95,8 +94,8 @@ static void test_error_free( Source& src )
    }
    unit::verdict( fast );
 
-   unit::announce( "TwoProd (FMA): p + e == a * b exactly, " + std::to_string( n ) + " pairs" );
-   for( int i = 0; i < n; ++i ) {
+   unit::announce( "TwoProd (FMA)", "p + e == a * b" );
+   for( int i = 0; i < SAMPLES; ++i ) {
       const T x = src.fp< T >(), y = src.fp< T >();
       const rne< T > t = two_prod( x, y );
       mpfr_set_d( a, x, MPFR_RNDN );
@@ -107,8 +106,8 @@ static void test_error_free( Source& src )
    }
    unit::verdict( prod );
 
-   unit::announce( "Dekker split: hi + lo == a exactly, " + std::to_string( n ) + " values" );
-   for( int i = 0; i < n; ++i ) {
+   unit::announce( "Dekker split", "hi + lo == a" );
+   for( int i = 0; i < SAMPLES; ++i ) {
       const T x = src.fp< T >();
       const auto t = split< T, T >( x );
       mpfr_set_d( a, x, MPFR_RNDN );
@@ -121,70 +120,70 @@ static void test_error_free( Source& src )
 template< typename T >
 static void test_dw_algorithms( Source& src )
 {
-   const std::string n = std::to_string( SAMPLES );
    const double u = std::sqrt( U2< T > );  // 56u^3 in units of u^2 is 56u
 
-   unit::announce( "MaddDWPlusDW, " + n + " pairs, half nearly cancelling" );
+   unit::announce( "MaddDWPlusDW", "half cancelling" );
    unit::verdict_bound( worst_binary< T >( src, Pairs::Cancelling, []( DW< T > x, DW< T > y, T* h, T* l ) { MaddDWPlusDW( x.hi(), x.lo(), y.hi(), y.lo(), h, l ); }, exact_add ), 2 );
 
-   unit::announce( "AccurateDWPlusDW, " + n + " pairs, half nearly cancelling" );
+   unit::announce( "AccurateDWPlusDW", "half cancelling" );
    unit::verdict_bound( worst_binary< T >( src, Pairs::Cancelling, []( DW< T > x, DW< T > y, T* h, T* l ) { AccurateDWPlusDW( x.hi(), x.lo(), y.hi(), y.lo(), h, l ); }, exact_add ), 3 );
 
-   unit::announce( "SloppyDWPlusDW, " + n + " same-sign pairs (no cancellation)" );
+   unit::announce( "SloppyDWPlusDW", "same sign, no cancellation" );
    unit::info( worst_binary< T >( src, Pairs::Positive, []( DW< T > x, DW< T > y, T* h, T* l ) { SloppyDWPlusDW( x.hi(), x.lo(), y.hi(), y.lo(), h, l ); }, exact_add ) );
 
-   unit::announce( "DWPlusFP, " + n + " pairs, half nearly cancelling" );
+   unit::announce( "DWPlusFP", "half cancelling" );
    unit::verdict_bound( worst_binary< T >( src, Pairs::Cancelling, []( DW< T > x, DW< T > y, T* h, T* l ) { DWPlusFP( x.hi(), x.lo(), y.hi(), h, l ); }, exact_add, Second::FP ), 3 );
 
-   unit::announce( "DWTimesDW2, " + n + " pairs" );
+   unit::announce( "DWTimesDW2" );
    unit::verdict_bound( worst_binary< T >( src, Pairs::Random, []( DW< T > x, DW< T > y, T* h, T* l ) { DWTimesDW2( x.hi(), x.lo(), y.hi(), y.lo(), h, l ); }, exact_mul ), 5 );
 
-   unit::announce( "DWTimesDW2Unnorm, value of hi + lo, " + n + " pairs" );
+   unit::announce( "DWTimesDW2Unnorm", "value of hi + lo" );
    unit::verdict_bound( worst_binary< T >( src, Pairs::Random, []( DW< T > x, DW< T > y, T* h, T* l ) { DWTimesDW2Unnorm( x.hi(), x.lo(), y.hi(), y.lo(), h, l ); }, exact_mul ), 5 );
 
-   unit::announce( "DWTimesDW3, " + n + " pairs" );
+   unit::announce( "DWTimesDW3" );
    unit::verdict_bound( worst_binary< T >( src, Pairs::Random, []( DW< T > x, DW< T > y, T* h, T* l ) { DWTimesDW3( x.hi(), x.lo(), y.hi(), y.lo(), h, l ); }, exact_mul ), 5 );
 
-   unit::announce( "DWTimesFP1, " + n + " pairs" );
+   unit::announce( "DWTimesFP1" );
    unit::verdict_bound( worst_binary< T >( src, Pairs::Random, []( DW< T > x, DW< T > y, T* h, T* l ) { DWTimesFP1( x.hi(), x.lo(), y.hi(), h, l ); }, exact_mul, Second::FP ), 2 );
 
-   unit::announce( "DWTimesFP3, " + n + " pairs" );
+   unit::announce( "DWTimesFP3" );
    unit::verdict_bound( worst_binary< T >( src, Pairs::Random, []( DW< T > x, DW< T > y, T* h, T* l ) { DWTimesFP3( x.hi(), x.lo(), y.hi(), h, l ); }, exact_mul, Second::FP ), 2 );
 
-   unit::announce( "DWDivDW2, " + n + " pairs" );
+   unit::announce( "DWDivDW2" );
    unit::verdict_bound( worst_binary< T >( src, Pairs::Random, []( DW< T > x, DW< T > y, T* h, T* l ) { DWDivDW2( x.hi(), x.lo(), y.hi(), y.lo(), h, l ); }, exact_div ), 15 + 56 * u );
 
-   unit::announce( "DWDivDW3, " + n + " pairs" );
+   unit::announce( "DWDivDW3" );
    unit::verdict_bound( worst_binary< T >( src, Pairs::Random, []( DW< T > x, DW< T > y, T* h, T* l ) { DWDivDW3( x.hi(), x.lo(), y.hi(), y.lo(), h, l ); }, exact_div ), 9.8 );
 
-   unit::announce( "DWRecip, 1 / y, " + n + " values" );
+   unit::announce( "DWRecip", "1 / y" );
    unit::info( worst_binary< T >( src, Pairs::Random, []( DW< T >, DW< T > y, T* h, T* l ) { DWRecip( y.hi(), y.lo(), h, l ); },
                                   []( mpfr_ptr r, mpfr_srcptr, mpfr_srcptr b ) { mpfr_ui_div( r, 1, b, MPFR_RNDN ); } ) );
 
-   unit::announce( "DWSqrt, " + n + " positive values" );
+   unit::announce( "DWSqrt", "positive x" );
    unit::verdict_bound( worst_binary< T >( src, Pairs::Positive, []( DW< T > x, DW< T >, T* h, T* l ) { DWSqrt( x.hi(), x.lo(), h, l ); },
                                             []( mpfr_ptr r, mpfr_srcptr a, mpfr_srcptr ) { mpfr_sqrt( r, a, MPFR_RNDN ); } ), 25.0 / 8 );
 
-   unit::announce( "DWPow2, x^2, " + n + " values" );
-   unit::info( worst_binary< T >( src, Pairs::Random, []( DW< T > x, DW< T >, T* h, T* l ) { DWPow2( x.hi(), x.lo(), h, l ); },
-                                  []( mpfr_ptr r, mpfr_srcptr a, mpfr_srcptr ) { mpfr_sqr( r, a, MPFR_RNDN ); } ) );
+   unit::announce( "DWPow2", "x^2" );
+   unit::verdict_bound( worst_binary< T >( src, Pairs::Random, []( DW< T > x, DW< T >, T* h, T* l ) { DWPow2( x.hi(), x.lo(), h, l ); },
+                                            []( mpfr_ptr r, mpfr_srcptr a, mpfr_srcptr ) { mpfr_sqr( r, a, MPFR_RNDN ); } ), 5 );
 
-   unit::announce( "DWPow2Unnorm, value of hi + lo, x^2, " + n + " values" );
-   unit::info( worst_binary< T >( src, Pairs::Random, []( DW< T > x, DW< T >, T* h, T* l ) { DWPow2Unnorm( x.hi(), x.lo(), h, l ); },
-                                  []( mpfr_ptr r, mpfr_srcptr a, mpfr_srcptr ) { mpfr_sqr( r, a, MPFR_RNDN ); } ) );
+   unit::announce( "DWPow2Unnorm", "x^2, value of hi + lo" );
+   unit::verdict_bound( worst_binary< T >( src, Pairs::Random, []( DW< T > x, DW< T >, T* h, T* l ) { DWPow2Unnorm( x.hi(), x.lo(), h, l ); },
+                                            []( mpfr_ptr r, mpfr_srcptr a, mpfr_srcptr ) { mpfr_sqr( r, a, MPFR_RNDN ); } ), 5 );
 }
 
+// Bound: the mul-add of the same modes at K = 1, since x^2 + y^2 cannot cancel.
 template< typename T, AddMode Add, NormMode Norm >
-static void test_pow_add( Source& src, const char* name )
+static void test_pow_add( Source& src, const char* name, double bound )
 {
-   unit::announce( std::string( "DWPowAdd<" ) + name + ">, x^2 + y^2, " + std::to_string( SAMPLES ) + " pairs" );
-   unit::info( worst_binary< T >( src, Pairs::Random, []( DW< T > x, DW< T > y, T* h, T* l ) { DWPowAdd< T, Add, Norm >( x.hi(), x.lo(), y.hi(), y.lo(), h, l ); },
+   unit::announce( std::string( "DWPowAdd<" ) + name + ">", "x^2 + y^2" );
+   unit::verdict_bound( worst_binary< T >( src, Pairs::Random, []( DW< T > x, DW< T > y, T* h, T* l ) { DWPowAdd< T, Add, Norm >( x.hi(), x.lo(), y.hi(), y.lo(), h, l ); },
                                   []( mpfr_ptr r, mpfr_srcptr a, mpfr_srcptr b ) {
                                      Big t;
                                      mpfr_sqr( r, a, MPFR_RNDN );
                                      mpfr_sqr( t, b, MPFR_RNDN );
                                      mpfr_add( r, r, t, MPFR_RNDN );
-                                  } ) );
+                                  } ), bound );
 }
 
 // a*b + c*d with c*d nearly -a*b on every other sample; error normalized per sample by
@@ -192,7 +191,7 @@ static void test_pow_add( Source& src, const char* name )
 template< typename T, typename F >
 static void test_mul_add( Source& src, const char* name, double bound, F f )
 {
-   unit::announce( std::string( name ) + ", a*b + c*d, " + std::to_string( SAMPLES ) + " samples, error / K" );
+   unit::announce( name, "a*b + c*d, half cancelling" );
    Big a, b, c, d, ab, cd, ref, mag;
    double worst = 0;
    for( int i = 0; i < SAMPLES; ++i ) {
@@ -234,19 +233,19 @@ template< typename T >
 static void run( const char* type, unsigned long seed )
 {
    Source src( seed );
-   unit::section( std::string( "Error-free transforms, T = " ) + type );
+   unit::section( std::string( "Error-free transforms, T = " ) + type, std::to_string( SAMPLES ) + " samples per check, exact vs MPFR" );
    test_error_free< T >( src );
 
-   unit::section( std::string( "Double-word algorithms vs MPFR (relative error / u^2), T = " ) + type );
+   unit::section( std::string( "Double-word algorithms, T = " ) + type, std::to_string( SAMPLES ) + " samples per check, relative error vs MPFR" );
    test_dw_algorithms< T >( src );
-   test_pow_add< T, AddMode::Madd, NormMode::Normalized >( src, "Madd, Normalized" );
-   test_pow_add< T, AddMode::Madd, NormMode::Unnormalized >( src, "Madd, Unnormalized" );
-   test_pow_add< T, AddMode::Accurate, NormMode::Normalized >( src, "Accurate, Normalized" );
-   test_pow_add< T, AddMode::Accurate, NormMode::Unnormalized >( src, "Accurate, Unnormalized" );
-   test_pow_add< T, AddMode::Sloppy, NormMode::Normalized >( src, "Sloppy, Normalized" );
-   test_pow_add< T, AddMode::Sloppy, NormMode::Unnormalized >( src, "Sloppy, Unnormalized" );
+   test_pow_add< T, AddMode::Madd, NormMode::Normalized >( src, "Madd, Normalized" , 7 );
+   test_pow_add< T, AddMode::Madd, NormMode::Unnormalized >( src, "Madd, Unnormalized" , 8 );
+   test_pow_add< T, AddMode::Accurate, NormMode::Normalized >( src, "Accurate, Normalized" , 8 );
+   test_pow_add< T, AddMode::Accurate, NormMode::Unnormalized >( src, "Accurate, Unnormalized" , 10 );
+   test_pow_add< T, AddMode::Sloppy, NormMode::Normalized >( src, "Sloppy, Normalized" , 8 );
+   test_pow_add< T, AddMode::Sloppy, NormMode::Unnormalized >( src, "Sloppy, Unnormalized" , 12 );
 
-   unit::section( std::string( "Mul-adds a*b + c*d vs MPFR (relative error / (K u^2)), T = " ) + type );
+   unit::section( std::string( "Mul-adds, T = " ) + type, std::to_string( SAMPLES ) + " samples per check, relative error / K vs MPFR" );
    test_mul_add< T >( src, "DWMulAdd_Madd_N", 7, MUL_ADD( DWMulAdd_Madd_N ) );
    test_mul_add< T >( src, "DWMulAdd_Accu_N", 8, MUL_ADD( DWMulAdd_Accu_N ) );
    test_mul_add< T >( src, "DWMulAdd_Slop_N", 8, MUL_ADD( DWMulAdd_Slop_N ) );

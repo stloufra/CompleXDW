@@ -45,9 +45,8 @@ static double conditioning( mpfr_srcptr p, mpfr_srcptr q )
 template< typename T >
 static void test_construction( Source& src )
 {
-   const std::string n = std::to_string( SAMPLES_CX );
 
-   unit::announce( "XDW(DW re, DW im), real, imag, conj and parts round-trip, " + n + " values" );
+   unit::announce( "XDW(DW, DW), real, imag, conj", "parts round-trip" );
    bool parts = true;
    for( int i = 0; i < SAMPLES_CX; ++i ) {
       const DW< T > x = src.dw< T >(), y = src.dw< T >();
@@ -58,7 +57,7 @@ static void test_construction( Source& src )
    }
    unit::verdict( parts );
 
-   unit::announce( "plain numbers and std::complex<double> are split like DW, " + n + " values" );
+   unit::announce( "XDW(re, im), XDW(std::complex)", "split like DW" );
    bool split = true;
    for( int i = 0; i < SAMPLES_CX; ++i ) {
       const double re = static_cast< double >( src.dw< double >() ), im = static_cast< double >( src.dw< double >() );
@@ -67,7 +66,7 @@ static void test_construction( Source& src )
    }
    unit::verdict( split );
 
-   unit::announce( "static_cast<std::complex<double>>: each part as static_cast<double>(DW), " + n + " values" );
+   unit::announce( "static_cast<std::complex>", "each part as static_cast<double>" );
    bool back = true;
    for( int i = 0; i < SAMPLES_CX; ++i ) {
       const XDW< T > z = random_xdw< T >( src );
@@ -80,7 +79,7 @@ static void test_construction( Source& src )
 template< typename T >
 static void test_add_sub( Source& src )
 {
-   unit::announce( "z + w and z - w (componentwise MaddDWPlusDW), " + std::to_string( SAMPLES_CX ) + " pairs, half nearly cancelling" );
+   unit::announce( "z + w, z - w", "Madd per part, half cancelling" );
    Big ar, ai, br, bi, re, im;
    double worst = 0;
    for( int i = 0; i < SAMPLES_CX; ++i ) {
@@ -105,7 +104,7 @@ static void test_add_sub( Source& src )
 template< typename T, AddMode Add, NormMode Norm >
 static void test_mul_mode( Source& src, const char* name, double bound )
 {
-   unit::announce( std::string( "mul<" ) + name + ">, " + std::to_string( SAMPLES_CX ) + " pairs, half with a nearly cancelling imaginary part" );
+   unit::announce( std::string( "mul<" ) + name + ">", "half with cancelling imag part" );
    Big ar, ai, br, bi, p, q, re, im;
    double worst = 0;
    for( int i = 0; i < SAMPLES_CX; ++i ) {
@@ -171,7 +170,7 @@ static std::vector< DivCase< T > > division_cases( Source& src )
 template< typename T, DivMode Div, AddMode Add, NormMode Norm >
 static void test_div_mode( const std::vector< DivCase< T > >& cases, const char* name )
 {
-   unit::announce( std::string( "div<" ) + name + ">, " + std::to_string( cases.size() ) + " pairs with numerator K <= 10" );
+   unit::announce( std::string( "div<" ) + name + ">", "numerator K <= 10" );
    Big ar, ai, br, bi, p, q, d, re, im;
    double worst = 0;
    for( const DivCase< T >& c : cases ) {
@@ -195,10 +194,11 @@ static void test_div_mode( const std::vector< DivCase< T > >& cases, const char*
    unit::verdict_bound( worst / U2< T >, DIV_BOUND );
 }
 
+// norm is DWPowAdd: bound as the mul-add of the same modes at K = 1.
 template< typename T, AddMode Add, NormMode Norm >
-static void test_norm_mode( Source& src, const char* name )
+static void test_norm_mode( Source& src, const char* name, double bound )
 {
-   unit::announce( std::string( "norm<" ) + name + ">, |z|^2, " + std::to_string( SAMPLES_CX ) + " values" );
+   unit::announce( std::string( "norm<" ) + name + ">", "|z|^2" );
    Big ar, ai, re, t;
    double worst = 0;
    for( int i = 0; i < SAMPLES_CX; ++i ) {
@@ -210,7 +210,7 @@ static void test_norm_mode( Source& src, const char* name )
       mpfr_add( re, re, t, MPFR_RNDN );
       worst = std::max( worst, rel_error( re, norm< T, Add, Norm >( z ) ) );
    }
-   unit::verdict_bound( worst / U2< T >, 7 );
+   unit::verdict_bound( worst / U2< T >, bound );
 }
 
 // (3 + 4i) / (1 + 2i) = 2.2 - 0.4i: the high words must be T(2.2) and T(-0.4).
@@ -253,61 +253,85 @@ static void test_modes( Source& src )
    test_div_mode< T, DivMode::Div3, AddMode::Sloppy, NormMode::Normalized >( cases, "Div3, Sloppy, Normalized" );
    test_div_mode< T, DivMode::Div3, AddMode::Sloppy, NormMode::Unnormalized >( cases, "Div3, Sloppy, Unnormalized" );
 
-   unit::announce( "(3 + 4i) / (1 + 2i) = 2.2 - 0.4i in all 12 division modes" );
+   unit::announce( "(3 + 4i) / (1 + 2i)", "2.2 - 0.4i in all 12 div modes" );
    unit::verdict( exact_quotient_all_add_norm< T, DivMode::Div2 >() && exact_quotient_all_add_norm< T, DivMode::Div3 >() );
 
-   test_norm_mode< T, AddMode::Madd, NormMode::Normalized >( src, "Madd, Normalized" );
-   test_norm_mode< T, AddMode::Madd, NormMode::Unnormalized >( src, "Madd, Unnormalized" );
-   test_norm_mode< T, AddMode::Accurate, NormMode::Normalized >( src, "Accurate, Normalized" );
-   test_norm_mode< T, AddMode::Accurate, NormMode::Unnormalized >( src, "Accurate, Unnormalized" );
-   test_norm_mode< T, AddMode::Sloppy, NormMode::Normalized >( src, "Sloppy, Normalized" );
-   test_norm_mode< T, AddMode::Sloppy, NormMode::Unnormalized >( src, "Sloppy, Unnormalized" );
+   test_norm_mode< T, AddMode::Madd, NormMode::Normalized >( src, "Madd, Normalized" , 7 );
+   test_norm_mode< T, AddMode::Madd, NormMode::Unnormalized >( src, "Madd, Unnormalized" , 8 );
+   test_norm_mode< T, AddMode::Accurate, NormMode::Normalized >( src, "Accurate, Normalized" , 8 );
+   test_norm_mode< T, AddMode::Accurate, NormMode::Unnormalized >( src, "Accurate, Unnormalized" , 10 );
+   test_norm_mode< T, AddMode::Sloppy, NormMode::Normalized >( src, "Sloppy, Normalized" , 8 );
+   test_norm_mode< T, AddMode::Sloppy, NormMode::Unnormalized >( src, "Sloppy, Unnormalized" , 12 );
 }
 
-// z = x + i y with a real DW operand y, which nearly cancels x on every other sample.
-template< typename T >
-static void test_with_dw( Source& src )
+// z = x + i y with a real DW operand y, which nearly cancels x on every other sample; exact(a, b)
+// gives the expected real and imaginary parts, result(z, y) the XDW under test.
+template< typename T, typename Exact, typename Result >
+static double worst_with_dw( Source& src, Exact exact, Result result )
 {
-   const std::string n = std::to_string( SAMPLES_CX );
    Big a, b, re, im;
-   double w_mul = 0, w_div = 0, w_add = 0;
-   bool rest = true;
-
-   unit::announce( "XDW * DW, XDW / DW, XDW + DW vs MPFR, XDW - DW, DW - XDW, DW / XDW, " + n + " pairs, half nearly cancelling" );
+   double worst = 0;
    for( int i = 0; i < SAMPLES_CX; ++i ) {
       const DW< T > x = src.dw< T >();
       const DW< T > y = i % 2 ? src.dw_near_negation( x ) : src.dw< T >();
-      const XDW< T > z( x, y );
       set( a, x );
       set( b, y );
-
-      mpfr_mul( re, a, b, MPFR_RNDN );
-      mpfr_sqr( im, b, MPFR_RNDN );
-      w_mul = std::max( w_mul, cx_error( re, im, z * y ) );
-      mpfr_div( re, a, b, MPFR_RNDN );
-      mpfr_set_ui( im, 1, MPFR_RNDN );
-      w_div = std::max( w_div, cx_error( re, im, z / y ) );
-      mpfr_add( re, a, b, MPFR_RNDN );
-      if( !mpfr_zero_p( re ) )
-         w_add = std::max( w_add, rel_error( re, real( z + y ) ) );
-
-      rest &= y * z == z * y && y + z == z + y && imag( z + y ) == y;
-      rest &= real( z - y ) == x - y && imag( z - y ) == y && real( y - z ) == y - x && imag( y - z ) == -y;
-      rest &= y / z == XDW< T >( y ) / z;
+      if( exact( re, im, a, b ) )
+         worst = std::max( worst, cx_error( re, im, result( XDW< T >( x, y ), y ) ) );
    }
-   const bool ok = w_mul <= 5 * U2< T > && w_div <= ( 15 + 56 * std::sqrt( U2< T > ) ) * U2< T > && w_add <= 2 * U2< T > && rest;
-   std::ostringstream detail;
-   detail << std::setprecision( 3 ) << "worst * " << w_mul / U2< T > << ", / " << w_div / U2< T > << ", + " << w_add / U2< T >
-          << " u^2 (bounds 5, 15, 2), the rest exact";
-   unit::verdict( ok, detail.str() );
+   return worst / U2< T >;
+}
+
+template< typename T >
+static void test_with_dw( Source& src )
+{
+   unit::announce( "XDW * DW", "componentwise DWTimesDW2" );
+   unit::verdict_bound( worst_with_dw< T >( src,
+                                            []( mpfr_ptr re, mpfr_ptr im, mpfr_srcptr a, mpfr_srcptr b ) {
+                                               mpfr_mul( re, a, b, MPFR_RNDN );
+                                               mpfr_sqr( im, b, MPFR_RNDN );
+                                               return true;
+                                            },
+                                            []( const XDW< T >& z, const DW< T >& y ) { return z * y; } ),
+                        5 );
+
+   unit::announce( "XDW / DW", "componentwise DWDivDW2" );
+   unit::verdict_bound( worst_with_dw< T >( src,
+                                            []( mpfr_ptr re, mpfr_ptr im, mpfr_srcptr a, mpfr_srcptr b ) {
+                                               mpfr_div( re, a, b, MPFR_RNDN );
+                                               mpfr_set_ui( im, 1, MPFR_RNDN );
+                                               return true;
+                                            },
+                                            []( const XDW< T >& z, const DW< T >& y ) { return z / y; } ),
+                        15 + 56 * std::sqrt( U2< T > ) );
+
+   unit::announce( "XDW + DW", "real part Madd, half cancelling" );
+   unit::verdict_bound( worst_with_dw< T >( src,
+                                            []( mpfr_ptr re, mpfr_ptr im, mpfr_srcptr a, mpfr_srcptr b ) {
+                                               mpfr_add( re, a, b, MPFR_RNDN );
+                                               mpfr_set( im, b, MPFR_RNDN );
+                                               return !mpfr_zero_p( re );
+                                            },
+                                            []( const XDW< T >& z, const DW< T >& y ) { return z + y; } ),
+                        2 );
+
+   unit::announce( "XDW - DW, DW - XDW, DW / XDW", "match the DW operations, commute" );
+   bool exact = true;
+   for( int i = 0; i < SAMPLES_CX; ++i ) {
+      const DW< T > x = src.dw< T >(), y = src.dw< T >();
+      const XDW< T > z( x, y );
+      exact &= y * z == z * y && y + z == z + y && imag( z + y ) == y;
+      exact &= real( z - y ) == x - y && imag( z - y ) == y && real( y - z ) == y - x && imag( y - z ) == -y;
+      exact &= y / z == XDW< T >( y ) / z;
+   }
+   unit::verdict( exact );
 }
 
 template< typename T >
 static void test_operators( Source& src )
 {
-   const std::string n = std::to_string( SAMPLES_CX );
 
-   unit::announce( "a + b, a - b, a * b, a / b equal add, sub, mul<>, div<> with the default modes, " + n + " pairs" );
+   unit::announce( "+ - * /", "equal add, sub, mul<>, div<>" );
    bool defaults = true;
    for( int i = 0; i < SAMPLES_CX; ++i ) {
       const XDW< T > a = random_xdw< T >( src ), b = random_xdw< T >( src );
@@ -316,7 +340,7 @@ static void test_operators( Source& src )
    }
    unit::verdict( defaults );
 
-   unit::announce( "+= -= *= /= equal the binary operators, unary + and -, " + n + " pairs" );
+   unit::announce( "+= -= *= /=, unary + -", "equal the binary operators" );
    bool compound = true;
    for( int i = 0; i < SAMPLES_CX; ++i ) {
       const XDW< T > a = random_xdw< T >( src ), b = random_xdw< T >( src );
@@ -330,7 +354,7 @@ static void test_operators( Source& src )
    }
    unit::verdict( compound );
 
-   unit::announce( "plain numbers mix as their DW conversion: z * 0.5, 2 * z, z + 1.0, 3 - z, 0.5 / z, " + n + " values" );
+   unit::announce( "plain numbers", "z*0.5, 2*z, z+1, 3-z, 0.5/z" );
    bool mixed = true;
    for( int i = 0; i < SAMPLES_CX; ++i ) {
       const XDW< T > z = random_xdw< T >( src );
@@ -339,7 +363,7 @@ static void test_operators( Source& src )
    }
    unit::verdict( mixed );
 
-   unit::announce( "select(mask, z, w) picks z or w, " + n + " pairs" );
+   unit::announce( "select(mask, z, w)", "picks z or w" );
    bool picks = true;
    for( int i = 0; i < SAMPLES_CX; ++i ) {
       const XDW< T > z = random_xdw< T >( src ), w = random_xdw< T >( src );
@@ -354,14 +378,14 @@ static void run( const char* type, unsigned long seed )
 {
    Source src( seed );
    const std::string t = std::string( "XDW<" ) + type + ">: ";
-   unit::section( t + "construction and conversions" );
+   unit::section( t + "construction and conversions", std::to_string( SAMPLES_CX ) + " samples per check" );
    test_construction< T >( src );
-   unit::section( t + "arithmetic vs MPFR (relative error per component)" );
+   unit::section( t + "arithmetic", std::to_string( SAMPLES_CX ) + " samples per check, relative error per component vs MPFR" );
    test_add_sub< T >( src );
    test_modes< T >( src );
-   unit::section( t + "with a real DW operand" );
+   unit::section( t + "with a real DW operand", std::to_string( SAMPLES_CX ) + " samples per check, relative error per component vs MPFR" );
    test_with_dw< T >( src );
-   unit::section( t + "operators" );
+   unit::section( t + "operators", std::to_string( SAMPLES_CX ) + " samples per check" );
    test_operators< T >( src );
 }
 
