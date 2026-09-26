@@ -1,8 +1,10 @@
 // MPFR checks of DW<T> (double and float) and of its operations with XDW<T>.
-// Bounds: + - MaddDWPlusDW 2u^2, * DWTimesDW2 5u^2, / DWDivDW2 15u^2 + 56u^3, norm 7u^2; u = 2^-p.
+// Bounds: + - MaddDWPlusDW 2u^2, * DWTimesDW2 5u^2, / DWDivDW2 15u^2 + 56u^3, norm 7u^2, sqrt 25/8 u^2; u = 2^-p.
 
 #include <algorithm>
+#include <cfenv>
 #include <cmath>
+#include <complex>
 #include <iostream>
 #include <limits>
 #include <random>
@@ -110,7 +112,7 @@ struct Source
 struct Worst
 {
     double add = 0, sub = 0, mul = 0, div = 0;
-    double xmul = 0, xdiv = 0, xadd = 0, norm = 0;
+    double xmul = 0, xdiv = 0, xadd = 0, norm = 0, sqrt = 0;
 };
 
 template< typename T >
@@ -168,8 +170,35 @@ static void test_arithmetic( Source& src, Worst& w )
         mpfr_mul( im, b, b, MPFR_RNDN );
         mpfr_add( exact, re, im, MPFR_RNDN );
         w.norm = std::max( w.norm, rel_error( exact, norm( z ) ) );
+
+        // sqrt, abs, signbit, min/max and select are exact apart from sqrt's rounding.
+        const DW< T > ax = abs( x );
+        to_mpfr( re, ax );
+        check( mpfr_cmpabs( re, a ) == 0 && mpfr_sgn( re ) >= 0, "abs" );
+        check( ( signbit( x ) != 0 ) == ( mpfr_sgn( a ) < 0 ), "signbit" );
+        mpfr_abs( exact, a, MPFR_RNDN );
+        mpfr_sqrt( exact, exact, MPFR_RNDN );
+        w.sqrt = std::max( w.sqrt, rel_error( exact, sqrt( ax ) ) );
+        const bool x_smaller = mpfr_cmp( a, b ) < 0;
+        check( min( x, y ) == ( x_smaller ? x : y ) && max( x, y ) == ( x_smaller ? y : x ), "min/max" );
+        check( select( true, x, y ) == x && select( false, x, y ) == y && select( x_smaller, z, conj( z ) ) == ( x_smaller ? z : conj( z ) ),
+               "select" );
+        check( max( x, 0. ) == max( x, DW< T >( 0. ) ) && min( 1, x ) == min( DW< T >( 1 ), x ), "min/max with a plain number" );
     }
     mpfr_clears( a, b, exact, re, im, (mpfr_ptr) nullptr );
+}
+
+// Zeros must not raise floating-point exceptions (MadGraph checks for them).
+template< typename T >
+static void test_special()
+{
+    const DW< T > zero( T( 0 ), T( 0 ) ), negzero( -T( 0 ), -T( 0 ) );
+    std::feclearexcept( FE_ALL_EXCEPT );
+    const DW< T > r0 = sqrt( zero ), rn = sqrt( negzero );
+    check( !std::fetestexcept( FE_INVALID | FE_DIVBYZERO ), "sqrt(+-0) raises no exception" );
+    check( r0 == zero && rn == zero, "sqrt(+-0) = 0" );
+    check( signbit( negzero ) && !signbit( zero ) && !signbit( abs( negzero ) ), "signbit and abs of -0" );
+    check( sqrt( DW< T >( 4 ) ) == DW< T >( 2 ), "sqrt(4) = 2 exactly" );
 }
 
 template< typename T >
@@ -228,6 +257,10 @@ static void test_conversions( Source& src )
         const XDW< T > z( y, -y );
         mixed &= ( z * 0.5 ) == ( z * DW< T >( 0.5 ) ) && ( 2 * z ) == ( DW< T >( 2 ) * z ) && ( z + 1.0 ) == ( z + DW< T >( 1.0 ) );
         mixed &= XDW< T >( d, -d ) == XDW< T >( DW< T >( d ), DW< T >( -d ) );
+        mixed &= XDW< T >( std::complex< double >( d, -d ) ) == XDW< T >( DW< T >( d ), DW< T >( -d ) );
+        const std::complex< double > back = static_cast< std::complex< double > >( z );
+        mixed &= back.real() == static_cast< double >( y ) && back.imag() == static_cast< double >( -y );
+        mixed &= ( y / z ) == ( XDW< T >( y ) / z ) && ( 0.5 / z ) == ( XDW< T >( 0.5 ) / z ) && ( z - 3 ) == ( z - DW< T >( 3 ) );
     }
     check( exact_back, "DW(double) and conversion back to a wider type are exact" );
     check( mixed, "plain numbers mix with DW and XDW as their DW conversion" );
@@ -239,6 +272,33 @@ static void test_conversions( Source& src )
     mpfr_clears( a, exact, (mpfr_ptr) nullptr );
 }
 
+// DW<float> -> DW<double> exact, DW<double> -> DW<float> within u_float^2; both normalized.
+static void test_precision_conversion( Source& src )
+{
+    mpfr_t a, exact;
+    mpfr_inits2( MPFR_PREC, a, exact, (mpfr_ptr) nullptr );
+    double worst = 0;
+    bool up_exact = true, normalized = true;
+    for( int i = 0; i < SAMPLES; ++i ) {
+        src.draw( a );
+        const DW< double > xd = to_dw< double >( a );
+        const DW< float > xf = to_dw< float >( a );
+        to_mpfr( exact, xf );
+        const DW< double > up( xf );
+        up_exact &= rel_error( exact, up ) == 0.0;
+        normalized &= up.hi() + up.lo() == up.hi();
+        to_mpfr( exact, xd );
+        const DW< float > down( xd );
+        worst = std::max( worst, rel_error( exact, down ) );
+        normalized &= down.hi() + down.lo() == down.hi();
+    }
+    check( up_exact, "DW<double>(DW<float>) is exact" );
+    check( normalized, "DW<float>(DW<double>) is normalized" );
+    check( worst <= U2< float >, "DW<float>(DW<double>) within u^2" );
+    std::cout << "  DW<double> -> DW<float>: worst relative error / u^2 = " << worst / U2< float > << '\n';
+    mpfr_clears( a, exact, (mpfr_ptr) nullptr );
+}
+
 template< typename T >
 static void run( const char* name, unsigned long seed )
 {
@@ -247,6 +307,7 @@ static void run( const char* name, unsigned long seed )
     test_arithmetic< T >( src, w );
     test_order< T >( src );
     test_conversions< T >( src );
+    test_special< T >();
 
     const double u2 = U2< T >, u3 = u2 * std::sqrt( u2 );
     const std::string t = std::string( "DW<" ) + name + "> ";
@@ -258,9 +319,10 @@ static void run( const char* name, unsigned long seed )
     check( w.xdiv <= 15 * u2 + 56 * u3, t + "XDW / DW within 15u^2" );
     check( w.xadd <= 2 * u2, t + "XDW + DW within 2u^2" );
     check( w.norm <= 7 * u2, t + "norm within 7u^2" );
+    check( w.sqrt <= 25.0 / 8 * u2, t + "sqrt within 25/8 u^2" );
     std::cout << t << "worst relative error / u^2:  + " << w.add / u2 << "  - " << w.sub / u2 << "  * " << w.mul / u2
               << "  / " << w.div / u2 << "  XDW*DW " << w.xmul / u2 << "  XDW/DW " << w.xdiv / u2
-              << "  XDW+DW " << w.xadd / u2 << "  norm " << w.norm / u2 << '\n';
+              << "  XDW+DW " << w.xadd / u2 << "  norm " << w.norm / u2 << "  sqrt " << w.sqrt / u2 << '\n';
 }
 
 int main()
@@ -268,6 +330,8 @@ int main()
     mpfr_set_default_prec( MPFR_PREC );
     run< double >( "double", 42 );
     run< float >( "float", 43 );
+    Source src( 44 );
+    test_precision_conversion( src );
     mpfr_free_cache();
     if( failures )
         std::cerr << failures << " check(s) failed\n";

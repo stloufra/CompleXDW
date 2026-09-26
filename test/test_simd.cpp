@@ -133,6 +133,45 @@ static void run( const char* name )
             bad += !( bx.lane( i ) == xs[ 0 ] ) + !( b01.lane( i ) == DW< S >( 0.1 ) ) + !( bz.lane( i ) == zs[ 0 ] )
                  + !( b12.lane( i ) == XDW< S >( 0.1, 2 ) );
         total += 4 * N;
+
+        // sqrt, abs, signbit, min/max, select; every third trial the last lane is +0 or -0.
+        DW< S > ps[ N ];
+        for( int i = 0; i < N; ++i ) ps[ i ] = xs[ i ];
+        if( t % 3 == 0 )
+            ps[ N - 1 ] = t % 2 ? DW< S >( S( 0 ), S( 0 ) ) : DW< S >( -S( 0 ), -S( 0 ) );
+        const DW< V > p = pack< V >( ps );
+        const DW< V > sq = sqrt( abs( p ) ), ab = abs( p ), mn = min( p, y ), mx = max( p, 0.5 ), sl = select( p < y, p, y );
+        const auto sb = signbit( p );
+        const XDW< V > zs_sel = select( p < y, z, w );
+        for( int i = 0; i < N; ++i ) {
+            const DW< S > a = ps[ i ], b = ys[ i ];
+            bad += !( sq.lane( i ) == sqrt( abs( a ) ) ) + !( ab.lane( i ) == abs( a ) ) + !( mn.lane( i ) == min( a, b ) )
+                 + !( mx.lane( i ) == max( a, 0.5 ) ) + !( sl.lane( i ) == select( a < b, a, b ) )
+                 + ( ( sb[ i ] != 0 ) != signbit( a ) ) + !( zs_sel.lane( i ) == select( a < b, zs[ i ], ws[ i ] ) );
+            // abs(-0) is +0: compare the sign too, == treats -0 and +0 as equal.
+            bad += signbit( ab.lane( i ) );
+        }
+        total += 8 * N;
+
+        // Mixed operands: a scalar DW/XDW or a plain number next to a vector one, and DW / XDW.
+        const DW< S > rs = us[ 0 ];
+        const XDW< S > cs = ws[ 0 ];
+        const XDW< V > m1 = z + cs, m2 = cs - z, m3 = z * cs, m4 = cs / z;
+        const XDW< V > m5 = x + cs, m6 = cs - x, m7 = x * cs, m8 = cs / x;
+        const XDW< V > m9 = rs + z, m10 = z - rs, m11 = rs * z, m12 = z / rs;
+        const XDW< V > m13 = z * 0.5 + 2, m14 = 3 - z / 0.25, m15 = x / z;
+        const DW< V > m16 = x * rs - rs / x;
+        for( int i = 0; i < N; ++i ) {
+            const XDW< S > c = zs[ i ];
+            const DW< S > a = xs[ i ];
+            bad += !( m1.lane( i ) == c + cs ) + !( m2.lane( i ) == cs - c ) + !( m3.lane( i ) == c * cs ) + !( m4.lane( i ) == cs / c );
+            bad += !( m5.lane( i ) == XDW< S >( a ) + cs ) + !( m6.lane( i ) == cs - a ) + !( m7.lane( i ) == a * cs )
+                 + !( m8.lane( i ) == cs / a );
+            bad += !( m9.lane( i ) == rs + c ) + !( m10.lane( i ) == c - rs ) + !( m11.lane( i ) == rs * c ) + !( m12.lane( i ) == c / rs );
+            bad += !( m13.lane( i ) == c * DW< S >( 0.5 ) + DW< S >( 2 ) ) + !( m14.lane( i ) == DW< S >( 3 ) - c / DW< S >( 0.25 ) )
+                 + !( m15.lane( i ) == a / c ) + !( m16.lane( i ) == a * rs - rs / a );
+        }
+        total += 16 * N;
     }
     std::printf( "%-24s %ld / %ld lane results differ from the scalar DW/XDW\n", name, bad, total );
     failures += bad;
