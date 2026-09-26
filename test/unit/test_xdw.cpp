@@ -13,10 +13,6 @@
 using namespace XDW_ARTH;
 
 constexpr int SAMPLES_CX = 50000;
-// Division is checked on numerators a*c + b*d, b*c - a*d with conditioning K <= this: the bound
-// below assumes a well-conditioned numerator, K itself is what the conditioning studies measure.
-constexpr double DIV_COND_LIMIT = 10.0;
-constexpr double DIV_BOUND = 29.0;
 
 template< typename T >
 static XDW< T > random_xdw( Source& src )
@@ -137,40 +133,51 @@ static void test_mul_mode( Source& src, const char* name, double bound )
    unit::verdict_bound( worst / U2< T >, bound, "K u^2" );
 }
 
-// Inputs with well-conditioned numerators, drawn once and shared by the 12 division modes.
+// Inputs drawn once and shared by the 12 division modes; every other one has a cancelling
+// imag numerator b*c - a*d.
 template< typename T >
 struct DivCase
 {
    XDW< T > z, w;
 };
 
+// d = b*c / a nearly: redrawn until it stays in the exponent range of the random inputs, else
+// |w|^2 can reach 2^120 and float's 1 / |w|^2 underflows.
 template< typename T >
-static std::vector< DivCase< T > > division_cases( Source& src )
+static DivCase< T > cancelling_division( Source& src )
 {
-   std::vector< DivCase< T > > cases;
-   Big ar, ai, br, bi, p, q;
-   while( static_cast< int >( cases.size() ) < SAMPLES_CX ) {
+   Big ar, ai, br, p, q;
+   for( ;; ) {
       const XDW< T > z = random_xdw< T >( src ), w = random_xdw< T >( src );
       set( ar, real( z ) );
       set( ai, imag( z ) );
       set( br, real( w ) );
-      set( bi, imag( w ) );
-      mpfr_mul( p, ar, br, MPFR_RNDN );
-      mpfr_mul( q, ai, bi, MPFR_RNDN );
-      const double k_re = conditioning( p, q );
       mpfr_mul( p, ai, br, MPFR_RNDN );
-      mpfr_mul( q, ar, bi, MPFR_RNDN );
+      src.near_negation< T >( q, p );
+      mpfr_div( q, q, ar, MPFR_RNDN );
       mpfr_neg( q, q, MPFR_RNDN );
-      if( std::max( k_re, conditioning( p, q ) ) <= DIV_COND_LIMIT )
-         cases.push_back( { z, w } );
+      if( mpfr_get_exp( q ) >= Source::MIN_EXPONENT && mpfr_get_exp( q ) <= Source::MAX_EXPONENT + 1 )
+         return { z, XDW< T >( real( w ), to_dw< T >( q ) ) };
    }
+}
+
+template< typename T >
+static std::vector< DivCase< T > > division_cases( Source& src )
+{
+   std::vector< DivCase< T > > cases;
+   for( int i = 0; i < SAMPLES_CX; ++i )
+      cases.push_back( i % 2 ? cancelling_division< T >( src ) : DivCase< T >{ random_xdw< T >( src ), random_xdw< T >( src ) } );
    return cases;
 }
 
+// Each component is a mul-add numerator over the DWPowAdd denominator, so its error is
+// <= K * numerator + denominator + division bound; with K >= 1 their sum bounds error / K.
 template< typename T, DivMode Div, AddMode Add, NormMode Norm >
-static void test_div_mode( const std::vector< DivCase< T > >& cases, const char* name )
+static void test_div_mode( const std::vector< DivCase< T > >& cases, const char* name, double numerator_bound, double denominator_bound )
 {
-   unit::announce( std::string( "div<" ) + name + ">", "numerator K <= 10" );
+   unit::announce( std::string( "div<" ) + name + ">", "half with cancelling imag part" );
+   const double u = std::sqrt( U2< T > );
+   const double division_bound = Div == DivMode::Div2 ? 15 + 56 * u : 9.8;
    Big ar, ai, br, bi, p, q, d, re, im;
    double worst = 0;
    for( const DivCase< T >& c : cases ) {
@@ -178,20 +185,28 @@ static void test_div_mode( const std::vector< DivCase< T > >& cases, const char*
       set( ai, imag( c.z ) );
       set( br, real( c.w ) );
       set( bi, imag( c.w ) );
+      const XDW< T > r = XDW< T >::template div< Div, Add, Norm >( c.z, c.w );
       mpfr_sqr( d, br, MPFR_RNDN );
       mpfr_sqr( p, bi, MPFR_RNDN );
       mpfr_add( d, d, p, MPFR_RNDN );
+
       mpfr_mul( p, ar, br, MPFR_RNDN );
       mpfr_mul( q, ai, bi, MPFR_RNDN );
       mpfr_add( re, p, q, MPFR_RNDN );
-      mpfr_div( re, re, d, MPFR_RNDN );
+      if( !mpfr_zero_p( re ) ) {
+         mpfr_div( re, re, d, MPFR_RNDN );
+         worst = std::max( worst, rel_error( re, real( r ) ) / conditioning( p, q ) );
+      }
       mpfr_mul( p, ai, br, MPFR_RNDN );
       mpfr_mul( q, ar, bi, MPFR_RNDN );
-      mpfr_sub( im, p, q, MPFR_RNDN );
-      mpfr_div( im, im, d, MPFR_RNDN );
-      worst = std::max( worst, cx_error( re, im, XDW< T >::template div< Div, Add, Norm >( c.z, c.w ) ) );
+      mpfr_neg( q, q, MPFR_RNDN );
+      mpfr_add( im, p, q, MPFR_RNDN );
+      if( !mpfr_zero_p( im ) ) {
+         mpfr_div( im, im, d, MPFR_RNDN );
+         worst = std::max( worst, rel_error( im, imag( r ) ) / conditioning( p, q ) );
+      }
    }
-   unit::verdict_bound( worst / U2< T >, DIV_BOUND );
+   unit::verdict_bound( worst / U2< T >, numerator_bound + denominator_bound + division_bound, "K u^2" );
 }
 
 // norm is DWPowAdd: bound as the mul-add of the same modes at K = 1.
@@ -240,18 +255,18 @@ static void test_modes( Source& src )
    test_mul_mode< T, AddMode::Sloppy, NormMode::Unnormalized >( src, "Sloppy, Unnormalized", 12 );
 
    const auto cases = division_cases< T >( src );
-   test_div_mode< T, DivMode::Div2, AddMode::Madd, NormMode::Normalized >( cases, "Div2, Madd, Normalized" );
-   test_div_mode< T, DivMode::Div2, AddMode::Madd, NormMode::Unnormalized >( cases, "Div2, Madd, Unnormalized" );
-   test_div_mode< T, DivMode::Div2, AddMode::Accurate, NormMode::Normalized >( cases, "Div2, Accurate, Normalized" );
-   test_div_mode< T, DivMode::Div2, AddMode::Accurate, NormMode::Unnormalized >( cases, "Div2, Accurate, Unnormalized" );
-   test_div_mode< T, DivMode::Div2, AddMode::Sloppy, NormMode::Normalized >( cases, "Div2, Sloppy, Normalized" );
-   test_div_mode< T, DivMode::Div2, AddMode::Sloppy, NormMode::Unnormalized >( cases, "Div2, Sloppy, Unnormalized" );
-   test_div_mode< T, DivMode::Div3, AddMode::Madd, NormMode::Normalized >( cases, "Div3, Madd, Normalized" );
-   test_div_mode< T, DivMode::Div3, AddMode::Madd, NormMode::Unnormalized >( cases, "Div3, Madd, Unnormalized" );
-   test_div_mode< T, DivMode::Div3, AddMode::Accurate, NormMode::Normalized >( cases, "Div3, Accurate, Normalized" );
-   test_div_mode< T, DivMode::Div3, AddMode::Accurate, NormMode::Unnormalized >( cases, "Div3, Accurate, Unnormalized" );
-   test_div_mode< T, DivMode::Div3, AddMode::Sloppy, NormMode::Normalized >( cases, "Div3, Sloppy, Normalized" );
-   test_div_mode< T, DivMode::Div3, AddMode::Sloppy, NormMode::Unnormalized >( cases, "Div3, Sloppy, Unnormalized" );
+   test_div_mode< T, DivMode::Div2, AddMode::Madd, NormMode::Normalized >( cases, "Div2, Madd, Normalized", 7, 7 );
+   test_div_mode< T, DivMode::Div2, AddMode::Madd, NormMode::Unnormalized >( cases, "Div2, Madd, Unnormalized", 7, 8 );
+   test_div_mode< T, DivMode::Div2, AddMode::Accurate, NormMode::Normalized >( cases, "Div2, Accurate, Normalized", 8, 8 );
+   test_div_mode< T, DivMode::Div2, AddMode::Accurate, NormMode::Unnormalized >( cases, "Div2, Accurate, Unnormalized", 8, 10 );
+   test_div_mode< T, DivMode::Div2, AddMode::Sloppy, NormMode::Normalized >( cases, "Div2, Sloppy, Normalized", 8, 8 );
+   test_div_mode< T, DivMode::Div2, AddMode::Sloppy, NormMode::Unnormalized >( cases, "Div2, Sloppy, Unnormalized", 8, 12 );
+   test_div_mode< T, DivMode::Div3, AddMode::Madd, NormMode::Normalized >( cases, "Div3, Madd, Normalized", 7, 7 );
+   test_div_mode< T, DivMode::Div3, AddMode::Madd, NormMode::Unnormalized >( cases, "Div3, Madd, Unnormalized", 7, 8 );
+   test_div_mode< T, DivMode::Div3, AddMode::Accurate, NormMode::Normalized >( cases, "Div3, Accurate, Normalized", 8, 8 );
+   test_div_mode< T, DivMode::Div3, AddMode::Accurate, NormMode::Unnormalized >( cases, "Div3, Accurate, Unnormalized", 8, 10 );
+   test_div_mode< T, DivMode::Div3, AddMode::Sloppy, NormMode::Normalized >( cases, "Div3, Sloppy, Normalized", 8, 8 );
+   test_div_mode< T, DivMode::Div3, AddMode::Sloppy, NormMode::Unnormalized >( cases, "Div3, Sloppy, Unnormalized", 8, 12 );
 
    unit::announce( "(3 + 4i) / (1 + 2i)", "2.2 - 0.4i in all 12 div modes" );
    unit::verdict( exact_quotient_all_add_norm< T, DivMode::Div2 >() && exact_quotient_all_add_norm< T, DivMode::Div3 >() );
