@@ -6,8 +6,6 @@
 #include "XDW.h"
 
 // All 6 (AddMode, NormMode) combinations XDW::mul<Add,Norm> can be instantiated with.
-// Shared between xdw_conditioning.cpp and xdw_binned_mul.cpp
-// so both stay in sync on combo order/naming.
 constexpr int N_COMBOS = 6;
 constexpr const char* COMBO_NAMES[N_COMBOS] = {
     "Madd/Normalized", "Madd/Unnormalized",

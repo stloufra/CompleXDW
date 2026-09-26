@@ -4,3 +4,4 @@ res_cond/
 CONDITIONING_GENERATOR.md
 RUN_BINNED_ON_SERVER.md
 plot_binned_results.py
+fetch_and_plot_binned.sh

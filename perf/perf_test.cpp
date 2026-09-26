@@ -10,7 +10,7 @@
 #include <omp.h>
 
 #include "../XDW.h"
-#include "../test/common/test_func.h"
+#include "random_dw.h"
 
 constexpr int MEASUREMENTS = 100;
 constexpr int WARMUPS = 10;
@@ -86,7 +86,10 @@ void run_benchmark() {
     auto b = std::make_unique<std::array<XDW<double>, N>>();
     auto c = std::make_unique<std::array<XDW<double>, N>>();
     
-    generate_random_dw_complex<N>(*a, *b, rng);
+    for (size_t i = 0; i < N; ++i) {
+        (*a)[i] = random_dw_complex<double>(rng);
+        (*b)[i] = random_dw_complex<double>(rng);
+    }
     
     std::array<double, MEASUREMENTS> times_acc_norm;
     std::array<double, MEASUREMENTS> times_acc_un;
