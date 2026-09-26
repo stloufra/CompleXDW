@@ -131,6 +131,9 @@ static void test_dw_algorithms( Source& src )
    unit::announce( "SloppyDWPlusDW", "same sign, no cancellation" );
    unit::info( worst_binary< T >( src, Pairs::Positive, []( DW< T > x, DW< T > y, T* h, T* l ) { SloppyDWPlusDW( x.hi(), x.lo(), y.hi(), y.lo(), h, l ); }, exact_add ) );
 
+   unit::announce( "SloppyDWPlusDW", "half cancelling" );
+   unit::info( worst_binary< T >( src, Pairs::Cancelling, []( DW< T > x, DW< T > y, T* h, T* l ) { SloppyDWPlusDW( x.hi(), x.lo(), y.hi(), y.lo(), h, l ); }, exact_add ) );
+
    unit::announce( "DWPlusFP", "half cancelling" );
    unit::verdict_bound( worst_binary< T >( src, Pairs::Cancelling, []( DW< T > x, DW< T > y, T* h, T* l ) { DWPlusFP( x.hi(), x.lo(), y.hi(), h, l ); }, exact_add, Second::FP ), 3 );
 
