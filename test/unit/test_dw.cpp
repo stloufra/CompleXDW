@@ -133,7 +133,8 @@ static void test_conversions( Source& src )
          mpfr_set_d( ref, d, MPFR_RNDN );
          worst = std::max( worst, rel_error( ref, DW< float >( d ) ) );
       }
-      unit::verdict_bound( worst / U2< float >, 1 );
+      // |lo| < ulp(hi) / 2, so lo's own rounding costs at most u^2 / 2.
+      unit::verdict_bound( worst / U2< float >, 0.5 );
    }
    else {
       unit::announce( "DW<double>(double)", "is (d, 0)" );
@@ -191,7 +192,9 @@ static void test_precision_conversion( Source& src )
       worst = std::max( worst, rel_error( ref, down ) );
       normalized &= down.hi() + down.lo() == down.hi();
    }
-   unit::verdict_bound( normalized ? worst / U2< float > : 1e9, 1 );
+   // As DW<float>(double), plus u^3 from rounding hi - h + lo in double.
+   const double u = std::sqrt( U2< float > );
+   unit::verdict_bound( normalized ? worst / U2< float > : 1e9, 0.5 + u );
 }
 
 template< typename T >
