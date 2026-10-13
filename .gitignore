@@ -1,0 +1,7 @@
+.DS_Store
+.idea/
+*.s
+*.o
+a.out
+*.png
+*.csv
