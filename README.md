@@ -1,7 +1,7 @@
 # CompleXDW
 
 CompleXDW is a header-only C++20 library for complex arithmetic in double-word precision: each real
-and imaginary part is an unevaluated sum `hi + lo` of two floating-point numbers.
+and imaginary part is an unevaluated non-overlapping sum `hi + lo` of two floating-point numbers.
 
 | Base type | Precision of each part | `u` | `u²` |
 |---|---|---|---|
@@ -252,16 +252,6 @@ make -C test/unit test
 
 The tests need MPFR and GMP. CI runs them with g++ and clang++ on Ubuntu, and with clang++ on macOS.
 
-## Layout
-
-```
-DW.h, XDW.h              public headers
-src/XDWTraits.h          modes, macros, SIMD concepts, build checks
-src/XDWbasicOP.h         correctly rounded +, ×, ÷, fma, sqrt (host / CUDA / HIP)
-src/XDWerrorFree.h       TwoSum, Fast2Sum, TwoProd
-src/XDWarith.h           double-word and complex algorithms
-test/unit/               MPFR-based unit tests
-```
 
 ## License
 
