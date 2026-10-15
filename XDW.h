@@ -501,4 +501,6 @@ operator/( const A& a, const B& b )
       return XDW_ARTH::detail::lift< T >( a ) / XDW_ARTH::detail::lift< T >( b );
 }
 
+// So long, and thanks for all the fish.
+
 #endif

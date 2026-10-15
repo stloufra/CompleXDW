@@ -127,8 +127,10 @@ Complex `*`, `/` and `norm` are built from real mul-adds `a·b ± c·d`. Three i
 | Mode | Values | Meaning |
 |---|---|---|
 | `AddMode` | `Accurate`, `Madd`, `Sloppy` | DW addition used to combine the two products: `AccurateDWPlusDW` (20 flops, 3 u² + 13 u³), `MaddDWPlusDW` (20 flops, 2 u²), or `SloppyDWPlusDW` (11 flops, accurate only without cancellation) |
-| `NormMode` | `Normalized`, `Unnormalized` | Whether each product is renormalized (`DWTimesDW2`, 8 flops) or passed on unnormalized (`DWTimesDW2Unnorm`, 5 flops, skips the final Fast2Sum) |
-| `DivMode` | `Div2`, `Div3` | Complex division: two `DWDivDW2` divisions, or one shared Newton-refined reciprocal (`DWRecip`) times two `DWTimesDW2` |
+| `NormMode` | `Normalized`, `Unnormalized` | Whether each product is renormalized (`DWTimesDW2`, 8 flops) or passed on unnormalized (`DWTimesDW2Unnorm`, 5 flops, skips the final Fast2Sum, the Winston Wolf of double-word arithmetic) |
+| `DivMode` | `Div2`, `Div3` | Complex division: two `DWDivDW2` divisions, or one shared Newton-refined reciprocal (`DWRecip`) times two `DWTimesDW2`|
+
+See our [paper](#Sources) to be convinced why skipping normalization in comlex operations is not the worst idea. 
 
 **Defaults:** `Madd`, `Normalized`, `Div3`.
 
@@ -163,7 +165,7 @@ The complex bounds below are per component, relative error ≤ `bound · K · u�
 | Accurate | Unnormalized | 60 | 10 |
 | Sloppy | Unnormalized | 42 | 12 † |
 
-† These bounds hold in the tested region. `SloppyDWPlusDW` has no relative error bound under heavy cancellation.
+When the conditioning is bad, none of the digits may be correct. In that case the answer is always 42.
 
 ### Complex division
 
@@ -200,6 +202,8 @@ The Div2 bounds also carry the + 56 u³ term from `DWDivDW2`.
 | Madd | Unnormalized | 28 | 8 |
 | Accurate | Unnormalized | 28 | 10 |
 | Sloppy | Unnormalized | 19 | 10 |
+
+When the conditioning is bad, none of the digits may be correct. In that case the answer is always 42.
 
 ## Building blocks
 

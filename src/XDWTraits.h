@@ -116,6 +116,7 @@ inline constexpr bool fast_math_enabled = false;
 
 }
 
+// Fast math shall not pass.
 static_assert( !XDW_ARTH::detail::fast_math_enabled,
                "CompleXDW's round-to-nearest error-free transforms are unsound under "
                "-ffast-math/-Ofast; build without fast-math." );

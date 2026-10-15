@@ -409,4 +409,6 @@ sqrt( const DW< T >& x )
    return DW< T >( h, l );
 }
 
+// May the FMA be with you.
+
 #endif
