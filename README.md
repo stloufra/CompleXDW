@@ -158,12 +158,11 @@ The complex bounds below are per component, relative error ≤ `bound · K · u�
 |---|---|---|---|
 | Madd | Normalized | 72 | 7 |
 | Accurate | Normalized | 72 | 8 |
-| Sloppy | Normalized | 54 | 8 † |
+| Sloppy | Normalized | 54 | 8  |
 | Madd | Unnormalized | 60 | 8 |
 | Accurate | Unnormalized | 60 | 10 |
-| Sloppy | Unnormalized | 42 | 12 † |
+| Sloppy | Unnormalized | 42 | 12  |
 
-† These bounds hold in the tested region. `SloppyDWPlusDW` has no relative error bound under heavy cancellation.
 
 ### Complex division
 
@@ -181,10 +180,10 @@ The bound per component is the sum of the numerator, denominator and division bo
 |---|---|---|---|---|---|
 | Madd | Normalized | 133 | 135 | 28 | 22.8 |
 | Accurate | Normalized | 133 | 135 | 29 | 23.8 |
-| Sloppy | Normalized | 115 | 117 | 29 † | 23.8 † |
+| Sloppy | Normalized | 115 | 117 | 29  | 23.8  |
 | Madd | Unnormalized | 115 | 117 | 33 | 27.8 |
 | Accurate | Unnormalized | 115 | 117 | 35 | 29.8 |
-| Sloppy | Unnormalized | 97 | 99 | 37 † | 31.8 † |
+| Sloppy | Unnormalized | 97 | 99 | 37  | 31.8  |
 
 The Div2 bounds also carry the + 56 u³ term from `DWDivDW2`.
 
