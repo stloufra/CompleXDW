@@ -5,6 +5,8 @@
 #include "XDWbasicOP.h"
 #include "XDWTraits.h"
 
+// A five-dollar shake: is it worth it? Only without cancellation.
+
 namespace XDW_ARTH{
 
 //-------------------- ADD ---------------------

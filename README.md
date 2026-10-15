@@ -1,5 +1,8 @@
 # CompleXDW
 
+> *It's the little differences. In Europe they call it double, here it's `XDW<float>`.*\
+> *And complex quad? They call it Le `XDW<double>`.*
+
 CompleXDW is a header-only C++20 library for complex arithmetic in double-word precision: each real
 and imaginary part is an unevaluated non-overlapping sum `hi + lo` of two floating-point numbers.
 
@@ -43,6 +46,8 @@ Complex from_std = std::complex< double >( 1, 2 );  // any type with real()/imag
 Add the repository root to the include path. There is nothing to build.
 
 ## Requirements
+
+> *Say `fast math` again. I `double` dare you.*
 
 - C++20
 - Round-to-nearest IEEE arithmetic without excess precision. The library refuses to compile under `-ffast-math`/`-Ofast` or with `FLT_EVAL_METHOD == 2` (x87)
@@ -93,6 +98,16 @@ Add the repository root to the include path. There is nothing to build.
 - any complex type exposing `real()` and `imag()`, such as `std::complex` or `thrust::complex`.
 
 ### Mixed operands
+
+> *Where is my double?*\
+> *I had to split the double.*\
+> *Whose 53 bits are these?*\
+> *It's not 53 bits, it's 42.*\
+> *Whose 42 is it?*\
+> *`DW<float>`'s.*\
+> *Who is `DW<float>`?*\
+> *`DW<float>` is dead, baby. `DW<float>` is dead.*\
+> — the dialog of lossy conversion
 
 - **Plain number exact in `T`:** a number that converts to the lane type without rounding is used as one floating-point operand: `DWPlusFP`, `DWTimesFP3` and `DWDivFP3`, on each part of an `XDW`
 - **Any other plain number** is split into a `DW` first, without rounding, and the DW–DW operation runs

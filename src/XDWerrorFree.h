@@ -137,6 +137,7 @@ two_prod( const T a, const T b )
    return { p, err };
 
 #else
+   // Gets medieval on TwoProd: Dekker's split, straight out of 1971.
    // Dekker's split branches on magnitude, so vectors keep the FMA.
    if constexpr( XDWVector< T > ) {
       const T p = mul_rn( a, b );
