@@ -1,6 +1,6 @@
 # CompleXDW
 
-> *It's the little differences. In Europe they call it double, here it's `XDW<float>`.*\
+> *It's the little differences. In Europe they call it double, here it's `DW<float>`.*\
 > *And complex quad? They call it Le `XDW<double>`.*
 
 CompleXDW is a header-only C++20 library for complex arithmetic in double-word precision: each real
