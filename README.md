@@ -1,7 +1,7 @@
 # CompleXDW
 
 CompleXDW is a header-only C++20 library for complex arithmetic in double-word precision: each real
-and imaginary part is an unevaluated sum `hi + lo` of two floating-point numbers.
+and imaginary part is an unevaluated non-overlapping sum `hi + lo` of two floating-point numbers.
 
 | Base type | Precision of each part | `u` | `u²` |
 |---|---|---|---|
@@ -160,10 +160,10 @@ The complex bounds below are per component, relative error ≤ `bound · K · u�
 |---|---|---|---|
 | Madd | Normalized | 72 | 7 |
 | Accurate | Normalized | 72 | 8 |
-| Sloppy | Normalized | 54 | 8 † |
+| Sloppy | Normalized | 54 | 8  |
 | Madd | Unnormalized | 60 | 8 |
 | Accurate | Unnormalized | 60 | 10 |
-| Sloppy | Unnormalized | 42 | 12 † |
+| Sloppy | Unnormalized | 42 | 12  |
 
 When the conditioning is bad, none of the digits may be correct. In that case the answer is always 42.
 
@@ -183,10 +183,10 @@ The bound per component is the sum of the numerator, denominator and division bo
 |---|---|---|---|---|---|
 | Madd | Normalized | 133 | 135 | 28 | 22.8 |
 | Accurate | Normalized | 133 | 135 | 29 | 23.8 |
-| Sloppy | Normalized | 115 | 117 | 29 † | 23.8 † |
+| Sloppy | Normalized | 115 | 117 | 29  | 23.8  |
 | Madd | Unnormalized | 115 | 117 | 33 | 27.8 |
 | Accurate | Unnormalized | 115 | 117 | 35 | 29.8 |
-| Sloppy | Unnormalized | 97 | 99 | 37 † | 31.8 † |
+| Sloppy | Unnormalized | 97 | 99 | 37  | 31.8  |
 
 The Div2 bounds also carry the + 56 u³ term from `DWDivDW2`.
 
@@ -257,16 +257,6 @@ make -C test/unit test
 
 The tests need MPFR and GMP. CI runs them with g++ and clang++ on Ubuntu, and with clang++ on macOS.
 
-## Layout
-
-```
-DW.h, XDW.h              public headers
-src/XDWTraits.h          modes, macros, SIMD concepts, build checks
-src/XDWbasicOP.h         correctly rounded +, ×, ÷, fma, sqrt (host / CUDA / HIP)
-src/XDWerrorFree.h       TwoSum, Fast2Sum, TwoProd
-src/XDWarith.h           double-word and complex algorithms
-test/unit/               MPFR-based unit tests
-```
 
 ## License
 
