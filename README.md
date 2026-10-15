@@ -244,6 +244,8 @@ The double-word algorithms live in `XDW_ARTH` (`src/XDWarith.h`), and the error-
 
 **How flops are counted:** each `+ − × ÷` and each FMA counts as 1, and negation is free. That makes TwoSum 6, Fast2Sum 3 and TwoProd 2 (with FMA).
 
+> *Gets medieval on TwoProd: Dekker's split, straight out of 1971*
+> 
 **Dekker splitting:** defining `XDW_DEKKER_TWO_PROD` replaces the FMA in TwoProd with Dekker's split. This is host only, and it raises every multiplication's cost.
 
 ## Source
