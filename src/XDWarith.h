@@ -29,7 +29,7 @@ SloppyDWPlusDW(const T xh, const T xl, const T yh, const T yl, T* __restrict__ z
 }
 
 // AccurateDWPlusDW — 20 flops
-// Relative error <= 3u^2
+// Relative error <= 3u^2 + 13u^3, asymptotically attained (Muller & Rideau 2022)
 template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
@@ -116,7 +116,7 @@ XDWsub(const T ah, const T al, const T bh, const T bl, const T ch, const T cl, c
 //-------------------- MUL ---------------------
 
 // DWTimesDW2 — 8 flops
-// Relative error <= 5u^2 
+// Relative error <= 5u^2 (Muller & Rideau 2022; 6u^2 in Joldes et al. 2017)
 template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
@@ -214,7 +214,7 @@ DWPowAdd(const T ah, const T al, const T bh, const T bl, T* __restrict__ rh, T* 
 }
 
 // DWTimesDW3 — 9 flops
-// Relative error <= 5u^2 (4u^2, Muller & Rideau 2022)
+// Relative error <= 4u^2 (Muller & Rideau 2022; 5u^2 in Joldes et al. 2017)
 template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
@@ -240,7 +240,7 @@ DWTimesDW3(const T xh, const T xl, const T yh, const T yl, T* __restrict__ zh, T
 // (xh,xl) op y, where y is a single (non-DW) floating-point value.
 
 // DWPlusFP — 10 flops
-// Relative error <= 3u^2
+// Relative error <= 2u^2
 template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
@@ -257,7 +257,7 @@ DWPlusFP(const T xh, const T xl, const T y, T* __restrict__ zh, T* __restrict__ 
 }
 
 // DWTimesFP1 — 10 flops, no FMA
-// Relative error <= 2u^2
+// Relative error <= 3/2 u^2 + 4u^3
 template< XDWReal T >
 XDW_CUDA_CALLABLE
 static constexpr XDW_INLINE void
@@ -290,6 +290,31 @@ DWTimesFP3(const T xh, const T xl, const T y, T* __restrict__ zh, T* __restrict_
    T cl2 = fma_rn(xl, y, chl.error);
    // Fast2Sum(ch, cl2, &zh, &zl)
    rne<T> r2 = quick_two_sum(chl.sum, cl2);
+
+   *zh = r2.sum; *zl = r2.error;
+}
+
+// DWDivFP3 — Algorithm 15 of Joldes, Muller, Popescu (2017), 10 flops
+// Relative error <= 3u^2
+template< XDWReal T >
+XDW_CUDA_CALLABLE
+static constexpr XDW_INLINE void
+DWDivFP3(const T xh, const T xl, const T y, T* __restrict__ zh, T* __restrict__ zl)
+{
+   // th = xh / y, an approximate quotient
+   T th = div_rn(xh, y);
+   // TwoProdFMA(th, y, &ph, &pl)
+   rne<T> p = two_prod(th, y);
+   // dh = xh - ph, exact by Sterbenz
+   T dh = add_rn(xh, -p.sum);
+   // dt = dh - pl, exact
+   T dt = add_rn(dh, -p.error);
+   // d = dt + xl, the residual
+   T d = add_rn(dt, xl);
+   // tl = d / y, the correction term
+   T tl = div_rn(d, y);
+   // Fast2Sum(th, tl, &zh, &zl)
+   rne<T> r2 = quick_two_sum(th, tl);
 
    *zh = r2.sum; *zl = r2.error;
 }

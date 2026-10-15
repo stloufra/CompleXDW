@@ -380,12 +380,21 @@ static void test_operators( Source& src )
    }
    unit::verdict( compound );
 
-   unit::announce( "plain numbers", "z*0.5, 2*z, z+1, 3-z, 0.5/z" );
+   unit::announce( "plain numbers", "per part, y / z complex" );
    bool mixed = true;
    for( int i = 0; i < SAMPLES_CX; ++i ) {
       const XDW< T > z = random_xdw< T >( src );
-      mixed &= z * 0.5 == z * DW< T >( 0.5 ) && 2 * z == DW< T >( 2 ) * z && z + 1.0 == z + DW< T >( 1.0 )
-            && 3 - z == DW< T >( 3 ) - z && 0.5 / z == XDW< T >( 0.5 ) / z;
+      const T y = src.dw< T >().hi();
+      const DW< T > x = real( z ), w = imag( z );
+      XDW< T > s = z, d = z, p = z, q = z;
+      s += y;
+      d -= 0.5;
+      p *= 2;
+      q /= y;
+      mixed &= z * 0.5 == XDW< T >( x * 0.5, w * 0.5 ) && 2 * z == XDW< T >( 2 * x, 2 * w ) && z * y == XDW< T >( x * y, w * y )
+            && z + 1.0 == XDW< T >( x + 1.0, w ) && y + z == XDW< T >( x + y, w ) && 3 - z == XDW< T >( 3 - x, -w )
+            && z - y == XDW< T >( x - y, w ) && z / y == XDW< T >( x / y, w / y ) && z / 4.0 == XDW< T >( x / 4.0, w / 4.0 )
+            && 0.5 / z == XDW< T >( 0.5 ) / z && s == z + y && d == z - 0.5 && p == z * 2 && q == z / y;
    }
    unit::verdict( mixed );
 

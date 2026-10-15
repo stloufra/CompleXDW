@@ -126,7 +126,7 @@ static void test_dw_algorithms( Source& src )
    unit::verdict_bound( worst_binary< T >( src, Pairs::Cancelling, []( DW< T > x, DW< T > y, T* h, T* l ) { MaddDWPlusDW( x.hi(), x.lo(), y.hi(), y.lo(), h, l ); }, exact_add ), 2 );
 
    unit::announce( "AccurateDWPlusDW", "half cancelling" );
-   unit::verdict_bound( worst_binary< T >( src, Pairs::Cancelling, []( DW< T > x, DW< T > y, T* h, T* l ) { AccurateDWPlusDW( x.hi(), x.lo(), y.hi(), y.lo(), h, l ); }, exact_add ), 3 );
+   unit::verdict_bound( worst_binary< T >( src, Pairs::Cancelling, []( DW< T > x, DW< T > y, T* h, T* l ) { AccurateDWPlusDW( x.hi(), x.lo(), y.hi(), y.lo(), h, l ); }, exact_add ), 3 + 13 * u );
 
    unit::announce( "SloppyDWPlusDW", "same sign, no cancellation" );
    unit::info( worst_binary< T >( src, Pairs::Positive, []( DW< T > x, DW< T > y, T* h, T* l ) { SloppyDWPlusDW( x.hi(), x.lo(), y.hi(), y.lo(), h, l ); }, exact_add ) );
@@ -135,7 +135,7 @@ static void test_dw_algorithms( Source& src )
    unit::info( worst_binary< T >( src, Pairs::Cancelling, []( DW< T > x, DW< T > y, T* h, T* l ) { SloppyDWPlusDW( x.hi(), x.lo(), y.hi(), y.lo(), h, l ); }, exact_add ) );
 
    unit::announce( "DWPlusFP", "half cancelling" );
-   unit::verdict_bound( worst_binary< T >( src, Pairs::Cancelling, []( DW< T > x, DW< T > y, T* h, T* l ) { DWPlusFP( x.hi(), x.lo(), y.hi(), h, l ); }, exact_add, Second::FP ), 3 );
+   unit::verdict_bound( worst_binary< T >( src, Pairs::Cancelling, []( DW< T > x, DW< T > y, T* h, T* l ) { DWPlusFP( x.hi(), x.lo(), y.hi(), h, l ); }, exact_add, Second::FP ), 2 );
 
    unit::announce( "DWTimesDW2" );
    unit::verdict_bound( worst_binary< T >( src, Pairs::Random, []( DW< T > x, DW< T > y, T* h, T* l ) { DWTimesDW2( x.hi(), x.lo(), y.hi(), y.lo(), h, l ); }, exact_mul ), 5 );
@@ -144,13 +144,16 @@ static void test_dw_algorithms( Source& src )
    unit::verdict_bound( worst_binary< T >( src, Pairs::Random, []( DW< T > x, DW< T > y, T* h, T* l ) { DWTimesDW2Unnorm( x.hi(), x.lo(), y.hi(), y.lo(), h, l ); }, exact_mul ), 5 );
 
    unit::announce( "DWTimesDW3" );
-   unit::verdict_bound( worst_binary< T >( src, Pairs::Random, []( DW< T > x, DW< T > y, T* h, T* l ) { DWTimesDW3( x.hi(), x.lo(), y.hi(), y.lo(), h, l ); }, exact_mul ), 5 );
+   unit::verdict_bound( worst_binary< T >( src, Pairs::Random, []( DW< T > x, DW< T > y, T* h, T* l ) { DWTimesDW3( x.hi(), x.lo(), y.hi(), y.lo(), h, l ); }, exact_mul ), 4 );
 
    unit::announce( "DWTimesFP1" );
-   unit::verdict_bound( worst_binary< T >( src, Pairs::Random, []( DW< T > x, DW< T > y, T* h, T* l ) { DWTimesFP1( x.hi(), x.lo(), y.hi(), h, l ); }, exact_mul, Second::FP ), 2 );
+   unit::verdict_bound( worst_binary< T >( src, Pairs::Random, []( DW< T > x, DW< T > y, T* h, T* l ) { DWTimesFP1( x.hi(), x.lo(), y.hi(), h, l ); }, exact_mul, Second::FP ), 1.5 + 4 * u );
 
    unit::announce( "DWTimesFP3" );
    unit::verdict_bound( worst_binary< T >( src, Pairs::Random, []( DW< T > x, DW< T > y, T* h, T* l ) { DWTimesFP3( x.hi(), x.lo(), y.hi(), h, l ); }, exact_mul, Second::FP ), 2 );
+
+   unit::announce( "DWDivFP3" );
+   unit::verdict_bound( worst_binary< T >( src, Pairs::Random, []( DW< T > x, DW< T > y, T* h, T* l ) { DWDivFP3( x.hi(), x.lo(), y.hi(), h, l ); }, exact_div, Second::FP ), 3 );
 
    unit::announce( "DWDivDW2" );
    unit::verdict_bound( worst_binary< T >( src, Pairs::Random, []( DW< T > x, DW< T > y, T* h, T* l ) { DWDivDW2( x.hi(), x.lo(), y.hi(), y.lo(), h, l ); }, exact_div ), 15 + 56 * u );

@@ -158,12 +158,40 @@ static void test_conversions( Source& src )
    unit::announce( "DW(123456789)", "integer converts exactly" );
    unit::verdict( static_cast< double >( DW< T >( 123456789 ) ) == 123456789.0 );
 
-   unit::announce( "plain numbers", "x + 0.5, 2 * x, x / 3, min, max" );
+   using Algorithm = void ( * )( T, T, T, T*, T* );
+   auto with_fp = []( Algorithm algorithm, const DW< T >& x, T y ) {
+      T h, l;
+      algorithm( x.hi(), x.lo(), y, &h, &l );
+      return DW< T >( h, l );
+   };
+
+   unit::announce( "x op y, y a T", "DWPlusFP, DWTimesFP3, DWDivFP3" );
+   bool single = true;
+   for( int i = 0; i < SAMPLES; ++i ) {
+      const DW< T > x = src.dw< T >();
+      const T y = src.dw< T >().hi();
+      DW< T > s = x, d = x, p = x, q = x;
+      s += y;
+      d -= y;
+      p *= y;
+      q /= y;
+      single &= x + y == with_fp( XDW_ARTH::DWPlusFP< T >, x, y ) && y + x == x + y
+             && x - y == with_fp( XDW_ARTH::DWPlusFP< T >, x, -y ) && y - x == with_fp( XDW_ARTH::DWPlusFP< T >, -x, y )
+             && x * y == with_fp( XDW_ARTH::DWTimesFP3< T >, x, y ) && y * x == x * y
+             && x / y == with_fp( XDW_ARTH::DWDivFP3< T >, x, y ) && y / x == DW< T >( y, T( 0 ) ) / x
+             && s == x + y && d == x - y && p == x * y && q == x / y;
+   }
+   unit::verdict( single );
+
+   // A double next to a DW<float>, or an int (31 bits) next to a DW<float>, is split into a DW first.
+   unit::announce( "plain numbers", "FP if exact in T, else DW" );
+   constexpr bool wide = std::is_same_v< T, double >;
    bool mixed = true;
    for( int i = 0; i < SAMPLES; ++i ) {
       const DW< T > x = src.dw< T >();
-      mixed &= ( x + 0.5 ) == ( x + DW< T >( 0.5 ) ) && ( 2 * x ) == ( DW< T >( 2 ) * x ) && ( x / 3 ) == ( x / DW< T >( 3 ) )
-            && ( 1.0 - x ) == ( DW< T >( 1.0 ) - x ) && ( ( x < 0 ) == ( x.hi() < 0 ) )
+      mixed &= ( x + 0.5 ) == ( wide ? x + T( 0.5 ) : x + DW< T >( 0.5 ) ) && ( 2 * x ) == ( wide ? T( 2 ) * x : DW< T >( 2 ) * x )
+            && ( x / 3 ) == ( wide ? x / T( 3 ) : x / DW< T >( 3 ) ) && ( x * 0.5f ) == ( x * T( 0.5 ) )
+            && ( 1.0 - x ) == ( wide ? T( 1 ) - x : DW< T >( 1.0 ) - x ) && ( ( x < 0 ) == ( x.hi() < 0 ) )
             && max( x, 0. ) == max( x, DW< T >( 0. ) ) && min( 1, x ) == min( DW< T >( 1 ), x );
    }
    unit::verdict( mixed );

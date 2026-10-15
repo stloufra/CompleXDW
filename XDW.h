@@ -9,6 +9,7 @@
 #include <type_traits>
 
 // T may be a SIMD vector of float/double: one independent complex number per lane.
+// for DW look into DW.h
 template< typename T >
 class alignas( XDW_ARTH::XDWVector< T > ? alignof( T ) : 4 * sizeof( T ) ) XDW
 {
@@ -45,7 +46,7 @@ class alignas( XDW_ARTH::XDWVector< T > ? alignof( T ) : 4 * sizeof( T ) ) XDW
   XDW_CUDA_CALLABLE
   constexpr XDW( const C& c ) : XDW( DW< T >( c.real() ), DW< T >( c.imag() ) ) {}
 
-  // Exact into a wider type (XDW<float> -> std::complex<double>); otherwise the high words.
+  // Exact into a wider type (XDW<FP32> -> std::complex<FP64>); otherwise the high words.
   template< typename U >
   requires std::is_floating_point_v< U > && std::floating_point< T >
   explicit constexpr operator std::complex< U >() const
@@ -132,6 +133,27 @@ class alignas( XDW_ARTH::XDWVector< T > ? alignof( T ) : 4 * sizeof( T ) ) XDW
   XDW_CUDA_CALLABLE
   constexpr XDW< T >&
   operator/=( const XDW< T >& other );
+
+  // A plain number through mixed operators 
+  template< typename U >
+  requires std::is_arithmetic_v< U >
+  XDW_CUDA_CALLABLE
+  constexpr XDW< T >& operator+=( const U& y ) { return *this = *this + y; }
+
+  template< typename U >
+  requires std::is_arithmetic_v< U >
+  XDW_CUDA_CALLABLE
+  constexpr XDW< T >& operator-=( const U& y ) { return *this = *this - y; }
+
+  template< typename U >
+  requires std::is_arithmetic_v< U >
+  XDW_CUDA_CALLABLE
+  constexpr XDW< T >& operator*=( const U& y ) { return *this = *this * y; }
+
+  template< typename U >
+  requires std::is_arithmetic_v< U >
+  XDW_CUDA_CALLABLE
+  constexpr XDW< T >& operator/=( const U& y ) { return *this = *this / y; }
 
   // a where mask is set, else b; lane by lane for a vector T. A friend, so a scalar XDW or a plain number converts.
   template< typename M >
@@ -345,12 +367,12 @@ norm( const XDW< T >& z )
 
 //-------------------- XDW <-> DW ---------------------
 // A real operand only touches the parts it multiplies or adds: componentwise DW + - * /.
-// The DW side is non-deduced, so a plain number also works (z * 0.5, 2 * z).
+// A plain number (z * 0.5, 2 * z) is mixed operators 
 
 template< typename T >
 XDW_CUDA_CALLABLE
 constexpr XDW_INLINE XDW< T >
-operator+( const XDW< T >& z, const std::type_identity_t< DW< T > >& x )
+operator+( const XDW< T >& z, const DW< T >& x )
 {
    return XDW< T >( real( z ) + x, imag( z ) );
 }
@@ -358,7 +380,7 @@ operator+( const XDW< T >& z, const std::type_identity_t< DW< T > >& x )
 template< typename T >
 XDW_CUDA_CALLABLE
 constexpr XDW_INLINE XDW< T >
-operator+( const std::type_identity_t< DW< T > >& x, const XDW< T >& z )
+operator+( const DW< T >& x, const XDW< T >& z )
 {
    return z + x;
 }
@@ -366,7 +388,7 @@ operator+( const std::type_identity_t< DW< T > >& x, const XDW< T >& z )
 template< typename T >
 XDW_CUDA_CALLABLE
 constexpr XDW_INLINE XDW< T >
-operator-( const XDW< T >& z, const std::type_identity_t< DW< T > >& x )
+operator-( const XDW< T >& z, const DW< T >& x )
 {
    return XDW< T >( real( z ) - x, imag( z ) );
 }
@@ -374,7 +396,7 @@ operator-( const XDW< T >& z, const std::type_identity_t< DW< T > >& x )
 template< typename T >
 XDW_CUDA_CALLABLE
 constexpr XDW_INLINE XDW< T >
-operator-( const std::type_identity_t< DW< T > >& x, const XDW< T >& z )
+operator-( const DW< T >& x, const XDW< T >& z )
 {
    return XDW< T >( x - real( z ), -imag( z ) );
 }
@@ -382,7 +404,7 @@ operator-( const std::type_identity_t< DW< T > >& x, const XDW< T >& z )
 template< typename T >
 XDW_CUDA_CALLABLE
 constexpr XDW_INLINE XDW< T >
-operator*( const XDW< T >& z, const std::type_identity_t< DW< T > >& x )
+operator*( const XDW< T >& z, const DW< T >& x )
 {
    return XDW< T >( real( z ) * x, imag( z ) * x );
 }
@@ -390,7 +412,7 @@ operator*( const XDW< T >& z, const std::type_identity_t< DW< T > >& x )
 template< typename T >
 XDW_CUDA_CALLABLE
 constexpr XDW_INLINE XDW< T >
-operator*( const std::type_identity_t< DW< T > >& x, const XDW< T >& z )
+operator*( const DW< T >& x, const XDW< T >& z )
 {
    return z * x;
 }
@@ -398,7 +420,7 @@ operator*( const std::type_identity_t< DW< T > >& x, const XDW< T >& z )
 template< typename T >
 XDW_CUDA_CALLABLE
 constexpr XDW_INLINE XDW< T >
-operator/( const XDW< T >& z, const std::type_identity_t< DW< T > >& x )
+operator/( const XDW< T >& z, const DW< T >& x )
 {
    return XDW< T >( real( z ) / x, imag( z ) / x );
 }
@@ -407,67 +429,18 @@ operator/( const XDW< T >& z, const std::type_identity_t< DW< T > >& x )
 template< typename T >
 XDW_CUDA_CALLABLE
 constexpr XDW_INLINE XDW< T >
-operator/( const std::type_identity_t< DW< T > >& x, const XDW< T >& z )
+operator/( const DW< T >& x, const XDW< T >& z )
 {
    return XDW< T >( x ) / z;
 }
 
 //-------------------- MIXED OPERANDS ---------------------
 // An XDW meeting a plain number, or a DW/XDW of another base: a scalar DW/XDW next to a vector one
-// of the same lane type, e.g. XDW<float> * XDW<float x8>. The operands are converted to the common
-// base (plain numbers split, scalars put in every lane) and the same-base operator above runs.
-// Two DWs of different bases are handled by DW's own operators.
-
-namespace XDW_ARTH::detail {
-
-template< typename A >
-struct dw_kind { static constexpr bool dw = false, xdw = false; };
-
-template< typename T >
-struct dw_kind< DW< T > > { static constexpr bool dw = true, xdw = false; using base = T; };
-
-template< typename T >
-struct dw_kind< XDW< T > > { static constexpr bool dw = false, xdw = true; using base = T; };
-
-template< typename A >
-concept DWKind = dw_kind< A >::dw || dw_kind< A >::xdw;
-
-// The base both operands convert to; void if there is none.
-template< typename A, typename B >
-struct common_base { using type = void; };
-
-template< DWKind A, typename B >
-requires std::is_arithmetic_v< B >
-struct common_base< A, B > { using type = typename dw_kind< A >::base; };
-
-template< typename A, DWKind B >
-requires std::is_arithmetic_v< A >
-struct common_base< A, B > { using type = typename dw_kind< B >::base; };
-
-template< typename S, typename V >
-constexpr bool lane_of = XDWVector< V > && std::same_as< lane_t< V >, S >;
-
-template< DWKind A, DWKind B >
-struct common_base< A, B >
-{
-   using TA = typename dw_kind< A >::base;
-   using TB = typename dw_kind< B >::base;
-   using type = std::conditional_t< lane_of< TB, TA >, TA, std::conditional_t< lane_of< TA, TB >, TB, void > >;
-};
-
-template< typename A, typename B >
-concept MixedXDW = ( dw_kind< A >::xdw || dw_kind< B >::xdw ) && !std::is_void_v< typename common_base< A, B >::type >;
-
-template< typename T, typename A >
-XDW_CUDA_CALLABLE constexpr auto lift( const A& a )
-{
-   if constexpr( dw_kind< A >::xdw )
-      return XDW< T >( a );
-   else
-      return DW< T >( a );
-}
-
-}
+// of the same lane type, e.g. XDW<float> * XDW<float x8>. A plain number exact in the base
+// (XDW_ARTH::ExactIn) acts on each part as a single FP operand (DWPlusFP, DWTimesFP3, DWDivFP3).
+// Otherwise the operands are converted to the common base (plain numbers split, scalars put in
+// every lane) and the same-base operator above runs. Two DWs of different bases are handled by
+// DW's own operators.
 
 template< typename A, typename B >
 requires XDW_ARTH::detail::MixedXDW< A, B >
@@ -476,7 +449,12 @@ constexpr XDW_INLINE auto
 operator+( const A& a, const B& b )
 {
    using T = typename XDW_ARTH::detail::common_base< A, B >::type;
-   return XDW_ARTH::detail::lift< T >( a ) + XDW_ARTH::detail::lift< T >( b );
+   if constexpr( XDW_ARTH::detail::PlainFP< B, T > )
+      return XDW< T >( real( a ) + b, imag( a ) );
+   else if constexpr( XDW_ARTH::detail::PlainFP< A, T > )
+      return XDW< T >( a + real( b ), imag( b ) );
+   else
+      return XDW_ARTH::detail::lift< T >( a ) + XDW_ARTH::detail::lift< T >( b );
 }
 
 template< typename A, typename B >
@@ -486,7 +464,12 @@ constexpr XDW_INLINE auto
 operator-( const A& a, const B& b )
 {
    using T = typename XDW_ARTH::detail::common_base< A, B >::type;
-   return XDW_ARTH::detail::lift< T >( a ) - XDW_ARTH::detail::lift< T >( b );
+   if constexpr( XDW_ARTH::detail::PlainFP< B, T > )
+      return XDW< T >( real( a ) - b, imag( a ) );
+   else if constexpr( XDW_ARTH::detail::PlainFP< A, T > )
+      return XDW< T >( a - real( b ), -imag( b ) );
+   else
+      return XDW_ARTH::detail::lift< T >( a ) - XDW_ARTH::detail::lift< T >( b );
 }
 
 template< typename A, typename B >
@@ -496,7 +479,12 @@ constexpr XDW_INLINE auto
 operator*( const A& a, const B& b )
 {
    using T = typename XDW_ARTH::detail::common_base< A, B >::type;
-   return XDW_ARTH::detail::lift< T >( a ) * XDW_ARTH::detail::lift< T >( b );
+   if constexpr( XDW_ARTH::detail::PlainFP< B, T > )
+      return XDW< T >( real( a ) * b, imag( a ) * b );
+   else if constexpr( XDW_ARTH::detail::PlainFP< A, T > )
+      return XDW< T >( a * real( b ), a * imag( b ) );
+   else
+      return XDW_ARTH::detail::lift< T >( a ) * XDW_ARTH::detail::lift< T >( b );
 }
 
 template< typename A, typename B >
@@ -506,7 +494,11 @@ constexpr XDW_INLINE auto
 operator/( const A& a, const B& b )
 {
    using T = typename XDW_ARTH::detail::common_base< A, B >::type;
-   return XDW_ARTH::detail::lift< T >( a ) / XDW_ARTH::detail::lift< T >( b );
+   // A plain number over an XDW is a full complex division.
+   if constexpr( XDW_ARTH::detail::PlainFP< B, T > )
+      return XDW< T >( real( a ) / b, imag( a ) / b );
+   else
+      return XDW_ARTH::detail::lift< T >( a ) / XDW_ARTH::detail::lift< T >( b );
 }
 
 #endif

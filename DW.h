@@ -8,10 +8,20 @@
 #include "src/XDWarith.h"
 #include "src/XDWTraits.h"
 
-// Real double-word number hi + lo, |lo| <= ulp(hi)/2.
-// + and - use MaddDWPlusDW, * DWTimesDW2, / DWDivDW2.
-// Operators are hidden friends so a plain float/double/integer converts on either side (x + 0.5, 2 * x, x == 0.).
-// T may be a SIMD vector of float/double: one independent number per lane, comparisons return the lane mask.
+// Real DW number hi + lo, |lo| <= ulp(hi)/2.
+// 	+ ,-  	MaddDWPlusDW
+// 	* 	DWTimesDW2
+// 	/	DWDivDW2
+//
+// A plain number exact in T (XDW_ARTH::ExactIn) is a single FP operand:
+// DWPlusFP, DWTimesFP3, DWDivFP3.
+//
+// Any other plain number is split into a DW first (a double next to a DW<float>).
+//
+// Operators are hidden friends so a plain float/double/integer works on either side (x + 0.5, 2 * x, x == 0.).
+// T may be a SIMD vector of float/double: one independent number per lane 
+// Comparisons return the lane mask.
+
 template< typename T >
 class alignas( XDW_ARTH::XDWVector< T > ? alignof( T ) : 2 * sizeof( T ) ) DW
 {
@@ -31,8 +41,8 @@ class alignas( XDW_ARTH::XDWVector< T > ? alignof( T ) : 2 * sizeof( T ) ) DW
   XDW_CUDA_CALLABLE
   constexpr DW( T hi, T lo ) : data{ hi, lo } {}
 
-  // A wider value is split into its high and low parts, e.g. a double into DW<float> keeps 48 of its 53 bits.
-  // For a vector T, the same value in every lane.
+  // wider type split in hi and lo (FP64 > DW<FP32> 48b of 53b kept) 
+  // splat for vector
   template< typename U >
   requires std::is_arithmetic_v< U >
   XDW_CUDA_CALLABLE
@@ -71,7 +81,7 @@ class alignas( XDW_ARTH::XDWVector< T > ? alignof( T ) : 2 * sizeof( T ) ) DW
   XDW_CUDA_CALLABLE
   constexpr T& operator[]( int i ) { return data[ i ]; }
 
-  // Exact into a wider type (DW<float> -> double); otherwise hi, the rounded value.
+  // Exact into a wider type (DW<FP32> > FP64); otherwise hi
   template< typename U >
   requires std::is_floating_point_v< U > && std::floating_point< T >
   XDW_CUDA_CALLABLE
@@ -94,6 +104,18 @@ class alignas( XDW_ARTH::XDWVector< T > ? alignof( T ) : 2 * sizeof( T ) ) DW
   div( const DW< T >& a, const DW< T >& b );
 
   XDW_CUDA_CALLABLE
+  constexpr static DW< T >
+  add_fp( const DW< T >& a, const T& y );
+
+  XDW_CUDA_CALLABLE
+  constexpr static DW< T >
+  mul_fp( const DW< T >& a, const T& y );
+
+  XDW_CUDA_CALLABLE
+  constexpr static DW< T >
+  div_fp( const DW< T >& a, const T& y );
+
+  XDW_CUDA_CALLABLE
   constexpr DW< T > operator+() const { return *this; }
 
   XDW_CUDA_CALLABLE
@@ -111,6 +133,26 @@ class alignas( XDW_ARTH::XDWVector< T > ? alignof( T ) : 2 * sizeof( T ) ) DW
   XDW_CUDA_CALLABLE
   constexpr DW< T >& operator/=( const DW< T >& other ) { return *this = div( *this, other ); }
 
+  template< typename U >
+  requires XDW_ARTH::ExactIn< U, T >
+  XDW_CUDA_CALLABLE
+  constexpr DW< T >& operator+=( const U& y ) { return *this = add_fp( *this, XDW_ARTH::exact_fp< T >( y ) ); }
+
+  template< typename U >
+  requires XDW_ARTH::ExactIn< U, T >
+  XDW_CUDA_CALLABLE
+  constexpr DW< T >& operator-=( const U& y ) { return *this = add_fp( *this, -XDW_ARTH::exact_fp< T >( y ) ); }
+
+  template< typename U >
+  requires XDW_ARTH::ExactIn< U, T >
+  XDW_CUDA_CALLABLE
+  constexpr DW< T >& operator*=( const U& y ) { return *this = mul_fp( *this, XDW_ARTH::exact_fp< T >( y ) ); }
+
+  template< typename U >
+  requires XDW_ARTH::ExactIn< U, T >
+  XDW_CUDA_CALLABLE
+  constexpr DW< T >& operator/=( const U& y ) { return *this = div_fp( *this, XDW_ARTH::exact_fp< T >( y ) ); }
+
   XDW_CUDA_CALLABLE
   friend constexpr XDW_INLINE DW< T > operator+( const DW< T >& a, const DW< T >& b ) { return add( a, b ); }
 
@@ -123,7 +165,48 @@ class alignas( XDW_ARTH::XDWVector< T > ? alignof( T ) : 2 * sizeof( T ) ) DW
   XDW_CUDA_CALLABLE
   friend constexpr XDW_INLINE DW< T > operator/( const DW< T >& a, const DW< T >& b ) { return div( a, b ); }
 
-  // Lexicographic on (hi, lo), which orders normalized values. bool for a scalar T, the lane mask for a vector T.
+  template< typename U >
+  requires XDW_ARTH::ExactIn< U, T >
+  XDW_CUDA_CALLABLE
+  friend constexpr XDW_INLINE DW< T > operator+( const DW< T >& a, const U& y ) { return add_fp( a, XDW_ARTH::exact_fp< T >( y ) ); }
+
+  template< typename U >
+  requires XDW_ARTH::ExactIn< U, T >
+  XDW_CUDA_CALLABLE
+  friend constexpr XDW_INLINE DW< T > operator+( const U& y, const DW< T >& a ) { return a + y; }
+
+  template< typename U >
+  requires XDW_ARTH::ExactIn< U, T >
+  XDW_CUDA_CALLABLE
+  friend constexpr XDW_INLINE DW< T > operator-( const DW< T >& a, const U& y ) { return add_fp( a, -XDW_ARTH::exact_fp< T >( y ) ); }
+
+  template< typename U >
+  requires XDW_ARTH::ExactIn< U, T >
+  XDW_CUDA_CALLABLE
+  friend constexpr XDW_INLINE DW< T > operator-( const U& y, const DW< T >& a ) { return add_fp( -a, XDW_ARTH::exact_fp< T >( y ) ); }
+
+  template< typename U >
+  requires XDW_ARTH::ExactIn< U, T >
+  XDW_CUDA_CALLABLE
+  friend constexpr XDW_INLINE DW< T > operator*( const DW< T >& a, const U& y ) { return mul_fp( a, XDW_ARTH::exact_fp< T >( y ) ); }
+
+  template< typename U >
+  requires XDW_ARTH::ExactIn< U, T >
+  XDW_CUDA_CALLABLE
+  friend constexpr XDW_INLINE DW< T > operator*( const U& y, const DW< T >& a ) { return a * y; }
+
+  template< typename U >
+  requires XDW_ARTH::ExactIn< U, T >
+  XDW_CUDA_CALLABLE
+  friend constexpr XDW_INLINE DW< T > operator/( const DW< T >& a, const U& y ) { return div_fp( a, XDW_ARTH::exact_fp< T >( y ) ); }
+
+  // No FP-over-DW algorithm: the full DW division.
+  template< typename U >
+  requires XDW_ARTH::ExactIn< U, T >
+  XDW_CUDA_CALLABLE
+  friend constexpr XDW_INLINE DW< T > operator/( const U& y, const DW< T >& a ) { return div( DW< T >( XDW_ARTH::exact_fp< T >( y ), T{} ), a ); }
+
+  // Lexicographic on (hi, lo) {normalized}; bool for a scalar T, the lane mask for a vector T.
   XDW_CUDA_CALLABLE
   friend constexpr auto operator==( const DW< T >& a, const DW< T >& b )
   {
@@ -192,7 +275,8 @@ requires std::floating_point< T > && std::floating_point< U > && ( !std::same_as
 XDW_CUDA_CALLABLE
 constexpr DW< T >::DW( const DW< U >& x )
 {
-   // Up: hi and lo may be far apart, so keep both (Fast2Sum is exact). Down: round hi, fold the rest into lo.
+   // Up: hi and lo may be far apart, so keep both (Fast2Sum is exact).
+   // Down: round hi, fold the rest into lo.
    T h, l;
    if constexpr( sizeof( U ) < sizeof( T ) ) {
       h = static_cast< T >( x.hi() );
@@ -256,6 +340,36 @@ DW< T >::div( const DW< T >& a, const DW< T >& b )
 {
    T h, l;
    XDW_ARTH::DWDivDW2( a.hi(), a.lo(), b.hi(), b.lo(), &h, &l );
+   return DW< T >( h, l );
+}
+
+template< typename T >
+XDW_CUDA_CALLABLE
+constexpr XDW_INLINE DW< T >
+DW< T >::add_fp( const DW< T >& a, const T& y )
+{
+   T h, l;
+   XDW_ARTH::DWPlusFP( a.hi(), a.lo(), y, &h, &l );
+   return DW< T >( h, l );
+}
+
+template< typename T >
+XDW_CUDA_CALLABLE
+constexpr XDW_INLINE DW< T >
+DW< T >::mul_fp( const DW< T >& a, const T& y )
+{
+   T h, l;
+   XDW_ARTH::DWTimesFP3( a.hi(), a.lo(), y, &h, &l );
+   return DW< T >( h, l );
+}
+
+template< typename T >
+XDW_CUDA_CALLABLE
+constexpr XDW_INLINE DW< T >
+DW< T >::div_fp( const DW< T >& a, const T& y )
+{
+   T h, l;
+   XDW_ARTH::DWDivFP3( a.hi(), a.lo(), y, &h, &l );
    return DW< T >( h, l );
 }
 
