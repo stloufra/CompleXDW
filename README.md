@@ -5,14 +5,14 @@ and imaginary part is an unevaluated non-overlapping sum `hi + lo` of two floati
 
 | Base type | Precision of each part | `u` | `u²` |
 |---|---|---|---|
-| `double` (double-double) | ~106 bits, emulated quad | 2⁻⁵³ | 2⁻¹⁰⁶ ≈ 1.2·10⁻³² |
-| `float` (float-float) | ~48 bits, emulated double | 2⁻²⁴ | 2⁻⁴⁸ ≈ 3.6·10⁻¹⁵ |
+| `double` (double-double) | ~106 bits, emulated quad | 2⁻⁵³ | 2⁻¹⁰⁶ ≈ 1.2*10⁻³² |
+| `float` (float-float) | ~48 bits, emulated double | 2⁻²⁴ | 2⁻⁴⁸ ≈ 3.6*10⁻¹⁵ |
 
-- `DW<T>` is a real double-word number and `XDW<T>` is a complex one.
-- `T` can be `float`, `double`, or a compiler SIMD vector of either. With a vector, each lane holds an independent number.
-- Everything is `constexpr`. The scalar types also run on CUDA and HIP devices, using correctly rounded `__*_rn` intrinsics.
-- The accuracy/speed trade-off of complex `*`, `/` and `norm` is chosen at compile time, either globally or per call.
-- Every error bound below is checked against MPFR by the unit tests.
+- `DW<T>` is a real double-word number
+- `XDW<T>` is a complex double-word number
+- `T` can be `float`, `double`, or a compiler SIMD vector of either
+- Everything is `constexpr` runs on CUDA and HIP devices
+- The accuracy/speed trade-off of complex `*`, `/` and `norm` is chosen at compile time, either globally or per call
 
 ## Quick start
 
@@ -40,16 +40,14 @@ std::complex< double > c( p );              // explicit, exact into the wider ty
 Complex from_std = std::complex< double >( 1, 2 );  // any type with real()/imag()
 ```
 
-For double-double, use `XDW< double >` and `DW< double >` instead.
-
-Add the repository root to the include path. There is nothing to build or link.
+Add the repository root to the include path. There is nothing to build.
 
 ## Requirements
 
-- C++20 (concepts).
-- Round-to-nearest IEEE arithmetic without excess precision. The library refuses to compile under `-ffast-math`/`-Ofast` or with `FLT_EVAL_METHOD == 2` (x87).
-- `-ffp-contract=off`. Fusing a product into a later add changes the error-free transforms. clang is handled per function, but g++ needs the flag.
-- Hardware FMA, e.g. `-march=native`, or `-mfma` on x86-64. Without it every `fma` is a libm call, and the library warns. Define `XDW_ALLOW_SOFTWARE_FMA` to silence the warning.
+- C++20
+- Round-to-nearest IEEE arithmetic without excess precision. The library refuses to compile under `-ffast-math`/`-Ofast` or with `FLT_EVAL_METHOD == 2` (x87)
+- `-ffp-contract=off`. Fusing into FMA changes the error-free transforms
+- Hardware FMA (where needed), e.g. `-march=native`, or `-mfma` on x86-64. Without it every `fma` is a libm call, and the library warns (slow). Define `XDW_ALLOW_SOFTWARE_FMA` to silence the warning.
 
 ## Types
 
@@ -66,8 +64,8 @@ Add the repository root to the include path. There is nothing to build or link.
 | `sqrt(x)` | `DWSqrt` | 1 sqrt + 7 | 25/8 u² |
 | `==` `!=` `<` `<=` `>` `>=`, `min`, `max`, `abs`, `signbit`, `select` | exact | – | – |
 
-- **Construction:** a wider value is split into `hi` and `lo`, so `DW<float>(double)` keeps 48 of the 53 bits. Conversion back is explicit and exact into a wider type: `DW<float>` → `double` gives `hi + lo`. Otherwise it gives `hi`.
-- **Precision casts:** `DW<double>` ↔ `DW<float>` conversions are explicit. Going up is exact. Going down rounds to 48 bits.
+- **Construction:** a wider value is split into `hi` and `lo`, so `DW<float>(double)` keeps 48 of the 53 bits. Conversion back is explicit and exact into a wider type: `DW<float>` > `double` gives `hi + lo`. Otherwise it gives `hi`.
+- **Precision casts:** `DW<double>` <-> `DW<float>` conversions are explicit. Going up is exact. Going down rounds to 48 bits.
 
 ### `XDW<T>`: complex double-word
 
@@ -96,9 +94,9 @@ Add the repository root to the include path. There is nothing to build or link.
 
 ### Mixed operands
 
-- **Plain number exact in `T`:** a number that converts to the lane type without rounding is used as one floating-point operand: `DWPlusFP`, `DWTimesFP3` and `DWDivFP3`, on each part of an `XDW`. This covers `T` itself, `float` next to a `DW<double>`, and integers that fit the significand (an `int` next to a `DW<double>`). These are cheaper and tighter than the DW–DW operations.
-- **Any other plain number** is split into a `DW` first, without rounding, and the DW–DW operation runs. Examples are a `double` next to a `DW<float>`, or an `int` next to a `DW<float>`. Write `0.5f` instead of `0.5` with float-float to get the single-operand path.
-- **Scalar next to vector:** a scalar `DW<S>`/`XDW<S>` next to a vector `DW<V>`/`XDW<V>` with lane type `S` is broadcast to every lane, e.g. `XDW<float> * XDW<float x8>`.
+- **Plain number exact in `T`:** a number that converts to the lane type without rounding is used as one floating-point operand: `DWPlusFP`, `DWTimesFP3` and `DWDivFP3`, on each part of an `XDW`
+- **Any other plain number** is split into a `DW` first, without rounding, and the DW–DW operation runs
+- **Scalar next to vector:** a scalar `DW<S>`/`XDW<S>` next to a vector `DW<V>`/`XDW<V>` with lane type `S` is broadcast to every lane
 
 ### SIMD vectors
 
@@ -122,7 +120,7 @@ Each lane gives bit-for-bit the same result as the scalar type on that lane's in
 
 ## Modes
 
-Complex `*`, `/` and `norm` are built from real mul-adds `a·b ± c·d`. Three independent choices control their cost and accuracy:
+Complex `*`, `/` and `norm` are built from real mul-adds `a*b +(-) c*d`. Three independent choices control their cost and accuracy:
 
 | Mode | Values | Meaning |
 |---|---|---|
@@ -144,19 +142,19 @@ To set the modes for one call, pass template arguments: `XDW<T>::mul<Add, Norm>(
 
 ### Conditioning
 
-A mul-add `p + q`, with `p = a·b` and `q = c·d`, cannot be more accurate than its conditioning allows:
+A mul-add `p + q`, with `p = a*b` and `q = c*d`, cannot be more accurate than its conditioning allows:
 
 ```
 K = (|p| + |q|) / |p + q|      (K = 1 without cancellation)
 ```
 
-The complex bounds below are per component, relative error ≤ `bound · K · u²`. Each component uses its own `K`: `ac − bd` for the real part of a product, and `ad + bc` for the imaginary part.
+The complex bounds below are per component, relative error ≤ `bound * K * u²`. Each component uses its own `K`: `ac − bd` for the real part of a product, and `ad + bc` for the imaginary part.
 
 ### Complex multiplication
 
 `z * w`: two mul-adds.
 
-| AddMode | NormMode | Flops | Bound (K·u²) |
+| AddMode | NormMode | Flops | Bound (K*u²) |
 |---|---|---|---|
 | Madd | Normalized | 72 | 7 |
 | Accurate | Normalized | 72 | 8 |
@@ -179,7 +177,7 @@ The work is split into three parts:
 
 The bound per component is the sum of the numerator, denominator and division bounds, scaled by the numerator's `K`.
 
-| AddMode | NormMode | Flops Div2 | Flops Div3 | Bound Div2 (K·u²) | Bound Div3 (K·u²) |
+| AddMode | NormMode | Flops Div2 | Flops Div3 | Bound Div2 (K*u²) | Bound Div3 (K*u²) |
 |---|---|---|---|---|---|
 | Madd | Normalized | 133 | 135 | 28 | 22.8 |
 | Accurate | Normalized | 133 | 135 | 29 | 23.8 |
@@ -215,11 +213,11 @@ The double-word algorithms live in `XDW_ARTH` (`src/XDWarith.h`), and the error-
 | `AccurateDWPlusDW` | x + y | 20 | 3 + 13 u |
 | `MaddDWPlusDW` | x + y | 20 | 2 |
 | `DWPlusFP` | x + y, y one FP number | 10 | 2 |
-| `DWTimesDW2` | x · y | 8 | 5 |
-| `DWTimesDW2Unnorm` | x · y, unnormalized | 5 | 5 |
-| `DWTimesDW3` | x · y | 9 | 4 |
-| `DWTimesFP1` | x · y, y one FP number | 10 | 3/2 + 4 u |
-| `DWTimesFP3` | x · y, y one FP number | 6 | 2 |
+| `DWTimesDW2` | x * y | 8 | 5 |
+| `DWTimesDW2Unnorm` | x * y, unnormalized | 5 | 5 |
+| `DWTimesDW3` | x * y | 9 | 4 |
+| `DWTimesFP1` | x * y, y one FP number | 10 | 3/2 + 4 u |
+| `DWTimesFP3` | x * y, y one FP number | 6 | 2 |
 | `DWDivFP3` | x / y, y one FP number | 10 | 3 |
 | `DWPow2` | x² | 7 | 5 |
 | `DWPow2Unnorm` | x², unnormalized | 4 | 5 |
@@ -227,13 +225,15 @@ The double-word algorithms live in `XDW_ARTH` (`src/XDWarith.h`), and the error-
 | `DWRecip` | 1 / y | 22 | – |
 | `DWDivDW3` | x / y | 31 | 9.8 |
 | `DWSqrt` | √x | 1 sqrt + 7 | 25/8 |
-| `DWMulAdd_<Add>_<Norm>` | a·b + c·d | 21–36 | 7–12 · K |
+| `DWMulAdd_<Add>_<Norm>` | a*b + c*d | 21–36 | 7–12 * K |
 
 **How flops are counted:** each `+ − × ÷` and each FMA counts as 1, and negation is free. That makes TwoSum 6, Fast2Sum 3 and TwoProd 2 (with FMA).
 
 **Dekker splitting:** defining `XDW_DEKKER_TWO_PROD` replaces the FMA in TwoProd with Dekker's split. This is host only, and it raises every multiplication's cost.
 
-**Sources:** the addition, multiplication and division algorithms follow Joldes, Muller and Popescu, *Tight and rigorous error bounds for basic building blocks of double-word arithmetic*, ACM TOMS 2017. The bounds are the formally proven ones of Muller and Rideau, *Formalization of double-word arithmetic, and comments on "Tight and rigorous error bounds for basic building blocks of double-word arithmetic"*, ACM TOMS 2022, which improve `DWTimesDW2` from 6 to 5 u² and `DWTimesDW3` from 5 to 4 u². `DWSqrt` is SQRTDWtoDW from Lefèvre, Louvet, Muller, Picot and Rideau, 2023.
+## Source
+
+**How to cite, sources, proofs:** TODO: Refer to our paper when out.
 
 ## GPU
 
