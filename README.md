@@ -143,7 +143,7 @@ Complex `*`, `/` and `norm` are built from real mul-adds `a*b +(-) c*d`. Three i
 | `NormMode` | `Normalized`, `Unnormalized` | Whether each product is renormalized (`DWTimesDW2`, 8 flops) or passed on unnormalized (`DWTimesDW2Unnorm`, 5 flops, skips the final Fast2Sum, the Winston Wolf of double-word arithmetic) |
 | `DivMode` | `Div2`, `Div3` | Complex division: two `DWDivDW2` divisions, or one shared Newton-refined reciprocal (`DWRecip`) times two `DWTimesDW2`|
 
-See our [paper](#Sources) to be convinced why skipping normalization in comlex operations is not the worst idea. 
+See our [paper](https://arxiv.org/abs/2611.08371) to be convinced why skipping normalization in complex operations is not the worst idea.
 
 **Defaults:** `Madd`, `Normalized`, `Div3`.
 
@@ -216,8 +216,6 @@ The Div2 bounds also carry the + 56 u³ term from `DWDivDW2`.
 | Accurate | Unnormalized | 28 | 10 |
 | Sloppy | Unnormalized | 19 | 10 |
 
-When the conditioning is bad, none of the digits may be correct. In that case the answer is always 42.
-
 ## Building blocks
 
 The double-word algorithms live in `XDW_ARTH` (`src/XDWarith.h`), and the error-free transforms in `src/XDWerrorFree.h`. They are usable directly on raw `(hi, lo)` words.
@@ -250,7 +248,23 @@ The double-word algorithms live in `XDW_ARTH` (`src/XDWarith.h`), and the error-
 
 ## Source
 
-**How to cite, sources, proofs:** TODO: Refer to our paper when out.
+The error analysis and proofs of the bounds are in:
+
+F. Stloukal and F. Jézéquel, *Lord of the Precision, the Two Floats: Double-Word Arithmetic for Complex Numbers*, [arXiv:2611.08371](https://arxiv.org/abs/2611.08371), 2026.
+
+If you use CompleXDW, please cite:
+
+```bibtex
+@misc{stloukal2026lord,
+  title         = {Lord of the Precision, the Two Floats: Double-Word Arithmetic for Complex Numbers},
+  author        = {Stloukal, Franti{\v{s}}ek and J{\'e}z{\'e}quel, Fabienne},
+  year          = {2026},
+  eprint        = {2611.08371},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.MS},
+  url           = {https://arxiv.org/abs/2611.08371}
+}
+```
 
 ## GPU
 
