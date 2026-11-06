@@ -23,19 +23,22 @@ struct HostComplex
 };
 
 template< typename T >
-static XDW< T > random_xdw( Source& src )
+static XDW< T >
+random_xdw( Source& src )
 {
    return XDW< T >( src.dw< T >(), src.dw< T >() );
 }
 
 template< typename T >
-static double cx_error( mpfr_srcptr re, mpfr_srcptr im, const XDW< T >& z )
+static double
+cx_error( mpfr_srcptr re, mpfr_srcptr im, const XDW< T >& z )
 {
    return std::max( rel_error( re, real( z ) ), rel_error( im, imag( z ) ) );
 }
 
 // |p| + |q| over |p + q|.
-static double conditioning( mpfr_srcptr p, mpfr_srcptr q )
+static double
+conditioning( mpfr_srcptr p, mpfr_srcptr q )
 {
    Big s, m, t;
    mpfr_add( s, p, q, MPFR_RNDN );
@@ -47,17 +50,17 @@ static double conditioning( mpfr_srcptr p, mpfr_srcptr q )
 }
 
 template< typename T >
-static void test_construction( Source& src )
+static void
+test_construction( Source& src )
 {
-
    unit::announce( "XDW(DW, DW), real, imag, conj", "parts round-trip" );
    bool parts = true;
    for( int i = 0; i < SAMPLES_CX; ++i ) {
       const DW< T > x = src.dw< T >(), y = src.dw< T >();
       const XDW< T > z( x, y );
       const XDW< T > c = conj( z );
-      parts &= real( z ) == x && imag( z ) == y && z == XDW< T >( x.hi(), x.lo(), y.hi(), y.lo() )
-            && real( c ) == x && imag( c ) == -y && XDW< T >( x ) == XDW< T >( x, DW< T >( 0 ) );
+      parts &= real( z ) == x && imag( z ) == y && z == XDW< T >( x.hi(), x.lo(), y.hi(), y.lo() ) && real( c ) == x
+            && imag( c ) == -y && XDW< T >( x ) == XDW< T >( x, DW< T >( 0 ) );
    }
    unit::verdict( parts );
 
@@ -67,8 +70,8 @@ static void test_construction( Source& src )
       const double re = static_cast< double >( src.dw< double >() ), im = static_cast< double >( src.dw< double >() );
       const XDW< T > expected{ DW< T >( re ), DW< T >( im ) };
       const XDW< T > converted = HostComplex{ re, im };
-      split &= XDW< T >( re, im ) == expected && XDW< T >( std::complex< double >( re, im ) ) == expected
-            && converted == expected;
+      split &=
+         XDW< T >( re, im ) == expected && XDW< T >( std::complex< double >( re, im ) ) == expected && converted == expected;
    }
    unit::verdict( split );
 
@@ -83,14 +86,16 @@ static void test_construction( Source& src )
 }
 
 template< typename T >
-static void test_add_sub( Source& src )
+static void
+test_add_sub( Source& src )
 {
    unit::announce( "z + w, z - w", "Madd per part, half cancelling" );
    Big ar, ai, br, bi, re, im;
    double worst = 0;
    for( int i = 0; i < SAMPLES_CX; ++i ) {
       const XDW< T > z = random_xdw< T >( src );
-      const XDW< T > w = i % 2 ? XDW< T >( src.dw_near_negation( real( z ) ), src.dw_near_negation( imag( z ) ) ) : random_xdw< T >( src );
+      const XDW< T > w =
+         i % 2 ? XDW< T >( src.dw_near_negation( real( z ) ), src.dw_near_negation( imag( z ) ) ) : random_xdw< T >( src );
       set( ar, real( z ) );
       set( ai, imag( z ) );
       set( br, real( w ) );
@@ -108,7 +113,8 @@ static void test_add_sub( Source& src )
 
 // Each component is a mul-add: its error is judged against that component's own conditioning K.
 template< typename T, AddMode Add, NormMode Norm >
-static void test_mul_mode( Source& src, const char* name, double bound )
+static void
+test_mul_mode( Source& src, const char* name, double bound )
 {
    unit::announce( std::string( "mul<" ) + name + ">", "half with cancelling imag part" );
    Big ar, ai, br, bi, p, q, re, im;
@@ -154,7 +160,8 @@ struct DivCase
 // d = b*c / a nearly: redrawn until it stays in the exponent range of the random inputs, else
 // |w|^2 can reach 2^120 and float's 1 / |w|^2 underflows.
 template< typename T >
-static DivCase< T > cancelling_division( Source& src )
+static DivCase< T >
+cancelling_division( Source& src )
 {
    Big ar, ai, br, p, q;
    for( ;; ) {
@@ -172,11 +179,13 @@ static DivCase< T > cancelling_division( Source& src )
 }
 
 template< typename T >
-static std::vector< DivCase< T > > division_cases( Source& src )
+static std::vector< DivCase< T > >
+division_cases( Source& src )
 {
    std::vector< DivCase< T > > cases;
    for( int i = 0; i < SAMPLES_CX; ++i )
-      cases.push_back( i % 2 ? cancelling_division< T >( src ) : DivCase< T >{ random_xdw< T >( src ), random_xdw< T >( src ) } );
+      cases.push_back( i % 2 ? cancelling_division< T >( src )
+                             : DivCase< T >{ random_xdw< T >( src ), random_xdw< T >( src ) } );
    return cases;
 }
 
@@ -184,7 +193,8 @@ static std::vector< DivCase< T > > division_cases( Source& src )
 // <= K * numerator + denominator + division bound; with K >= 1 their sum bounds error / K.
 // Numerator: the mul-add bound of (Add, Norm); denominator 6 (N) / 10 (U) u^2.
 template< typename T, DivMode Div, AddMode Add, NormMode Norm >
-static void test_div_mode( const std::vector< DivCase< T > >& cases, const char* name, double numerator_bound, double denominator_bound )
+static void
+test_div_mode( const std::vector< DivCase< T > >& cases, const char* name, double numerator_bound, double denominator_bound )
 {
    unit::announce( std::string( "div<" ) + name + ">", "half with cancelling imag part" );
    const double u = std::sqrt( U2< T > );
@@ -222,7 +232,8 @@ static void test_div_mode( const std::vector< DivCase< T > >& cases, const char*
 
 // norm is DWPowAdd: bound as the mul-add of the same modes at K = 1.
 template< typename T, AddMode Add, NormMode Norm >
-static void test_norm_mode( Source& src, const char* name, double bound )
+static void
+test_norm_mode( Source& src, const char* name, double bound )
 {
    unit::announce( std::string( "norm<" ) + name + ">", "|z|^2" );
    Big ar, ai, re, t;
@@ -241,22 +252,28 @@ static void test_norm_mode( Source& src, const char* name, double bound )
 
 // (3 + 4i) / (1 + 2i) = 2.2 - 0.4i: the high words must be T(2.2) and T(-0.4).
 template< typename T, DivMode Div, AddMode Add, NormMode Norm >
-static bool exact_quotient()
+static bool
+exact_quotient()
 {
    const XDW< T > q = XDW< T >::template div< Div, Add, Norm >( XDW< T >( 3, 4 ), XDW< T >( 1, 2 ) );
    return q.re_h() == T( 2.2 ) && q.im_h() == T( -0.4 );
 }
 
 template< typename T, DivMode Div >
-static bool exact_quotient_all_add_norm()
+static bool
+exact_quotient_all_add_norm()
 {
-   return exact_quotient< T, Div, AddMode::Madd, NormMode::Normalized >() && exact_quotient< T, Div, AddMode::Madd, NormMode::Unnormalized >()
-       && exact_quotient< T, Div, AddMode::Accurate, NormMode::Normalized >() && exact_quotient< T, Div, AddMode::Accurate, NormMode::Unnormalized >()
-       && exact_quotient< T, Div, AddMode::Sloppy, NormMode::Normalized >() && exact_quotient< T, Div, AddMode::Sloppy, NormMode::Unnormalized >();
+   return exact_quotient< T, Div, AddMode::Madd, NormMode::Normalized >()
+       && exact_quotient< T, Div, AddMode::Madd, NormMode::Unnormalized >()
+       && exact_quotient< T, Div, AddMode::Accurate, NormMode::Normalized >()
+       && exact_quotient< T, Div, AddMode::Accurate, NormMode::Unnormalized >()
+       && exact_quotient< T, Div, AddMode::Sloppy, NormMode::Normalized >()
+       && exact_quotient< T, Div, AddMode::Sloppy, NormMode::Unnormalized >();
 }
 
 template< typename T >
-static void test_modes( Source& src )
+static void
+test_modes( Source& src )
 {
    test_mul_mode< T, AddMode::Madd, NormMode::Normalized >( src, "Madd, Normalized", 7 );
    test_mul_mode< T, AddMode::Madd, NormMode::Unnormalized >( src, "Madd, Unnormalized", 8 );
@@ -269,31 +286,34 @@ static void test_modes( Source& src )
    test_div_mode< T, DivMode::Div2, AddMode::Madd, NormMode::Normalized >( cases, "Div2, Madd, Normalized", 7, 6 );
    test_div_mode< T, DivMode::Div2, AddMode::Madd, NormMode::Unnormalized >( cases, "Div2, Madd, Unnormalized", 8, 10 );
    test_div_mode< T, DivMode::Div2, AddMode::Accurate, NormMode::Normalized >( cases, "Div2, Accurate, Normalized", 8, 6 );
-   test_div_mode< T, DivMode::Div2, AddMode::Accurate, NormMode::Unnormalized >( cases, "Div2, Accurate, Unnormalized", 10, 10 );
+   test_div_mode< T, DivMode::Div2, AddMode::Accurate, NormMode::Unnormalized >(
+      cases, "Div2, Accurate, Unnormalized", 10, 10 );
    test_div_mode< T, DivMode::Div2, AddMode::Sloppy, NormMode::Normalized >( cases, "Div2, Sloppy, Normalized", 8, 6 );
    test_div_mode< T, DivMode::Div2, AddMode::Sloppy, NormMode::Unnormalized >( cases, "Div2, Sloppy, Unnormalized", 12, 10 );
    test_div_mode< T, DivMode::Div3, AddMode::Madd, NormMode::Normalized >( cases, "Div3, Madd, Normalized", 7, 6 );
    test_div_mode< T, DivMode::Div3, AddMode::Madd, NormMode::Unnormalized >( cases, "Div3, Madd, Unnormalized", 8, 10 );
    test_div_mode< T, DivMode::Div3, AddMode::Accurate, NormMode::Normalized >( cases, "Div3, Accurate, Normalized", 8, 6 );
-   test_div_mode< T, DivMode::Div3, AddMode::Accurate, NormMode::Unnormalized >( cases, "Div3, Accurate, Unnormalized", 10, 10 );
+   test_div_mode< T, DivMode::Div3, AddMode::Accurate, NormMode::Unnormalized >(
+      cases, "Div3, Accurate, Unnormalized", 10, 10 );
    test_div_mode< T, DivMode::Div3, AddMode::Sloppy, NormMode::Normalized >( cases, "Div3, Sloppy, Normalized", 8, 6 );
    test_div_mode< T, DivMode::Div3, AddMode::Sloppy, NormMode::Unnormalized >( cases, "Div3, Sloppy, Unnormalized", 12, 10 );
 
    unit::announce( "(3 + 4i) / (1 + 2i)", "2.2 - 0.4i in all 12 div modes" );
    unit::verdict( exact_quotient_all_add_norm< T, DivMode::Div2 >() && exact_quotient_all_add_norm< T, DivMode::Div3 >() );
 
-   test_norm_mode< T, AddMode::Madd, NormMode::Normalized >( src, "Madd, Normalized" , 7 );
-   test_norm_mode< T, AddMode::Madd, NormMode::Unnormalized >( src, "Madd, Unnormalized" , 8 );
-   test_norm_mode< T, AddMode::Accurate, NormMode::Normalized >( src, "Accurate, Normalized" , 8 );
-   test_norm_mode< T, AddMode::Accurate, NormMode::Unnormalized >( src, "Accurate, Unnormalized" , 10 );
-   test_norm_mode< T, AddMode::Sloppy, NormMode::Normalized >( src, "Sloppy, Normalized" , 6 );
-   test_norm_mode< T, AddMode::Sloppy, NormMode::Unnormalized >( src, "Sloppy, Unnormalized" , 10 );
+   test_norm_mode< T, AddMode::Madd, NormMode::Normalized >( src, "Madd, Normalized", 7 );
+   test_norm_mode< T, AddMode::Madd, NormMode::Unnormalized >( src, "Madd, Unnormalized", 8 );
+   test_norm_mode< T, AddMode::Accurate, NormMode::Normalized >( src, "Accurate, Normalized", 8 );
+   test_norm_mode< T, AddMode::Accurate, NormMode::Unnormalized >( src, "Accurate, Unnormalized", 10 );
+   test_norm_mode< T, AddMode::Sloppy, NormMode::Normalized >( src, "Sloppy, Normalized", 6 );
+   test_norm_mode< T, AddMode::Sloppy, NormMode::Unnormalized >( src, "Sloppy, Unnormalized", 10 );
 }
 
 // z = x + i y with a real DW operand y, which nearly cancels x on every other sample; exact(a, b)
 // gives the expected real and imaginary parts, result(z, y) the XDW under test.
 template< typename T, typename Exact, typename Result >
-static double worst_with_dw( Source& src, Exact exact, Result result )
+static double
+worst_with_dw( Source& src, Exact exact, Result result )
 {
    Big a, b, re, im;
    double worst = 0;
@@ -309,36 +329,52 @@ static double worst_with_dw( Source& src, Exact exact, Result result )
 }
 
 template< typename T >
-static void test_with_dw( Source& src )
+static void
+test_with_dw( Source& src )
 {
    unit::announce( "XDW * DW", "componentwise DWTimesDW2" );
-   unit::verdict_bound( worst_with_dw< T >( src,
-                                            []( mpfr_ptr re, mpfr_ptr im, mpfr_srcptr a, mpfr_srcptr b ) {
-                                               mpfr_mul( re, a, b, MPFR_RNDN );
-                                               mpfr_sqr( im, b, MPFR_RNDN );
-                                               return true;
-                                            },
-                                            []( const XDW< T >& z, const DW< T >& y ) { return z * y; } ),
+   unit::verdict_bound( worst_with_dw< T >(
+                           src,
+                           []( mpfr_ptr re, mpfr_ptr im, mpfr_srcptr a, mpfr_srcptr b )
+                           {
+                              mpfr_mul( re, a, b, MPFR_RNDN );
+                              mpfr_sqr( im, b, MPFR_RNDN );
+                              return true;
+                           },
+                           []( const XDW< T >& z, const DW< T >& y )
+                           {
+                              return z * y;
+                           } ),
                         5 );
 
    unit::announce( "XDW / DW", "componentwise DWDivDW2" );
-   unit::verdict_bound( worst_with_dw< T >( src,
-                                            []( mpfr_ptr re, mpfr_ptr im, mpfr_srcptr a, mpfr_srcptr b ) {
-                                               mpfr_div( re, a, b, MPFR_RNDN );
-                                               mpfr_set_ui( im, 1, MPFR_RNDN );
-                                               return true;
-                                            },
-                                            []( const XDW< T >& z, const DW< T >& y ) { return z / y; } ),
+   unit::verdict_bound( worst_with_dw< T >(
+                           src,
+                           []( mpfr_ptr re, mpfr_ptr im, mpfr_srcptr a, mpfr_srcptr b )
+                           {
+                              mpfr_div( re, a, b, MPFR_RNDN );
+                              mpfr_set_ui( im, 1, MPFR_RNDN );
+                              return true;
+                           },
+                           []( const XDW< T >& z, const DW< T >& y )
+                           {
+                              return z / y;
+                           } ),
                         15 + 56 * std::sqrt( U2< T > ) );
 
    unit::announce( "XDW + DW", "real part Madd, half cancelling" );
-   unit::verdict_bound( worst_with_dw< T >( src,
-                                            []( mpfr_ptr re, mpfr_ptr im, mpfr_srcptr a, mpfr_srcptr b ) {
-                                               mpfr_add( re, a, b, MPFR_RNDN );
-                                               mpfr_set( im, b, MPFR_RNDN );
-                                               return !mpfr_zero_p( re );
-                                            },
-                                            []( const XDW< T >& z, const DW< T >& y ) { return z + y; } ),
+   unit::verdict_bound( worst_with_dw< T >(
+                           src,
+                           []( mpfr_ptr re, mpfr_ptr im, mpfr_srcptr a, mpfr_srcptr b )
+                           {
+                              mpfr_add( re, a, b, MPFR_RNDN );
+                              mpfr_set( im, b, MPFR_RNDN );
+                              return !mpfr_zero_p( re );
+                           },
+                           []( const XDW< T >& z, const DW< T >& y )
+                           {
+                              return z + y;
+                           } ),
                         2 );
 
    unit::announce( "XDW - DW, DW - XDW, DW / XDW", "match the DW operations, commute" );
@@ -354,9 +390,9 @@ static void test_with_dw( Source& src )
 }
 
 template< typename T >
-static void test_operators( Source& src )
+static void
+test_operators( Source& src )
 {
-
    unit::announce( "+ - * /", "equal add, sub, mul<>, div<>" );
    bool defaults = true;
    for( int i = 0; i < SAMPLES_CX; ++i ) {
@@ -375,8 +411,7 @@ static void test_operators( Source& src )
       d -= b;
       e *= b;
       f /= b;
-      compound &= c == a + b && d == a - b && e == a * b && f == a / b && +a == a
-               && -a == XDW< T >( -real( a ), -imag( a ) );
+      compound &= c == a + b && d == a - b && e == a * b && f == a / b && +a == a && -a == XDW< T >( -real( a ), -imag( a ) );
    }
    unit::verdict( compound );
 
@@ -409,7 +444,8 @@ static void test_operators( Source& src )
 }
 
 template< typename T >
-static void run( const char* type, unsigned long seed )
+static void
+run( const char* type, unsigned long seed )
 {
    Source src( seed );
    const std::string t = std::string( "XDW<" ) + type + ">: ";
@@ -418,13 +454,15 @@ static void run( const char* type, unsigned long seed )
    unit::section( t + "arithmetic", std::to_string( SAMPLES_CX ) + " samples per check, relative error per component vs MPFR" );
    test_add_sub< T >( src );
    test_modes< T >( src );
-   unit::section( t + "with a real DW operand", std::to_string( SAMPLES_CX ) + " samples per check, relative error per component vs MPFR" );
+   unit::section( t + "with a real DW operand",
+                  std::to_string( SAMPLES_CX ) + " samples per check, relative error per component vs MPFR" );
    test_with_dw< T >( src );
    unit::section( t + "operators", std::to_string( SAMPLES_CX ) + " samples per check" );
    test_operators< T >( src );
 }
 
-int main()
+int
+main()
 {
    mpfr_set_default_prec( MPFR_BITS );
    describe_inputs();

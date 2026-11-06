@@ -17,15 +17,15 @@
 // XDW_DEKKER_TWO_PROD: TwoProd via Dekker's split instead of one FMA (host only)
 
 #if !defined( XDW_ADD_MODE )
-#define XDW_ADD_MODE M
+   #define XDW_ADD_MODE M
 #endif
 
 #if !defined( XDW_NORM_MODE )
-#define XDW_NORM_MODE N
+   #define XDW_NORM_MODE N
 #endif
 
 #if !defined( XDW_DIV_MODE )
-#define XDW_DIV_MODE 3
+   #define XDW_DIV_MODE 3
 #endif
 
 #define XDW_STRINGIFY_( x ) #x
@@ -33,7 +33,8 @@
 
 namespace XDW_ARTH::detail {
 
-constexpr bool is_mode( const char* s, char allowed )
+constexpr bool
+is_mode( const char* s, char allowed )
 {
    return s[ 0 ] == allowed && s[ 1 ] == '\0';
 }
@@ -41,17 +42,17 @@ constexpr bool is_mode( const char* s, char allowed )
 }
 
 static_assert( XDW_ARTH::detail::is_mode( XDW_STRINGIFY( XDW_ADD_MODE ), 'A' )
-            || XDW_ARTH::detail::is_mode( XDW_STRINGIFY( XDW_ADD_MODE ), 'M' )
-            || XDW_ARTH::detail::is_mode( XDW_STRINGIFY( XDW_ADD_MODE ), 'S' ),
-            "XDW_ADD_MODE must be A (Accurate), M (Madd), or S (Sloppy)" );
+                  || XDW_ARTH::detail::is_mode( XDW_STRINGIFY( XDW_ADD_MODE ), 'M' )
+                  || XDW_ARTH::detail::is_mode( XDW_STRINGIFY( XDW_ADD_MODE ), 'S' ),
+               "XDW_ADD_MODE must be A (Accurate), M (Madd), or S (Sloppy)" );
 
 static_assert( XDW_ARTH::detail::is_mode( XDW_STRINGIFY( XDW_NORM_MODE ), 'N' )
-            || XDW_ARTH::detail::is_mode( XDW_STRINGIFY( XDW_NORM_MODE ), 'U' ),
-            "XDW_NORM_MODE must be N (Normalized) or U (Unnormalized)" );
+                  || XDW_ARTH::detail::is_mode( XDW_STRINGIFY( XDW_NORM_MODE ), 'U' ),
+               "XDW_NORM_MODE must be N (Normalized) or U (Unnormalized)" );
 
 static_assert( XDW_ARTH::detail::is_mode( XDW_STRINGIFY( XDW_DIV_MODE ), '2' )
-            || XDW_ARTH::detail::is_mode( XDW_STRINGIFY( XDW_DIV_MODE ), '3' ),
-            "XDW_DIV_MODE must be 2 (Div2) or 3 (Div3)" );
+                  || XDW_ARTH::detail::is_mode( XDW_STRINGIFY( XDW_DIV_MODE ), '3' ),
+               "XDW_DIV_MODE must be 2 (Div2) or 3 (Div3)" );
 
 #undef XDW_STRINGIFY
 #undef XDW_STRINGIFY_
@@ -85,34 +86,34 @@ inline constexpr DivMode kDivMode = XDW_TOKEN_PASTE( XDW_DIV_TAG_, XDW_DIV_MODE 
 #undef XDW_TOKEN_PASTE_
 
 #if defined( __CUDACC__ ) || defined( __HIPCC__ )
-#define XDW_CUDA_CALLABLE \
-__device__             \
-__host__
+   #define XDW_CUDA_CALLABLE \
+      __device__             \
+      __host__
 #else
-#define XDW_CUDA_CALLABLE
+   #define XDW_CUDA_CALLABLE
 #endif
 
-#if !defined( NDEBUG ) // not in debug mode
-#define XDW_INLINE inline
+#if !defined( NDEBUG )  // not in debug mode
+   #define XDW_INLINE inline
 #elif defined( __CUDACC__ ) || defined( __HIPCC__ )
-#define XDW_INLINE __forceinline__
+   #define XDW_INLINE __forceinline__
 #elif defined( _MSC_VER )
-#define XDW_INLINE __forceinline
+   #define XDW_INLINE __forceinline
 #elif defined( __GNUC__ ) || defined( __clang__ )
-#define XDW_INLINE __attribute__( ( always_inline ) ) inline
+   #define XDW_INLINE __attribute__( ( always_inline ) ) inline
 #else
-#define XDW_INLINE inline
+   #define XDW_INLINE inline
 #endif
 
 #if !defined( __CUDA_ARCH__ ) && !defined( __HIP_DEVICE_COMPILE__ )
 
 namespace XDW_ARTH::detail {
 
-#if defined( __FAST_MATH__ )
+   #if defined( __FAST_MATH__ )
 inline constexpr bool fast_math_enabled = true;
-#else
+   #else
 inline constexpr bool fast_math_enabled = false;
-#endif
+   #endif
 
 }
 
@@ -121,21 +122,23 @@ static_assert( !XDW_ARTH::detail::fast_math_enabled,
                "CompleXDW's round-to-nearest error-free transforms are unsound under "
                "-ffast-math/-Ofast; build without fast-math." );
 
-#if defined( __FLT_EVAL_METHOD__ )
+   #if defined( __FLT_EVAL_METHOD__ )
 static_assert( __FLT_EVAL_METHOD__ != 2,
                "FLT_EVAL_METHOD == 2 means excess-precision (x87) intermediates, which breaks "
                "the round-to-nearest error-free transforms; build with SSE2 math instead." );
-#endif
+   #endif
 
-// Without a hardware-FMA target, std::fma (fma_rn) is a libm call, emulated in software on CPUs without FMA.
-#if !defined( __FMA__ ) && !defined( __ARM_FEATURE_FMA ) && !defined( __FP_FAST_FMA ) \
-    && !( defined( _MSC_VER ) && defined( __AVX2__ ) ) && !defined( XDW_ALLOW_SOFTWARE_FMA )
-#if defined( _MSC_VER ) && !defined( __clang__ )
-#pragma message( "CompleXDW: target has no hardware FMA, so every fma_rn is a slow libm call. Build with /arch:AVX2; define XDW_ALLOW_SOFTWARE_FMA to silence." )
-#else
-#warning "CompleXDW: target has no hardware FMA, so every fma_rn is a slow libm call. Build with -march=native (or -mfma on x86-64); define XDW_ALLOW_SOFTWARE_FMA to silence."
-#endif
-#endif
+   // Without a hardware-FMA target, std::fma (fma_rn) is a libm call, emulated in software on CPUs without FMA.
+   #if !defined( __FMA__ ) && !defined( __ARM_FEATURE_FMA ) && !defined( __FP_FAST_FMA ) \
+      && !( defined( _MSC_VER ) && defined( __AVX2__ ) ) && !defined( XDW_ALLOW_SOFTWARE_FMA )
+      #if defined( _MSC_VER ) && !defined( __clang__ )
+         #pragma message( \
+            "CompleXDW: target has no hardware FMA, so every fma_rn is a slow libm call. Build with /arch:AVX2; define XDW_ALLOW_SOFTWARE_FMA to silence." )
+      #else
+         #warning \
+            "CompleXDW: target has no hardware FMA, so every fma_rn is a slow libm call. Build with -march=native (or -mfma on x86-64); define XDW_ALLOW_SOFTWARE_FMA to silence."
+      #endif
+   #endif
 
 #endif
 
@@ -145,17 +148,23 @@ namespace XDW_ARTH {
 // independent number. Host only.
 template< typename T >
 concept XDWVector = !std::is_arithmetic_v< T > && requires( T v ) { v[ 0 ]; }
-                    && std::floating_point< std::remove_cvref_t< decltype( std::declval< T >()[ 0 ] ) > >;
+                 && std::floating_point< std::remove_cvref_t< decltype( std::declval< T >()[ 0 ] ) > >;
 
 template< typename T >
 concept XDWReal = std::floating_point< T > || XDWVector< T >;
 
 namespace detail {
 template< typename T >
-struct lane { using type = T; };
+struct lane
+{
+   using type = T;
+};
 
 template< XDWVector T >
-struct lane< T > { using type = std::remove_cvref_t< decltype( std::declval< T >()[ 0 ] ) >; };
+struct lane< T >
+{
+   using type = std::remove_cvref_t< decltype( std::declval< T >()[ 0 ] ) >;
+};
 }
 
 template< XDWReal T >
@@ -166,7 +175,9 @@ inline constexpr int lanes = sizeof( T ) / sizeof( lane_t< T > );
 
 // c in every lane.
 template< XDWReal T >
-XDW_CUDA_CALLABLE constexpr T splat( lane_t< T > c )
+XDW_CUDA_CALLABLE
+constexpr T
+splat( lane_t< T > c )
 {
    if constexpr( XDWVector< T > )
       return T{} + c;
@@ -176,13 +187,16 @@ XDW_CUDA_CALLABLE constexpr T splat( lane_t< T > c )
 
 // U exact in T (also int)
 template< typename U, typename T >
-concept ExactIn = XDWReal< T >
-                  && ( std::same_as< U, T >
-                       || ( std::is_arithmetic_v< U > && std::numeric_limits< U >::digits <= std::numeric_limits< lane_t< T > >::digits ) );
+concept ExactIn =
+   XDWReal< T >
+   && ( std::same_as< U, T >
+        || ( std::is_arithmetic_v< U > && std::numeric_limits< U >::digits <= std::numeric_limits< lane_t< T > >::digits ) );
 
 template< XDWReal T, typename U >
-requires ExactIn< U, T >
-XDW_CUDA_CALLABLE constexpr T exact_fp( const U& y )
+   requires ExactIn< U, T >
+XDW_CUDA_CALLABLE
+constexpr T
+exact_fp( const U& y )
 {
    if constexpr( std::same_as< U, T > )
       return y;
@@ -192,7 +206,9 @@ XDW_CUDA_CALLABLE constexpr T exact_fp( const U& y )
 
 // && and || for scalar comparisons (bool), & and | lane by lane for vector masks.
 template< typename M >
-XDW_CUDA_CALLABLE constexpr M mask_and( M a, M b )
+XDW_CUDA_CALLABLE
+constexpr M
+mask_and( M a, M b )
 {
    if constexpr( std::is_same_v< M, bool > )
       return a && b;
@@ -201,7 +217,9 @@ XDW_CUDA_CALLABLE constexpr M mask_and( M a, M b )
 }
 
 template< typename M >
-XDW_CUDA_CALLABLE constexpr M mask_or( M a, M b )
+XDW_CUDA_CALLABLE
+constexpr M
+mask_or( M a, M b )
 {
    if constexpr( std::is_same_v< M, bool > )
       return a || b;
@@ -209,7 +227,7 @@ XDW_CUDA_CALLABLE constexpr M mask_or( M a, M b )
       return a | b;
 }
 
-}
+}  //namespace XDW_ARTH
 
 template< typename T >
 class DW;
@@ -220,30 +238,50 @@ class XDW;
 // Operand kinds for the mixed DW/XDW operators in XDW.h.
 namespace XDW_ARTH::detail {
 
-// is DW / XDW ? 	
+// is DW / XDW ?
 template< typename A >
-struct dw_kind { static constexpr bool dw = false, xdw = false; };
+struct dw_kind
+{
+   static constexpr bool dw = false, xdw = false;
+};
 
 template< typename T >
-struct dw_kind< DW< T > > { static constexpr bool dw = true, xdw = false; using base = T; };
+struct dw_kind< DW< T > >
+{
+   static constexpr bool dw = true, xdw = false;
+   using base = T;
+};
 
 template< typename T >
-struct dw_kind< XDW< T > > { static constexpr bool dw = false, xdw = true; using base = T; };
+struct dw_kind< XDW< T > >
+{
+   static constexpr bool dw = false, xdw = true;
+   using base = T;
+};
 
 template< typename A >
 concept DWKind = dw_kind< A >::dw || dw_kind< A >::xdw;
 
 // The base both operands convert to; void if there is none.
 template< typename A, typename B >
-struct common_base { using type = void; };
+struct common_base
+{
+   using type = void;
+};
 
 template< DWKind A, typename B >
-requires std::is_arithmetic_v< B >
-struct common_base< A, B > { using type = typename dw_kind< A >::base; };
+   requires std::is_arithmetic_v< B >
+struct common_base< A, B >
+{
+   using type = typename dw_kind< A >::base;
+};
 
 template< typename A, DWKind B >
-requires std::is_arithmetic_v< A >
-struct common_base< A, B > { using type = typename dw_kind< B >::base; };
+   requires std::is_arithmetic_v< A >
+struct common_base< A, B >
+{
+   using type = typename dw_kind< B >::base;
+};
 
 template< typename S, typename V >
 constexpr bool lane_of = XDWVector< V > && std::same_as< lane_t< V >, S >;
@@ -263,7 +301,9 @@ template< typename A, typename T >
 concept PlainFP = std::is_arithmetic_v< A > && ExactIn< A, T >;
 
 template< typename T, typename A >
-XDW_CUDA_CALLABLE constexpr auto lift( const A& a )
+XDW_CUDA_CALLABLE
+constexpr auto
+lift( const A& a )
 {
    if constexpr( dw_kind< A >::xdw )
       return XDW< T >( a );
@@ -271,6 +311,6 @@ XDW_CUDA_CALLABLE constexpr auto lift( const A& a )
       return DW< T >( a );
 }
 
-}
+}  //namespace XDW_ARTH::detail
 
 #endif  //XDWTRAITS_H

@@ -20,7 +20,8 @@ constexpr int SAMPLES = 200000;
 
 // u^2 of T, u = 2^-p.
 template< typename T >
-constexpr double U2 = 1.0 / ( double( 1ull << std::numeric_limits< T >::digits ) * double( 1ull << std::numeric_limits< T >::digits ) );
+constexpr double U2 =
+   1.0 / ( double( 1ull << std::numeric_limits< T >::digits ) * double( 1ull << std::numeric_limits< T >::digits ) );
 
 struct Big
 {
@@ -34,7 +35,8 @@ struct Big
 };
 
 template< typename T >
-T get( mpfr_srcptr x )
+T
+get( mpfr_srcptr x )
 {
    if constexpr( std::is_same_v< T, float > )
       return mpfr_get_flt( x, MPFR_RNDN );
@@ -44,7 +46,8 @@ T get( mpfr_srcptr x )
 
 // Round to hi, then round the remainder to lo: a normalized DW.
 template< typename T >
-DW< T > to_dw( mpfr_srcptr x )
+DW< T >
+to_dw( mpfr_srcptr x )
 {
    Big rest;
    const T hi = get< T >( x );
@@ -53,20 +56,23 @@ DW< T > to_dw( mpfr_srcptr x )
 }
 
 template< typename T >
-void set( mpfr_ptr out, T hi, T lo )
+void
+set( mpfr_ptr out, T hi, T lo )
 {
    mpfr_set_d( out, hi, MPFR_RNDN );
    mpfr_add_d( out, out, lo, MPFR_RNDN );
 }
 
 template< typename T >
-void set( mpfr_ptr out, const DW< T >& x )
+void
+set( mpfr_ptr out, const DW< T >& x )
 {
    set( out, x.hi(), x.lo() );
 }
 
 template< typename T >
-double rel_error( mpfr_srcptr exact, T hi, T lo )
+double
+rel_error( mpfr_srcptr exact, T hi, T lo )
 {
    Big err;
    set( err, hi, lo );
@@ -76,7 +82,8 @@ double rel_error( mpfr_srcptr exact, T hi, T lo )
 }
 
 template< typename T >
-double rel_error( mpfr_srcptr exact, const DW< T >& x )
+double
+rel_error( mpfr_srcptr exact, const DW< T >& x )
 {
    return rel_error( exact, x.hi(), x.lo() );
 }
@@ -90,7 +97,8 @@ struct Source
    static constexpr int MIN_EXPONENT = -20, MAX_EXPONENT = 20;
    std::uniform_int_distribution< int > exponent{ MIN_EXPONENT, MAX_EXPONENT };
 
-   explicit Source( unsigned long seed ) : rng( seed )
+   explicit Source( unsigned long seed )
+   : rng( seed )
    {
       gmp_randinit_mt( state );
       gmp_randseed_ui( state, seed );
@@ -143,7 +151,8 @@ struct Source
    }
 };
 
-inline void describe_inputs()
+inline void
+describe_inputs()
 {
    unit::section( "Inputs", "references in MPFR at " + std::to_string( MPFR_BITS ) + " bits" );
    std::cout << "  random          full 2p-bit significand, random sign, exponent in [" << Source::MIN_EXPONENT << ", "

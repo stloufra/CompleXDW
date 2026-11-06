@@ -24,18 +24,36 @@ constexpr int DETAIL_WIDTH = 30;
 
 inline const bool use_color = isatty( STDOUT_FILENO ) && !std::getenv( "NO_COLOR" );
 
-inline std::string paint( const std::string& text, const char* code )
+inline std::string
+paint( const std::string& text, const char* code )
 {
    return use_color ? std::string( "\033[" ) + code + "m" + text + "\033[0m" : text;
 }
 
-inline std::string green( const std::string& s ) { return paint( s, "32" ); }
-inline std::string red( const std::string& s ) { return paint( s, "31" ); }
-inline std::string yellow( const std::string& s ) { return paint( s, "33" ); }
-inline std::string bold( const std::string& s ) { return paint( s, "1" ); }
+inline std::string
+green( const std::string& s )
+{
+   return paint( s, "32" );
+}
+inline std::string
+red( const std::string& s )
+{
+   return paint( s, "31" );
+}
+inline std::string
+yellow( const std::string& s )
+{
+   return paint( s, "33" );
+}
+inline std::string
+bold( const std::string& s )
+{
+   return paint( s, "1" );
+}
 
 // A group of checks; `setup` says what all of them share (sample counts, the measured quantity).
-inline void section( const std::string& title, const std::string& setup = "" )
+inline void
+section( const std::string& title, const std::string& setup = "" )
 {
    std::cout << '\n' << bold( title );
    if( !setup.empty() )
@@ -44,13 +62,15 @@ inline void section( const std::string& title, const std::string& setup = "" )
 }
 
 // Printed before the computation runs.
-inline void announce( const std::string& name, const std::string& note = "" )
+inline void
+announce( const std::string& name, const std::string& note = "" )
 {
    const int note_width = std::max< int >( NOTE_WIDTH, note.size() + 2 );
    std::cout << "  " << std::left << std::setw( NAME_WIDTH ) << name << std::setw( note_width ) << note << std::flush;
 }
 
-inline bool verdict( bool ok, const std::string& detail = "" )
+inline bool
+verdict( bool ok, const std::string& detail = "" )
 {
    ++checks;
    failures += !ok;
@@ -59,7 +79,8 @@ inline bool verdict( bool ok, const std::string& detail = "" )
    return ok;
 }
 
-inline std::string measured( double worst, const char* unit )
+inline std::string
+measured( double worst, const char* unit )
 {
    std::ostringstream s;
    s << "worst ";
@@ -72,7 +93,8 @@ inline std::string measured( double worst, const char* unit )
 }
 
 // Worst measured error against its bound, both in units of `unit`.
-inline bool verdict_bound( double worst, double bound, const char* unit = "u^2" )
+inline bool
+verdict_bound( double worst, double bound, const char* unit = "u^2" )
 {
    std::ostringstream s;
    s << measured( worst, unit ) << "  bound " << std::defaultfloat << std::setprecision( 3 ) << bound;
@@ -80,12 +102,14 @@ inline bool verdict_bound( double worst, double bound, const char* unit = "u^2" 
 }
 
 // A measurement without a documented bound: reported, not judged.
-inline void info( double worst, const char* unit = "u^2" )
+inline void
+info( double worst, const char* unit = "u^2" )
 {
    std::cout << std::left << std::setw( DETAIL_WIDTH ) << measured( worst, unit ) + "  no bound" << yellow( "INFO" ) << '\n';
 }
 
-inline int finish( const char* name )
+inline int
+finish( const char* name )
 {
    std::ostringstream s;
    s << name << ": " << checks - failures << " of " << checks << " checks passed";
@@ -93,6 +117,6 @@ inline int finish( const char* name )
    return failures == 0 ? 0 : 1;
 }
 
-}
+}  //namespace unit
 
 #endif

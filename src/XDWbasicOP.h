@@ -11,19 +11,18 @@
 #include "XDWTraits.h"
 
 #if defined( __GNUC__ ) && defined( __has_builtin )
-#if __has_builtin( __builtin_assoc_barrier )
-#define XDW_HAS_ASSOC_BARRIER
-#endif
+   #if __has_builtin( __builtin_assoc_barrier )
+      #define XDW_HAS_ASSOC_BARRIER
+   #endif
 #endif
 
 #if defined( __HIPCC__ )
-#include <hip/hip_runtime.h>
+   #include <hip/hip_runtime.h>
 #elif defined( __CUDACC__ )
-#include <cuda_runtime.h>
+   #include <cuda_runtime.h>
 #endif
 
-
-namespace XDW_ARTH{
+namespace XDW_ARTH {
 
 //implementation of basic operations to ensure round to nearest in CUDA/HIP, and no FMA contraction on the host
 
@@ -43,9 +42,9 @@ add_rn( const T x, const T y )
       static_assert( std::is_same_v< T, float >, "XDW: SIMD vector T is host-only" );
    }
 #else
-#if defined( __clang__ )
-#pragma clang fp contract( off )
-#endif
+   #if defined( __clang__ )
+      #pragma clang fp contract( off )
+   #endif
    return x + y;
 #endif
 }
@@ -66,15 +65,15 @@ mul_rn( const T x, const T y )
       static_assert( std::is_same_v< T, float >, "XDW: SIMD vector T is host-only" );
    }
 #else
-#if defined( __clang__ )
-#pragma clang fp contract( off )
+   #if defined( __clang__ )
+      #pragma clang fp contract( off )
    return x * y;
-#elif defined( XDW_HAS_ASSOC_BARRIER )
+   #elif defined( XDW_HAS_ASSOC_BARRIER )
    // g++ has no per-region fp-contract; the barrier keeps the product rounded so it can't be fused into an add.
    return __builtin_assoc_barrier( x * y );
-#else
+   #else
    return x * y;
-#endif
+   #endif
 #endif
 }
 
@@ -115,14 +114,15 @@ fma_rn( const T x, const T y, const T z )
    }
 #else
    if constexpr( XDWVector< T > ) {
-#if defined( __clang__ )
+   #if defined( __clang__ )
       return __builtin_elementwise_fma( x, y, z );
-#else
+   #else
       // g++ turns the lane loop into vector FMAs.
       T r;
-      for( int i = 0; i < lanes< T >; ++i ) r[ i ] = std::fma( x[ i ], y[ i ], z[ i ] );
+      for( int i = 0; i < lanes< T >; ++i )
+         r[ i ] = std::fma( x[ i ], y[ i ], z[ i ] );
       return r;
-#endif
+   #endif
    }
    else
       return std::fma( x, y, z );
@@ -146,19 +146,20 @@ sqrt_rn( const T x )
    }
 #else
    if constexpr( XDWVector< T > ) {
-#if defined( __clang__ )
+   #if defined( __clang__ )
       return __builtin_elementwise_sqrt( x );
-#else
+   #else
       T r;
-      for( int i = 0; i < lanes< T >; ++i ) r[ i ] = std::sqrt( x[ i ] );
+      for( int i = 0; i < lanes< T >; ++i )
+         r[ i ] = std::sqrt( x[ i ] );
       return r;
-#endif
+   #endif
    }
    else
       return std::sqrt( x );
 #endif
 }
 
-}
+}  //namespace XDW_ARTH
 
 #endif  //XDW_BASIC_OPS_H

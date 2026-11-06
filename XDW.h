@@ -13,180 +13,181 @@
 template< typename T >
 class alignas( XDW_ARTH::XDWVector< T > ? alignof( T ) : 4 * sizeof( T ) ) XDW
 {
+   static_assert( XDW_ARTH::XDWReal< T >, "XDW<T>: T must be float, double, or a SIMD vector of them." );
 
-  static_assert( XDW_ARTH::XDWReal< T >, "XDW<T>: T must be float, double, or a SIMD vector of them." );
+private:
+   T data[ 4 ];
 
-  private:
-  T data[ 4 ];
+public:
+   using BaseType = T;
 
-  public:
-  using BaseType = T;
+   XDW_CUDA_CALLABLE
+   constexpr XDW() = default;
 
-  XDW_CUDA_CALLABLE
-  constexpr XDW() = default;
+   XDW_CUDA_CALLABLE
+   constexpr XDW( const XDW& other ) = default;
 
-  XDW_CUDA_CALLABLE
-  constexpr XDW( const XDW& other ) = default;
+   XDW_CUDA_CALLABLE
+   constexpr XDW( XDW&& other ) noexcept = default;
 
-  XDW_CUDA_CALLABLE
-  constexpr XDW( XDW&& other ) noexcept = default;
+   XDW_CUDA_CALLABLE
+   constexpr XDW& operator=( const XDW& other ) = default;
 
-  XDW_CUDA_CALLABLE
-  constexpr XDW& operator=( const XDW& other ) = default;
+   XDW_CUDA_CALLABLE
+   constexpr XDW& operator=( XDW&& other ) noexcept = default;
 
-  XDW_CUDA_CALLABLE
-  constexpr XDW& operator=( XDW&& other ) noexcept = default;
+   // Any complex type with real()/imag() (std::, thrust::, own) split like a plain number.
+   template< typename C >
+      requires requires( const C& c ) {
+         requires std::constructible_from< DW< T >, decltype( c.real() ) >;
+         requires std::constructible_from< DW< T >, decltype( c.imag() ) >;
+      }
+   XDW_CUDA_CALLABLE
+   constexpr XDW( const C& c )
+   : XDW( DW< T >( c.real() ), DW< T >( c.imag() ) )
+   {}
 
-  // Any complex type with real()/imag() (std::, thrust::, own) split like a plain number.
-  template< typename C >
-  requires requires( const C& c ) {
-    requires std::constructible_from< DW< T >, decltype( c.real() ) >;
-    requires std::constructible_from< DW< T >, decltype( c.imag() ) >;
-  }
-  XDW_CUDA_CALLABLE
-  constexpr XDW( const C& c ) : XDW( DW< T >( c.real() ), DW< T >( c.imag() ) ) {}
+   // Exact into a wider type (XDW<FP32> -> std::complex<FP64>); otherwise the high words.
+   template< typename U >
+      requires std::is_floating_point_v< U > && std::floating_point< T >
+   explicit constexpr operator std::complex< U >() const
+   {
+      return std::complex< U >( static_cast< U >( DW< T >( data[ 0 ], data[ 1 ] ) ),
+                                static_cast< U >( DW< T >( data[ 2 ], data[ 3 ] ) ) );
+   }
 
-  // Exact into a wider type (XDW<FP32> -> std::complex<FP64>); otherwise the high words.
-  template< typename U >
-  requires std::is_floating_point_v< U > && std::floating_point< T >
-  explicit constexpr operator std::complex< U >() const
-  {
-    return std::complex< U >( static_cast< U >( DW< T >( data[ 0 ], data[ 1 ] ) ),
-                              static_cast< U >( DW< T >( data[ 2 ], data[ 3 ] ) ) );
-  }
+   // Plain numbers go through DW, so a double into XDW<float> keeps its low part.
+   template< typename U >
+      requires std::is_arithmetic_v< U >
+   XDW_CUDA_CALLABLE
+   constexpr XDW( U re )
+   : XDW( DW< T >( re ), DW< T >( T{}, T{} ) )
+   {}
 
-  // Plain numbers go through DW, so a double into XDW<float> keeps its low part.
-  template< typename U >
-  requires std::is_arithmetic_v< U >
-  XDW_CUDA_CALLABLE
-  constexpr XDW( U re ) : XDW( DW< T >( re ), DW< T >( T{}, T{} ) ) {}
+   template< typename U, typename V >
+      requires std::is_arithmetic_v< U > && std::is_arithmetic_v< V >
+   XDW_CUDA_CALLABLE
+   constexpr XDW( U re, V im )
+   : XDW( DW< T >( re ), DW< T >( im ) )
+   {}
 
-  template< typename U, typename V >
-  requires std::is_arithmetic_v< U > && std::is_arithmetic_v< V >
-  XDW_CUDA_CALLABLE
-  constexpr XDW( U re, V im ) : XDW( DW< T >( re ), DW< T >( im ) ) {}
+   XDW_CUDA_CALLABLE
+   constexpr XDW( const DW< T >& re, const DW< T >& im = DW< T >( T{}, T{} ) )
+   : data{ re.hi(), re.lo(), im.hi(), im.lo() }
+   {}
 
-  XDW_CUDA_CALLABLE
-  constexpr XDW( const DW< T >& re, const DW< T >& im = DW< T >( T{}, T{} ) )
-  : data{ re.hi(), re.lo(), im.hi(), im.lo() } {}
+   // A scalar XDW in every lane.
+   template< typename S >
+      requires XDW_ARTH::XDWVector< T > && std::same_as< S, XDW_ARTH::lane_t< T > >
+   constexpr XDW( const XDW< S >& z )
+   : data{ XDW_ARTH::splat< T >( z.re_h() ),
+           XDW_ARTH::splat< T >( z.re_l() ),
+           XDW_ARTH::splat< T >( z.im_h() ),
+           XDW_ARTH::splat< T >( z.im_l() ) }
+   {}
 
-  // A scalar XDW in every lane.
-  template< typename S >
-  requires XDW_ARTH::XDWVector< T > && std::same_as< S, XDW_ARTH::lane_t< T > >
-  constexpr XDW( const XDW< S >& z )
-  : data{ XDW_ARTH::splat< T >( z.re_h() ), XDW_ARTH::splat< T >( z.re_l() ),
-          XDW_ARTH::splat< T >( z.im_h() ), XDW_ARTH::splat< T >( z.im_l() ) } {}
+   constexpr XDW< XDW_ARTH::lane_t< T > > lane( int i ) const
+      requires XDW_ARTH::XDWVector< T >
+   {
+      return XDW< XDW_ARTH::lane_t< T > >( data[ 0 ][ i ], data[ 1 ][ i ], data[ 2 ][ i ], data[ 3 ][ i ] );
+   }
 
-  constexpr XDW< XDW_ARTH::lane_t< T > > lane( int i ) const
-  requires XDW_ARTH::XDWVector< T >
-  {
-    return XDW< XDW_ARTH::lane_t< T > >( data[ 0 ][ i ], data[ 1 ][ i ], data[ 2 ][ i ], data[ 3 ][ i ] );
-  }
+   XDW_CUDA_CALLABLE
+   constexpr XDW( T re_h, T re_l, T im_h, T im_l );
 
-  XDW_CUDA_CALLABLE
-  constexpr XDW( T re_h, T re_l, T im_h, T im_l );
+   XDW_CUDA_CALLABLE
+   constexpr T re_h() const { return data[ 0 ]; }
+   XDW_CUDA_CALLABLE
+   constexpr T re_l() const { return data[ 1 ]; }
+   XDW_CUDA_CALLABLE
+   constexpr T im_h() const { return data[ 2 ]; }
+   XDW_CUDA_CALLABLE
+   constexpr T im_l() const { return data[ 3 ]; }
 
-  XDW_CUDA_CALLABLE
-  constexpr T re_h() const { return data[ 0 ]; }
-  XDW_CUDA_CALLABLE
-  constexpr T re_l() const { return data[ 1 ]; }
-  XDW_CUDA_CALLABLE
-  constexpr T im_h() const { return data[ 2 ]; }
-  XDW_CUDA_CALLABLE
-  constexpr T im_l() const { return data[ 3 ]; }
+   XDW_CUDA_CALLABLE
+   constexpr T& re_h() { return data[ 0 ]; }
+   XDW_CUDA_CALLABLE
+   constexpr T& re_l() { return data[ 1 ]; }
+   XDW_CUDA_CALLABLE
+   constexpr T& im_h() { return data[ 2 ]; }
+   XDW_CUDA_CALLABLE
+   constexpr T& im_l() { return data[ 3 ]; }
 
-  XDW_CUDA_CALLABLE
-  constexpr T& re_h() { return data[ 0 ]; }
-  XDW_CUDA_CALLABLE
-  constexpr T& re_l() { return data[ 1 ]; }
-  XDW_CUDA_CALLABLE
-  constexpr T& im_h() { return data[ 2 ]; }
-  XDW_CUDA_CALLABLE
-  constexpr T& im_l() { return data[ 3 ]; }
+   XDW_CUDA_CALLABLE
+   constexpr T operator[]( int i ) const { return data[ i ]; }
 
-  XDW_CUDA_CALLABLE
-  constexpr T operator[]( int i ) const { return data[ i ]; }
+   XDW_CUDA_CALLABLE
+   constexpr T& operator[]( int i ) { return data[ i ]; }
 
-  XDW_CUDA_CALLABLE
-  constexpr T& operator[]( int i ) { return data[ i ]; }
+   XDW_CUDA_CALLABLE
+   constexpr XDW< T > operator+() const;
 
-  XDW_CUDA_CALLABLE
-  constexpr XDW< T >
-  operator+() const;
+   XDW_CUDA_CALLABLE
+   constexpr XDW< T > operator-() const;
 
-  XDW_CUDA_CALLABLE
-  constexpr XDW< T >
-  operator-() const;
+   XDW_CUDA_CALLABLE
+   constexpr XDW< T >& operator+=( const XDW< T >& other );
 
-  XDW_CUDA_CALLABLE
-  constexpr XDW< T >&
-  operator+=( const XDW< T >& other );
+   XDW_CUDA_CALLABLE
+   constexpr XDW< T >& operator-=( const XDW< T >& other );
 
-  XDW_CUDA_CALLABLE
-  constexpr XDW< T >&
-  operator-=( const XDW< T >& other );
+   XDW_CUDA_CALLABLE
+   constexpr XDW< T >& operator*=( const XDW< T >& other );
 
-  XDW_CUDA_CALLABLE
-  constexpr XDW< T >&
-  operator*=( const XDW< T >& other );
+   XDW_CUDA_CALLABLE
+   constexpr XDW< T >& operator/=( const XDW< T >& other );
 
-  XDW_CUDA_CALLABLE
-  constexpr XDW< T >&
-  operator/=( const XDW< T >& other );
+   // A plain number through mixed operators
+   template< typename U >
+      requires std::is_arithmetic_v< U >
+   XDW_CUDA_CALLABLE
+   constexpr XDW< T >& operator+=( const U& y ) { return *this = *this + y; }
 
-  // A plain number through mixed operators 
-  template< typename U >
-  requires std::is_arithmetic_v< U >
-  XDW_CUDA_CALLABLE
-  constexpr XDW< T >& operator+=( const U& y ) { return *this = *this + y; }
+   template< typename U >
+      requires std::is_arithmetic_v< U >
+   XDW_CUDA_CALLABLE
+   constexpr XDW< T >& operator-=( const U& y ) { return *this = *this - y; }
 
-  template< typename U >
-  requires std::is_arithmetic_v< U >
-  XDW_CUDA_CALLABLE
-  constexpr XDW< T >& operator-=( const U& y ) { return *this = *this - y; }
+   template< typename U >
+      requires std::is_arithmetic_v< U >
+   XDW_CUDA_CALLABLE
+   constexpr XDW< T >& operator*=( const U& y ) { return *this = *this * y; }
 
-  template< typename U >
-  requires std::is_arithmetic_v< U >
-  XDW_CUDA_CALLABLE
-  constexpr XDW< T >& operator*=( const U& y ) { return *this = *this * y; }
+   template< typename U >
+      requires std::is_arithmetic_v< U >
+   XDW_CUDA_CALLABLE
+   constexpr XDW< T >& operator/=( const U& y ) { return *this = *this / y; }
 
-  template< typename U >
-  requires std::is_arithmetic_v< U >
-  XDW_CUDA_CALLABLE
-  constexpr XDW< T >& operator/=( const U& y ) { return *this = *this / y; }
+   // a where mask is set, else b; lane by lane for a vector T. A friend, so a scalar XDW or a plain number converts.
+   template< typename M >
+   XDW_CUDA_CALLABLE
+   friend constexpr XDW_INLINE XDW< T > select( const M& mask, const XDW< T >& a, const XDW< T >& b )
+   {
+      return XDW< T >(
+         mask ? a.re_h() : b.re_h(), mask ? a.re_l() : b.re_l(), mask ? a.im_h() : b.im_h(), mask ? a.im_l() : b.im_l() );
+   }
 
-  // a where mask is set, else b; lane by lane for a vector T. A friend, so a scalar XDW or a plain number converts.
-  template< typename M >
-  XDW_CUDA_CALLABLE
-  friend constexpr XDW_INLINE XDW< T > select( const M& mask, const XDW< T >& a, const XDW< T >& b )
-  {
-    return XDW< T >( mask ? a.re_h() : b.re_h(), mask ? a.re_l() : b.re_l(),
-                     mask ? a.im_h() : b.im_h(), mask ? a.im_l() : b.im_l() );
-  }
+   XDW_CUDA_CALLABLE
+   constexpr static XDW< T > add( const XDW< T >& a, const XDW< T >& b );
 
-  XDW_CUDA_CALLABLE
-  constexpr static XDW< T >
-  add( const XDW< T >& a, const XDW< T >& b );
+   XDW_CUDA_CALLABLE
+   constexpr static XDW< T > sub( const XDW< T >& a, const XDW< T >& b );
 
-  XDW_CUDA_CALLABLE
-  constexpr static XDW< T >
-  sub( const XDW< T >& a, const XDW< T >& b );
+   template< XDW_ARTH::AddMode Add = XDW_ARTH::kAddMode, XDW_ARTH::NormMode Norm = XDW_ARTH::kNormMode >
+   XDW_CUDA_CALLABLE
+   constexpr static XDW< T > mul( const XDW< T >& a, const XDW< T >& b );
 
-  template< XDW_ARTH::AddMode Add = XDW_ARTH::kAddMode, XDW_ARTH::NormMode Norm = XDW_ARTH::kNormMode >
-  XDW_CUDA_CALLABLE
-  constexpr static XDW< T >
-  mul( const XDW< T >& a, const XDW< T >& b );
-
-  template< XDW_ARTH::DivMode Div = XDW_ARTH::kDivMode, XDW_ARTH::AddMode Add = XDW_ARTH::kAddMode, XDW_ARTH::NormMode Norm = XDW_ARTH::kNormMode >
-  XDW_CUDA_CALLABLE
-  constexpr static XDW< T >
-  div( const XDW< T >& a, const XDW< T >& b );
+   template< XDW_ARTH::DivMode Div = XDW_ARTH::kDivMode,
+             XDW_ARTH::AddMode Add = XDW_ARTH::kAddMode,
+             XDW_ARTH::NormMode Norm = XDW_ARTH::kNormMode >
+   XDW_CUDA_CALLABLE
+   constexpr static XDW< T > div( const XDW< T >& a, const XDW< T >& b );
 };
 
 template< typename T >
 XDW_CUDA_CALLABLE
 constexpr XDW< T >::XDW( T re_h_, T re_l_, T im_h_, T im_l_ )
-   : data{ re_h_, re_l_, im_h_, im_l_ }
+: data{ re_h_, re_l_, im_h_, im_l_ }
 {}
 
 template< typename T >
@@ -211,9 +212,8 @@ constexpr XDW_INLINE XDW< T >
 XDW< T >::add( const XDW< T >& a, const XDW< T >& b )
 {
    T reh, rel, imh, iml;
-   XDW_ARTH::XDWadd< T, XDW_ARTH::AddMode::Madd >( a.re_h(), a.re_l(), a.im_h(), a.im_l(),
-                                b.re_h(), b.re_l(), b.im_h(), b.im_l(),
-                                &reh, &rel, &imh, &iml );
+   XDW_ARTH::XDWadd< T, XDW_ARTH::AddMode::Madd >(
+      a.re_h(), a.re_l(), a.im_h(), a.im_l(), b.re_h(), b.re_l(), b.im_h(), b.im_l(), &reh, &rel, &imh, &iml );
    return XDW< T >( reh, rel, imh, iml );
 }
 
@@ -223,9 +223,8 @@ constexpr XDW_INLINE XDW< T >
 XDW< T >::sub( const XDW< T >& a, const XDW< T >& b )
 {
    T reh, rel, imh, iml;
-   XDW_ARTH::XDWsub< T, XDW_ARTH::AddMode::Madd >( a.re_h(), a.re_l(), a.im_h(), a.im_l(),
-                                b.re_h(), b.re_l(), b.im_h(), b.im_l(),
-                                &reh, &rel, &imh, &iml );
+   XDW_ARTH::XDWsub< T, XDW_ARTH::AddMode::Madd >(
+      a.re_h(), a.re_l(), a.im_h(), a.im_l(), b.re_h(), b.re_l(), b.im_h(), b.im_l(), &reh, &rel, &imh, &iml );
    return XDW< T >( reh, rel, imh, iml );
 }
 
@@ -236,8 +235,8 @@ constexpr XDW_INLINE XDW< T >
 XDW< T >::mul( const XDW< T >& a, const XDW< T >& b )
 {
    T reh, rel, imh, iml;
-   XDW_ARTH::XDWmul< T, Add, Norm >( a.re_h(), a.re_l(), a.im_h(), a.im_l(),
-                                      b.re_h(), b.re_l(), b.im_h(), b.im_l(), &reh, &rel, &imh, &iml );
+   XDW_ARTH::XDWmul< T, Add, Norm >(
+      a.re_h(), a.re_l(), a.im_h(), a.im_l(), b.re_h(), b.re_l(), b.im_h(), b.im_l(), &reh, &rel, &imh, &iml );
    return XDW< T >( reh, rel, imh, iml );
 }
 
@@ -248,12 +247,10 @@ constexpr XDW_INLINE XDW< T >
 XDW< T >::div( const XDW< T >& a, const XDW< T >& b )
 {
    T reh, rel, imh, iml;
-   XDW_ARTH::XDWDiv< T, Div, Add, Norm >( a.re_h(), a.re_l(), a.im_h(), a.im_l(),
-                                           b.re_h(), b.re_l(), b.im_h(), b.im_l(), &reh, &rel, &imh, &iml );
+   XDW_ARTH::XDWDiv< T, Div, Add, Norm >(
+      a.re_h(), a.re_l(), a.im_h(), a.im_l(), b.re_h(), b.re_l(), b.im_h(), b.im_l(), &reh, &rel, &imh, &iml );
    return XDW< T >( reh, rel, imh, iml );
 }
-
-
 
 template< typename T >
 XDW_CUDA_CALLABLE
@@ -367,7 +364,7 @@ norm( const XDW< T >& z )
 
 //-------------------- XDW <-> DW ---------------------
 // A real operand only touches the parts it multiplies or adds: componentwise DW + - * /.
-// A plain number (z * 0.5, 2 * z) is mixed operators 
+// A plain number (z * 0.5, 2 * z) is mixed operators
 
 template< typename T >
 XDW_CUDA_CALLABLE
@@ -443,7 +440,7 @@ operator/( const DW< T >& x, const XDW< T >& z )
 // DW's own operators.
 
 template< typename A, typename B >
-requires XDW_ARTH::detail::MixedXDW< A, B >
+   requires XDW_ARTH::detail::MixedXDW< A, B >
 XDW_CUDA_CALLABLE
 constexpr XDW_INLINE auto
 operator+( const A& a, const B& b )
@@ -458,7 +455,7 @@ operator+( const A& a, const B& b )
 }
 
 template< typename A, typename B >
-requires XDW_ARTH::detail::MixedXDW< A, B >
+   requires XDW_ARTH::detail::MixedXDW< A, B >
 XDW_CUDA_CALLABLE
 constexpr XDW_INLINE auto
 operator-( const A& a, const B& b )
@@ -473,7 +470,7 @@ operator-( const A& a, const B& b )
 }
 
 template< typename A, typename B >
-requires XDW_ARTH::detail::MixedXDW< A, B >
+   requires XDW_ARTH::detail::MixedXDW< A, B >
 XDW_CUDA_CALLABLE
 constexpr XDW_INLINE auto
 operator*( const A& a, const B& b )
@@ -488,7 +485,7 @@ operator*( const A& a, const B& b )
 }
 
 template< typename A, typename B >
-requires XDW_ARTH::detail::MixedXDW< A, B >
+   requires XDW_ARTH::detail::MixedXDW< A, B >
 XDW_CUDA_CALLABLE
 constexpr XDW_INLINE auto
 operator/( const A& a, const B& b )

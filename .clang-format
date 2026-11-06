@@ -1,0 +1,133 @@
+---
+Language: Cpp
+Standard: c++20
+
+ColumnLimit: 128
+LineEnding: LF
+InsertNewlineAtEOF: true
+
+IndentWidth: 3
+ContinuationIndentWidth: 3
+IndentAccessModifiers: false
+AccessModifierOffset: -3
+IndentCaseLabels: true
+IndentCaseBlocks: true
+IndentGotoLabels: false
+IndentPPDirectives: BeforeHash
+IndentExternBlock: NoIndent
+IndentWrappedFunctionNames: false
+
+NamespaceIndentation: None
+FixNamespaceComments: true
+CompactNamespaces: false
+ShortNamespaceLines: 10
+
+EmptyLineAfterAccessModifier: Never
+EmptyLineBeforeAccessModifier: LogicalBlock
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 1
+SeparateDefinitionBlocks: Leave
+
+SpacesInParens: Custom
+SpacesInParensOptions:
+  InConditionalStatements: true
+  InCStyleCasts: false
+  InEmptyParentheses: false
+  Other: true
+SpacesInSquareBrackets: true
+SpacesInAngles: Always
+SpacesInContainerLiterals: true
+SpaceAfterCStyleCast: true
+SpaceAfterLogicalNot: false
+SpaceAfterTemplateKeyword: false
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeInheritanceColon: true
+BitFieldColonSpacing: Both
+SpaceBeforeParens: Never
+SpaceBeforeRangeBasedForLoopColon: true
+SpaceBeforeSquareBrackets: false
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCaseColon: false
+SpaceBeforeCpp11BracedList: false
+SpaceInEmptyBlock: false
+SpacesInLineCommentPrefix:
+  Minimum: 0
+SpacesBeforeTrailingComments: 2
+Cpp11BracedListStyle: false
+
+PackConstructorInitializers: Never
+ConstructorInitializerIndentWidth: 0
+
+BreakAfterReturnType: TopLevelDefinitions
+AlwaysBreakBeforeMultilineStrings: false
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterCaseLabel:  false
+  AfterClass:      true
+  AfterControlStatement: MultiLine
+  AfterEnum:       false
+  AfterFunction:   true
+  AfterNamespace:  false
+  AfterStruct:     true
+  AfterUnion:      true
+  AfterExternBlock: true
+  BeforeLambdaBody: true
+  BeforeCatch:     true
+  BeforeElse:      true
+  BeforeWhile:     false
+  IndentBraces:    false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: true
+BreakBeforeBinaryOperators: NonAssignment
+BreakBeforeTernaryOperators: true
+BreakInheritanceList: BeforeColon
+BreakConstructorInitializers: BeforeColon
+BreakTemplateDeclarations: Yes
+BreakBeforeConceptDeclarations: Always
+BreakAfterAttributes: Never
+
+AlignAfterOpenBracket: Align
+AlignArrayOfStructures: None
+AlignConsecutiveMacros: None
+AlignConsecutiveAssignments: None
+AlignConsecutiveBitFields: None
+AlignConsecutiveDeclarations: None
+AlignEscapedNewlines: Left
+AlignOperands:   AlignAfterOperator
+AlignTrailingComments:
+  Kind: Always
+  OverEmptyLines: 0
+DerivePointerAlignment: false
+PointerAlignment: Left
+ReferenceAlignment: Pointer
+
+StatementMacros:
+  - __global__
+  - __host__
+  - __device__
+  - XDW_CUDA_CALLABLE
+
+AllowAllArgumentsOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortEnumsOnASingleLine: true
+AllowShortBlocksOnASingleLine: Never
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortLambdasOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+BinPackArguments: false
+BinPackParameters: false
+
+PenaltyExcessCharacter: 500
+
+SortIncludes: Never
+
+ReflowComments:  true
+
+InsertTrailingCommas: Wrapped
+RemoveParentheses: ReturnStatement
+RemoveSemicolon: true
+
+...

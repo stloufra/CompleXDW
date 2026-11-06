@@ -19,243 +19,257 @@
 // Any other plain number is split into a DW first (a double next to a DW<float>).
 //
 // Operators are hidden friends so a plain float/double/integer works on either side (x + 0.5, 2 * x, x == 0.).
-// T may be a SIMD vector of float/double: one independent number per lane 
+// T may be a SIMD vector of float/double: one independent number per lane
 // Comparisons return the lane mask.
 
 template< typename T >
 class alignas( XDW_ARTH::XDWVector< T > ? alignof( T ) : 2 * sizeof( T ) ) DW
 {
+   static_assert( XDW_ARTH::XDWReal< T >, "DW<T>: T must be float, double, or a SIMD vector of them." );
 
-  static_assert( XDW_ARTH::XDWReal< T >, "DW<T>: T must be float, double, or a SIMD vector of them." );
+private:
+   T data[ 2 ];
 
-  private:
-  T data[ 2 ];
+public:
+   using BaseType = T;
+   using Lane = XDW_ARTH::lane_t< T >;
 
-  public:
-  using BaseType = T;
-  using Lane = XDW_ARTH::lane_t< T >;
+   XDW_CUDA_CALLABLE
+   constexpr DW() = default;
 
-  XDW_CUDA_CALLABLE
-  constexpr DW() = default;
+   XDW_CUDA_CALLABLE
+   constexpr DW( T hi, T lo )
+   : data{ hi, lo }
+   {}
 
-  XDW_CUDA_CALLABLE
-  constexpr DW( T hi, T lo ) : data{ hi, lo } {}
+   // wider type split in hi and lo (FP64 > DW<FP32> 48b of 53b kept)
+   // splat for vector
+   template< typename U >
+      requires std::is_arithmetic_v< U >
+   XDW_CUDA_CALLABLE
+   constexpr DW( U x );
 
-  // wider type split in hi and lo (FP64 > DW<FP32> 48b of 53b kept) 
-  // splat for vector
-  template< typename U >
-  requires std::is_arithmetic_v< U >
-  XDW_CUDA_CALLABLE
-  constexpr DW( U x );
+   // DW<double> from DW<float> is exact; DW<float> from DW<double> rounds to 48 bits.
+   template< typename U >
+      requires std::floating_point< T > && std::floating_point< U > && (!std::same_as< T, U >)
+   XDW_CUDA_CALLABLE
+   explicit constexpr DW( const DW< U >& x );
 
-  // DW<double> from DW<float> is exact; DW<float> from DW<double> rounds to 48 bits.
-  template< typename U >
-  requires std::floating_point< T > && std::floating_point< U > && ( !std::same_as< T, U > )
-  XDW_CUDA_CALLABLE
-  explicit constexpr DW( const DW< U >& x );
+   // A scalar DW in every lane.
+   template< typename S >
+      requires XDW_ARTH::XDWVector< T > && std::same_as< S, XDW_ARTH::lane_t< T > >
+   constexpr DW( const DW< S >& x )
+   : data{ XDW_ARTH::splat< T >( x.hi() ), XDW_ARTH::splat< T >( x.lo() ) }
+   {}
 
-  // A scalar DW in every lane.
-  template< typename S >
-  requires XDW_ARTH::XDWVector< T > && std::same_as< S, XDW_ARTH::lane_t< T > >
-  constexpr DW( const DW< S >& x ) : data{ XDW_ARTH::splat< T >( x.hi() ), XDW_ARTH::splat< T >( x.lo() ) } {}
+   constexpr DW< Lane > lane( int i ) const
+      requires XDW_ARTH::XDWVector< T >
+   {
+      return DW< Lane >( data[ 0 ][ i ], data[ 1 ][ i ] );
+   }
 
-  constexpr DW< Lane > lane( int i ) const
-  requires XDW_ARTH::XDWVector< T >
-  {
-    return DW< Lane >( data[ 0 ][ i ], data[ 1 ][ i ] );
-  }
+   XDW_CUDA_CALLABLE
+   constexpr T hi() const { return data[ 0 ]; }
+   XDW_CUDA_CALLABLE
+   constexpr T lo() const { return data[ 1 ]; }
 
-  XDW_CUDA_CALLABLE
-  constexpr T hi() const { return data[ 0 ]; }
-  XDW_CUDA_CALLABLE
-  constexpr T lo() const { return data[ 1 ]; }
+   XDW_CUDA_CALLABLE
+   constexpr T& hi() { return data[ 0 ]; }
+   XDW_CUDA_CALLABLE
+   constexpr T& lo() { return data[ 1 ]; }
 
-  XDW_CUDA_CALLABLE
-  constexpr T& hi() { return data[ 0 ]; }
-  XDW_CUDA_CALLABLE
-  constexpr T& lo() { return data[ 1 ]; }
+   XDW_CUDA_CALLABLE
+   constexpr T operator[]( int i ) const { return data[ i ]; }
 
-  XDW_CUDA_CALLABLE
-  constexpr T operator[]( int i ) const { return data[ i ]; }
+   XDW_CUDA_CALLABLE
+   constexpr T& operator[]( int i ) { return data[ i ]; }
 
-  XDW_CUDA_CALLABLE
-  constexpr T& operator[]( int i ) { return data[ i ]; }
+   // Exact into a wider type (DW<FP32> > FP64); otherwise hi
+   template< typename U >
+      requires std::is_floating_point_v< U > && std::floating_point< T >
+   XDW_CUDA_CALLABLE
+   explicit constexpr operator U() const;
 
-  // Exact into a wider type (DW<FP32> > FP64); otherwise hi
-  template< typename U >
-  requires std::is_floating_point_v< U > && std::floating_point< T >
-  XDW_CUDA_CALLABLE
-  explicit constexpr operator U() const;
+   XDW_CUDA_CALLABLE
+   constexpr static DW< T > add( const DW< T >& a, const DW< T >& b );
 
-  XDW_CUDA_CALLABLE
-  constexpr static DW< T >
-  add( const DW< T >& a, const DW< T >& b );
+   XDW_CUDA_CALLABLE
+   constexpr static DW< T > sub( const DW< T >& a, const DW< T >& b );
 
-  XDW_CUDA_CALLABLE
-  constexpr static DW< T >
-  sub( const DW< T >& a, const DW< T >& b );
+   XDW_CUDA_CALLABLE
+   constexpr static DW< T > mul( const DW< T >& a, const DW< T >& b );
 
-  XDW_CUDA_CALLABLE
-  constexpr static DW< T >
-  mul( const DW< T >& a, const DW< T >& b );
+   XDW_CUDA_CALLABLE
+   constexpr static DW< T > div( const DW< T >& a, const DW< T >& b );
 
-  XDW_CUDA_CALLABLE
-  constexpr static DW< T >
-  div( const DW< T >& a, const DW< T >& b );
+   XDW_CUDA_CALLABLE
+   constexpr static DW< T > add_fp( const DW< T >& a, const T& y );
 
-  XDW_CUDA_CALLABLE
-  constexpr static DW< T >
-  add_fp( const DW< T >& a, const T& y );
+   XDW_CUDA_CALLABLE
+   constexpr static DW< T > mul_fp( const DW< T >& a, const T& y );
 
-  XDW_CUDA_CALLABLE
-  constexpr static DW< T >
-  mul_fp( const DW< T >& a, const T& y );
+   XDW_CUDA_CALLABLE
+   constexpr static DW< T > div_fp( const DW< T >& a, const T& y );
 
-  XDW_CUDA_CALLABLE
-  constexpr static DW< T >
-  div_fp( const DW< T >& a, const T& y );
+   XDW_CUDA_CALLABLE
+   constexpr DW< T > operator+() const { return *this; }
 
-  XDW_CUDA_CALLABLE
-  constexpr DW< T > operator+() const { return *this; }
+   XDW_CUDA_CALLABLE
+   constexpr DW< T > operator-() const { return DW< T >( -data[ 0 ], -data[ 1 ] ); }
 
-  XDW_CUDA_CALLABLE
-  constexpr DW< T > operator-() const { return DW< T >( -data[ 0 ], -data[ 1 ] ); }
+   XDW_CUDA_CALLABLE
+   constexpr DW< T >& operator+=( const DW< T >& other ) { return *this = add( *this, other ); }
 
-  XDW_CUDA_CALLABLE
-  constexpr DW< T >& operator+=( const DW< T >& other ) { return *this = add( *this, other ); }
+   XDW_CUDA_CALLABLE
+   constexpr DW< T >& operator-=( const DW< T >& other ) { return *this = sub( *this, other ); }
 
-  XDW_CUDA_CALLABLE
-  constexpr DW< T >& operator-=( const DW< T >& other ) { return *this = sub( *this, other ); }
+   XDW_CUDA_CALLABLE
+   constexpr DW< T >& operator*=( const DW< T >& other ) { return *this = mul( *this, other ); }
 
-  XDW_CUDA_CALLABLE
-  constexpr DW< T >& operator*=( const DW< T >& other ) { return *this = mul( *this, other ); }
+   XDW_CUDA_CALLABLE
+   constexpr DW< T >& operator/=( const DW< T >& other ) { return *this = div( *this, other ); }
 
-  XDW_CUDA_CALLABLE
-  constexpr DW< T >& operator/=( const DW< T >& other ) { return *this = div( *this, other ); }
+   template< typename U >
+      requires XDW_ARTH::ExactIn< U, T >
+   XDW_CUDA_CALLABLE
+   constexpr DW< T >& operator+=( const U& y ) { return *this = add_fp( *this, XDW_ARTH::exact_fp< T >( y ) ); }
 
-  template< typename U >
-  requires XDW_ARTH::ExactIn< U, T >
-  XDW_CUDA_CALLABLE
-  constexpr DW< T >& operator+=( const U& y ) { return *this = add_fp( *this, XDW_ARTH::exact_fp< T >( y ) ); }
+   template< typename U >
+      requires XDW_ARTH::ExactIn< U, T >
+   XDW_CUDA_CALLABLE
+   constexpr DW< T >& operator-=( const U& y ) { return *this = add_fp( *this, -XDW_ARTH::exact_fp< T >( y ) ); }
 
-  template< typename U >
-  requires XDW_ARTH::ExactIn< U, T >
-  XDW_CUDA_CALLABLE
-  constexpr DW< T >& operator-=( const U& y ) { return *this = add_fp( *this, -XDW_ARTH::exact_fp< T >( y ) ); }
+   template< typename U >
+      requires XDW_ARTH::ExactIn< U, T >
+   XDW_CUDA_CALLABLE
+   constexpr DW< T >& operator*=( const U& y ) { return *this = mul_fp( *this, XDW_ARTH::exact_fp< T >( y ) ); }
 
-  template< typename U >
-  requires XDW_ARTH::ExactIn< U, T >
-  XDW_CUDA_CALLABLE
-  constexpr DW< T >& operator*=( const U& y ) { return *this = mul_fp( *this, XDW_ARTH::exact_fp< T >( y ) ); }
+   template< typename U >
+      requires XDW_ARTH::ExactIn< U, T >
+   XDW_CUDA_CALLABLE
+   constexpr DW< T >& operator/=( const U& y ) { return *this = div_fp( *this, XDW_ARTH::exact_fp< T >( y ) ); }
 
-  template< typename U >
-  requires XDW_ARTH::ExactIn< U, T >
-  XDW_CUDA_CALLABLE
-  constexpr DW< T >& operator/=( const U& y ) { return *this = div_fp( *this, XDW_ARTH::exact_fp< T >( y ) ); }
+   XDW_CUDA_CALLABLE
+   friend constexpr XDW_INLINE DW< T > operator+( const DW< T >& a, const DW< T >& b ) { return add( a, b ); }
 
-  XDW_CUDA_CALLABLE
-  friend constexpr XDW_INLINE DW< T > operator+( const DW< T >& a, const DW< T >& b ) { return add( a, b ); }
+   XDW_CUDA_CALLABLE
+   friend constexpr XDW_INLINE DW< T > operator-( const DW< T >& a, const DW< T >& b ) { return sub( a, b ); }
 
-  XDW_CUDA_CALLABLE
-  friend constexpr XDW_INLINE DW< T > operator-( const DW< T >& a, const DW< T >& b ) { return sub( a, b ); }
+   XDW_CUDA_CALLABLE
+   friend constexpr XDW_INLINE DW< T > operator*( const DW< T >& a, const DW< T >& b ) { return mul( a, b ); }
 
-  XDW_CUDA_CALLABLE
-  friend constexpr XDW_INLINE DW< T > operator*( const DW< T >& a, const DW< T >& b ) { return mul( a, b ); }
+   XDW_CUDA_CALLABLE
+   friend constexpr XDW_INLINE DW< T > operator/( const DW< T >& a, const DW< T >& b ) { return div( a, b ); }
 
-  XDW_CUDA_CALLABLE
-  friend constexpr XDW_INLINE DW< T > operator/( const DW< T >& a, const DW< T >& b ) { return div( a, b ); }
+   template< typename U >
+      requires XDW_ARTH::ExactIn< U, T >
+   XDW_CUDA_CALLABLE
+   friend constexpr XDW_INLINE DW< T > operator+( const DW< T >& a, const U& y )
+   {
+      return add_fp( a, XDW_ARTH::exact_fp< T >( y ) );
+   }
 
-  template< typename U >
-  requires XDW_ARTH::ExactIn< U, T >
-  XDW_CUDA_CALLABLE
-  friend constexpr XDW_INLINE DW< T > operator+( const DW< T >& a, const U& y ) { return add_fp( a, XDW_ARTH::exact_fp< T >( y ) ); }
+   template< typename U >
+      requires XDW_ARTH::ExactIn< U, T >
+   XDW_CUDA_CALLABLE
+   friend constexpr XDW_INLINE DW< T > operator+( const U& y, const DW< T >& a ) { return a + y; }
 
-  template< typename U >
-  requires XDW_ARTH::ExactIn< U, T >
-  XDW_CUDA_CALLABLE
-  friend constexpr XDW_INLINE DW< T > operator+( const U& y, const DW< T >& a ) { return a + y; }
+   template< typename U >
+      requires XDW_ARTH::ExactIn< U, T >
+   XDW_CUDA_CALLABLE
+   friend constexpr XDW_INLINE DW< T > operator-( const DW< T >& a, const U& y )
+   {
+      return add_fp( a, -XDW_ARTH::exact_fp< T >( y ) );
+   }
 
-  template< typename U >
-  requires XDW_ARTH::ExactIn< U, T >
-  XDW_CUDA_CALLABLE
-  friend constexpr XDW_INLINE DW< T > operator-( const DW< T >& a, const U& y ) { return add_fp( a, -XDW_ARTH::exact_fp< T >( y ) ); }
+   template< typename U >
+      requires XDW_ARTH::ExactIn< U, T >
+   XDW_CUDA_CALLABLE
+   friend constexpr XDW_INLINE DW< T > operator-( const U& y, const DW< T >& a )
+   {
+      return add_fp( -a, XDW_ARTH::exact_fp< T >( y ) );
+   }
 
-  template< typename U >
-  requires XDW_ARTH::ExactIn< U, T >
-  XDW_CUDA_CALLABLE
-  friend constexpr XDW_INLINE DW< T > operator-( const U& y, const DW< T >& a ) { return add_fp( -a, XDW_ARTH::exact_fp< T >( y ) ); }
+   template< typename U >
+      requires XDW_ARTH::ExactIn< U, T >
+   XDW_CUDA_CALLABLE
+   friend constexpr XDW_INLINE DW< T > operator*( const DW< T >& a, const U& y )
+   {
+      return mul_fp( a, XDW_ARTH::exact_fp< T >( y ) );
+   }
 
-  template< typename U >
-  requires XDW_ARTH::ExactIn< U, T >
-  XDW_CUDA_CALLABLE
-  friend constexpr XDW_INLINE DW< T > operator*( const DW< T >& a, const U& y ) { return mul_fp( a, XDW_ARTH::exact_fp< T >( y ) ); }
+   template< typename U >
+      requires XDW_ARTH::ExactIn< U, T >
+   XDW_CUDA_CALLABLE
+   friend constexpr XDW_INLINE DW< T > operator*( const U& y, const DW< T >& a ) { return a * y; }
 
-  template< typename U >
-  requires XDW_ARTH::ExactIn< U, T >
-  XDW_CUDA_CALLABLE
-  friend constexpr XDW_INLINE DW< T > operator*( const U& y, const DW< T >& a ) { return a * y; }
+   template< typename U >
+      requires XDW_ARTH::ExactIn< U, T >
+   XDW_CUDA_CALLABLE
+   friend constexpr XDW_INLINE DW< T > operator/( const DW< T >& a, const U& y )
+   {
+      return div_fp( a, XDW_ARTH::exact_fp< T >( y ) );
+   }
 
-  template< typename U >
-  requires XDW_ARTH::ExactIn< U, T >
-  XDW_CUDA_CALLABLE
-  friend constexpr XDW_INLINE DW< T > operator/( const DW< T >& a, const U& y ) { return div_fp( a, XDW_ARTH::exact_fp< T >( y ) ); }
+   // No FP-over-DW algorithm: the full DW division.
+   template< typename U >
+      requires XDW_ARTH::ExactIn< U, T >
+   XDW_CUDA_CALLABLE
+   friend constexpr XDW_INLINE DW< T > operator/( const U& y, const DW< T >& a )
+   {
+      return div( DW< T >( XDW_ARTH::exact_fp< T >( y ), T{} ), a );
+   }
 
-  // No FP-over-DW algorithm: the full DW division.
-  template< typename U >
-  requires XDW_ARTH::ExactIn< U, T >
-  XDW_CUDA_CALLABLE
-  friend constexpr XDW_INLINE DW< T > operator/( const U& y, const DW< T >& a ) { return div( DW< T >( XDW_ARTH::exact_fp< T >( y ), T{} ), a ); }
+   // Lexicographic on (hi, lo) {normalized}; bool for a scalar T, the lane mask for a vector T.
+   XDW_CUDA_CALLABLE
+   friend constexpr auto operator==( const DW< T >& a, const DW< T >& b )
+   {
+      return XDW_ARTH::mask_and( a.hi() == b.hi(), a.lo() == b.lo() );
+   }
 
-  // Lexicographic on (hi, lo) {normalized}; bool for a scalar T, the lane mask for a vector T.
-  XDW_CUDA_CALLABLE
-  friend constexpr auto operator==( const DW< T >& a, const DW< T >& b )
-  {
-    return XDW_ARTH::mask_and( a.hi() == b.hi(), a.lo() == b.lo() );
-  }
+   XDW_CUDA_CALLABLE
+   friend constexpr auto operator!=( const DW< T >& a, const DW< T >& b )
+   {
+      return XDW_ARTH::mask_or( a.hi() != b.hi(), a.lo() != b.lo() );
+   }
 
-  XDW_CUDA_CALLABLE
-  friend constexpr auto operator!=( const DW< T >& a, const DW< T >& b )
-  {
-    return XDW_ARTH::mask_or( a.hi() != b.hi(), a.lo() != b.lo() );
-  }
+   XDW_CUDA_CALLABLE
+   friend constexpr auto operator<( const DW< T >& a, const DW< T >& b )
+   {
+      return XDW_ARTH::mask_or( a.hi() < b.hi(), XDW_ARTH::mask_and( a.hi() == b.hi(), a.lo() < b.lo() ) );
+   }
 
-  XDW_CUDA_CALLABLE
-  friend constexpr auto operator<( const DW< T >& a, const DW< T >& b )
-  {
-    return XDW_ARTH::mask_or( a.hi() < b.hi(), XDW_ARTH::mask_and( a.hi() == b.hi(), a.lo() < b.lo() ) );
-  }
+   XDW_CUDA_CALLABLE
+   friend constexpr auto operator<=( const DW< T >& a, const DW< T >& b )
+   {
+      return XDW_ARTH::mask_or( a.hi() < b.hi(), XDW_ARTH::mask_and( a.hi() == b.hi(), a.lo() <= b.lo() ) );
+   }
 
-  XDW_CUDA_CALLABLE
-  friend constexpr auto operator<=( const DW< T >& a, const DW< T >& b )
-  {
-    return XDW_ARTH::mask_or( a.hi() < b.hi(), XDW_ARTH::mask_and( a.hi() == b.hi(), a.lo() <= b.lo() ) );
-  }
+   XDW_CUDA_CALLABLE
+   friend constexpr auto operator>( const DW< T >& a, const DW< T >& b ) { return b < a; }
 
-  XDW_CUDA_CALLABLE
-  friend constexpr auto operator>( const DW< T >& a, const DW< T >& b ) { return b < a; }
+   XDW_CUDA_CALLABLE
+   friend constexpr auto operator>=( const DW< T >& a, const DW< T >& b ) { return b <= a; }
 
-  XDW_CUDA_CALLABLE
-  friend constexpr auto operator>=( const DW< T >& a, const DW< T >& b ) { return b <= a; }
+   // a where mask is set, else b; lane by lane for a vector T.
+   template< typename M >
+   XDW_CUDA_CALLABLE
+   friend constexpr XDW_INLINE DW< T > select( const M& mask, const DW< T >& a, const DW< T >& b )
+   {
+      return DW< T >( mask ? a.hi() : b.hi(), mask ? a.lo() : b.lo() );
+   }
 
-  // a where mask is set, else b; lane by lane for a vector T.
-  template< typename M >
-  XDW_CUDA_CALLABLE
-  friend constexpr XDW_INLINE DW< T > select( const M& mask, const DW< T >& a, const DW< T >& b )
-  {
-    return DW< T >( mask ? a.hi() : b.hi(), mask ? a.lo() : b.lo() );
-  }
+   // As std::min/std::max: a unless the other is strictly smaller/larger.
+   XDW_CUDA_CALLABLE
+   friend constexpr XDW_INLINE DW< T > min( const DW< T >& a, const DW< T >& b ) { return select( b < a, b, a ); }
 
-  // As std::min/std::max: a unless the other is strictly smaller/larger.
-  XDW_CUDA_CALLABLE
-  friend constexpr XDW_INLINE DW< T > min( const DW< T >& a, const DW< T >& b ) { return select( b < a, b, a ); }
-
-  XDW_CUDA_CALLABLE
-  friend constexpr XDW_INLINE DW< T > max( const DW< T >& a, const DW< T >& b ) { return select( a < b, b, a ); }
+   XDW_CUDA_CALLABLE
+   friend constexpr XDW_INLINE DW< T > max( const DW< T >& a, const DW< T >& b ) { return select( a < b, b, a ); }
 };
 
 template< typename T >
 template< typename U >
-requires std::is_arithmetic_v< U >
+   requires std::is_arithmetic_v< U >
 XDW_CUDA_CALLABLE
 constexpr DW< T >::DW( U x )
 {
@@ -271,7 +285,7 @@ constexpr DW< T >::DW( U x )
 
 template< typename T >
 template< typename U >
-requires std::floating_point< T > && std::floating_point< U > && ( !std::same_as< T, U > )
+   requires std::floating_point< T > && std::floating_point< U > && (!std::same_as< T, U >)
 XDW_CUDA_CALLABLE
 constexpr DW< T >::DW( const DW< U >& x )
 {
@@ -293,9 +307,10 @@ constexpr DW< T >::DW( const DW< U >& x )
 
 template< typename T >
 template< typename U >
-requires std::is_floating_point_v< U > && std::floating_point< T >
+   requires std::is_floating_point_v< U > && std::floating_point< T >
 XDW_CUDA_CALLABLE
-constexpr DW< T >::operator U() const
+constexpr DW< T >::
+operator U() const
 {
    if constexpr( sizeof( U ) > sizeof( T ) )
       return static_cast< U >( data[ 0 ] ) + static_cast< U >( data[ 1 ] );
@@ -383,7 +398,8 @@ signbit( const DW< T >& x )
 {
    if constexpr( XDW_ARTH::XDWVector< T > ) {
       decltype( x.hi() < x.hi() ) mask{};
-      for( int i = 0; i < XDW_ARTH::lanes< T >; ++i ) mask[ i ] = std::signbit( x.hi()[ i ] ) ? -1 : 0;
+      for( int i = 0; i < XDW_ARTH::lanes< T >; ++i )
+         mask[ i ] = std::signbit( x.hi()[ i ] ) ? -1 : 0;
       return mask;
    }
    else

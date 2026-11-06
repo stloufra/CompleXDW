@@ -11,7 +11,8 @@
 
 // Worst relative error / u^2 of op(x, y) against exact(x, y); partner(x, i) makes y.
 template< typename T, typename Op, typename Exact, typename Partner >
-static double worst_op( Source& src, Op op, Exact exact, Partner partner )
+static double
+worst_op( Source& src, Op op, Exact exact, Partner partner )
 {
    Big a, b, ref;
    double worst = 0;
@@ -27,37 +28,97 @@ static double worst_op( Source& src, Op op, Exact exact, Partner partner )
 }
 
 template< typename T >
-static void test_arithmetic( Source& src )
+static void
+test_arithmetic( Source& src )
 {
-   auto random = [&]( const DW< T >&, int ) { return src.dw< T >(); };
-   auto cancels_sum = [&]( const DW< T >& x, int i ) { return i % 2 ? src.dw_near_negation( x ) : src.dw< T >(); };
-   auto cancels_difference = [&]( const DW< T >& x, int i ) { return i % 2 ? -src.dw_near_negation( x ) : src.dw< T >(); };
+   auto random = [ & ]( const DW< T >&, int )
+   {
+      return src.dw< T >();
+   };
+   auto cancels_sum = [ & ]( const DW< T >& x, int i )
+   {
+      return i % 2 ? src.dw_near_negation( x ) : src.dw< T >();
+   };
+   auto cancels_difference = [ & ]( const DW< T >& x, int i )
+   {
+      return i % 2 ? -src.dw_near_negation( x ) : src.dw< T >();
+   };
 
    unit::announce( "x + y (MaddDWPlusDW)", "half cancelling" );
-   unit::verdict_bound( worst_op< T >( src, []( DW< T > x, DW< T > y ) { return x + y; },
-                                       []( mpfr_ptr r, mpfr_srcptr a, mpfr_srcptr b ) { mpfr_add( r, a, b, MPFR_RNDN ); }, cancels_sum ), 2 );
+   unit::verdict_bound( worst_op< T >(
+                           src,
+                           []( DW< T > x, DW< T > y )
+                           {
+                              return x + y;
+                           },
+                           []( mpfr_ptr r, mpfr_srcptr a, mpfr_srcptr b )
+                           {
+                              mpfr_add( r, a, b, MPFR_RNDN );
+                           },
+                           cancels_sum ),
+                        2 );
 
    unit::announce( "x - y (MaddDWPlusDW)", "half cancelling" );
-   unit::verdict_bound( worst_op< T >( src, []( DW< T > x, DW< T > y ) { return x - y; },
-                                       []( mpfr_ptr r, mpfr_srcptr a, mpfr_srcptr b ) { mpfr_sub( r, a, b, MPFR_RNDN ); }, cancels_difference ), 2 );
+   unit::verdict_bound( worst_op< T >(
+                           src,
+                           []( DW< T > x, DW< T > y )
+                           {
+                              return x - y;
+                           },
+                           []( mpfr_ptr r, mpfr_srcptr a, mpfr_srcptr b )
+                           {
+                              mpfr_sub( r, a, b, MPFR_RNDN );
+                           },
+                           cancels_difference ),
+                        2 );
 
    unit::announce( "x * y (DWTimesDW2)" );
-   unit::verdict_bound( worst_op< T >( src, []( DW< T > x, DW< T > y ) { return x * y; },
-                                       []( mpfr_ptr r, mpfr_srcptr a, mpfr_srcptr b ) { mpfr_mul( r, a, b, MPFR_RNDN ); }, random ), 5 );
+   unit::verdict_bound( worst_op< T >(
+                           src,
+                           []( DW< T > x, DW< T > y )
+                           {
+                              return x * y;
+                           },
+                           []( mpfr_ptr r, mpfr_srcptr a, mpfr_srcptr b )
+                           {
+                              mpfr_mul( r, a, b, MPFR_RNDN );
+                           },
+                           random ),
+                        5 );
 
    unit::announce( "x / y (DWDivDW2)" );
-   unit::verdict_bound( worst_op< T >( src, []( DW< T > x, DW< T > y ) { return x / y; },
-                                       []( mpfr_ptr r, mpfr_srcptr a, mpfr_srcptr b ) { mpfr_div( r, a, b, MPFR_RNDN ); }, random ),
+   unit::verdict_bound( worst_op< T >(
+                           src,
+                           []( DW< T > x, DW< T > y )
+                           {
+                              return x / y;
+                           },
+                           []( mpfr_ptr r, mpfr_srcptr a, mpfr_srcptr b )
+                           {
+                              mpfr_div( r, a, b, MPFR_RNDN );
+                           },
+                           random ),
                         15 + 56 * std::sqrt( U2< T > ) );
 
    unit::announce( "sqrt(|x|) (DWSqrt)" );
-   unit::verdict_bound( worst_op< T >( src, []( DW< T > x, DW< T > ) { return sqrt( abs( x ) ); },
-                                       []( mpfr_ptr r, mpfr_srcptr a, mpfr_srcptr ) { mpfr_abs( r, a, MPFR_RNDN ); mpfr_sqrt( r, r, MPFR_RNDN ); }, random ),
+   unit::verdict_bound( worst_op< T >(
+                           src,
+                           []( DW< T > x, DW< T > )
+                           {
+                              return sqrt( abs( x ) );
+                           },
+                           []( mpfr_ptr r, mpfr_srcptr a, mpfr_srcptr )
+                           {
+                              mpfr_abs( r, a, MPFR_RNDN );
+                              mpfr_sqrt( r, r, MPFR_RNDN );
+                           },
+                           random ),
                         25.0 / 8 );
 }
 
 template< typename T >
-static void test_exact_functions( Source& src )
+static void
+test_exact_functions( Source& src )
 {
    Big a, b, r;
 
@@ -103,8 +164,8 @@ static void test_exact_functions( Source& src )
       set( a, x );
       set( b, y );
       const int c = mpfr_cmp( a, b );
-      order_ok &= ( x < y ) == ( c < 0 ) && ( x > y ) == ( c > 0 ) && ( x == y ) == ( c == 0 )
-               && ( x <= y ) == ( c <= 0 ) && ( x >= y ) == ( c >= 0 ) && ( x != y ) == ( c != 0 );
+      order_ok &= ( x < y ) == ( c < 0 ) && ( x > y ) == ( c > 0 ) && ( x == y ) == ( c == 0 ) && ( x <= y ) == ( c <= 0 )
+               && ( x >= y ) == ( c >= 0 ) && ( x != y ) == ( c != 0 );
    }
    unit::verdict( order_ok );
 
@@ -120,7 +181,8 @@ static void test_exact_functions( Source& src )
 }
 
 template< typename T >
-static void test_conversions( Source& src )
+static void
+test_conversions( Source& src )
 {
    Big a, ref;
 
@@ -151,7 +213,8 @@ static void test_conversions( Source& src )
    bool back = true;
    for( int i = 0; i < SAMPLES; ++i ) {
       const DW< T > x = src.dw< T >();
-      back &= static_cast< double >( x ) == ( std::is_same_v< T, float > ? double( x.hi() ) + double( x.lo() ) : double( x.hi() ) );
+      back &=
+         static_cast< double >( x ) == ( std::is_same_v< T, float > ? double( x.hi() ) + double( x.lo() ) : double( x.hi() ) );
    }
    unit::verdict( back );
 
@@ -159,7 +222,8 @@ static void test_conversions( Source& src )
    unit::verdict( static_cast< double >( DW< T >( 123456789 ) ) == 123456789.0 );
 
    using Algorithm = void ( * )( T, T, T, T*, T* );
-   auto with_fp = []( Algorithm algorithm, const DW< T >& x, T y ) {
+   auto with_fp = []( Algorithm algorithm, const DW< T >& x, T y )
+   {
       T h, l;
       algorithm( x.hi(), x.lo(), y, &h, &l );
       return DW< T >( h, l );
@@ -178,8 +242,8 @@ static void test_conversions( Source& src )
       single &= x + y == with_fp( XDW_ARTH::DWPlusFP< T >, x, y ) && y + x == x + y
              && x - y == with_fp( XDW_ARTH::DWPlusFP< T >, x, -y ) && y - x == with_fp( XDW_ARTH::DWPlusFP< T >, -x, y )
              && x * y == with_fp( XDW_ARTH::DWTimesFP3< T >, x, y ) && y * x == x * y
-             && x / y == with_fp( XDW_ARTH::DWDivFP3< T >, x, y ) && y / x == DW< T >( y, T( 0 ) ) / x
-             && s == x + y && d == x - y && p == x * y && q == x / y;
+             && x / y == with_fp( XDW_ARTH::DWDivFP3< T >, x, y ) && y / x == DW< T >( y, T( 0 ) ) / x && s == x + y
+             && d == x - y && p == x * y && q == x / y;
    }
    unit::verdict( single );
 
@@ -189,15 +253,17 @@ static void test_conversions( Source& src )
    bool mixed = true;
    for( int i = 0; i < SAMPLES; ++i ) {
       const DW< T > x = src.dw< T >();
-      mixed &= ( x + 0.5 ) == ( wide ? x + T( 0.5 ) : x + DW< T >( 0.5 ) ) && ( 2 * x ) == ( wide ? T( 2 ) * x : DW< T >( 2 ) * x )
-            && ( x / 3 ) == ( wide ? x / T( 3 ) : x / DW< T >( 3 ) ) && ( x * 0.5f ) == ( x * T( 0.5 ) )
-            && ( 1.0 - x ) == ( wide ? T( 1 ) - x : DW< T >( 1.0 ) - x ) && ( ( x < 0 ) == ( x.hi() < 0 ) )
-            && max( x, 0. ) == max( x, DW< T >( 0. ) ) && min( 1, x ) == min( DW< T >( 1 ), x );
+      mixed &= ( x + 0.5 ) == ( wide ? x + T( 0.5 ) : x + DW< T >( 0.5 ) )
+            && ( 2 * x ) == ( wide ? T( 2 ) * x : DW< T >( 2 ) * x ) && ( x / 3 ) == ( wide ? x / T( 3 ) : x / DW< T >( 3 ) )
+            && ( x * 0.5f ) == ( x * T( 0.5 ) ) && ( 1.0 - x ) == ( wide ? T( 1 ) - x : DW< T >( 1.0 ) - x )
+            && ( ( x < 0 ) == ( x.hi() < 0 ) ) && max( x, 0. ) == max( x, DW< T >( 0. ) )
+            && min( 1, x ) == min( DW< T >( 1 ), x );
    }
    unit::verdict( mixed );
 }
 
-static void test_precision_conversion( Source& src )
+static void
+test_precision_conversion( Source& src )
 {
    Big a, ref;
    double worst = 0;
@@ -226,10 +292,12 @@ static void test_precision_conversion( Source& src )
 }
 
 template< typename T >
-static void run( const char* type, unsigned long seed )
+static void
+run( const char* type, unsigned long seed )
 {
    Source src( seed );
-   unit::section( std::string( "DW<" ) + type + ">: arithmetic", std::to_string( SAMPLES ) + " samples per check, relative error vs MPFR" );
+   unit::section( std::string( "DW<" ) + type + ">: arithmetic",
+                  std::to_string( SAMPLES ) + " samples per check, relative error vs MPFR" );
    test_arithmetic< T >( src );
    unit::section( std::string( "DW<" ) + type + ">: exact functions", std::to_string( SAMPLES ) + " samples per check" );
    test_exact_functions< T >( src );
@@ -237,7 +305,8 @@ static void run( const char* type, unsigned long seed )
    test_conversions< T >( src );
 }
 
-int main()
+int
+main()
 {
    mpfr_set_default_prec( MPFR_BITS );
    describe_inputs();

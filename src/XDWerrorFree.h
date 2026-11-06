@@ -6,7 +6,7 @@
 
 #include "XDWbasicOP.h"
 
-namespace XDW_ARTH{
+namespace XDW_ARTH {
 
 template< typename T >
 struct rne
@@ -79,10 +79,10 @@ XDW_CUDA_CALLABLE
 constexpr XDW_INLINE rne< T >
 quick_two_sum( const T a, const T b )
 {
-  const T s = add_rn(a, b);
-  const T z = add_rn(s, -a);
-  const T err = add_rn(b, -z);
-  return {s, err};
+   const T s = add_rn( a, b );
+   const T z = add_rn( s, -a );
+   const T err = add_rn( b, -z );
+   return { s, err };
 }
 
 template< XDWReal T >
@@ -90,40 +90,38 @@ XDW_CUDA_CALLABLE
 constexpr XDW_INLINE rne< T >
 quick_two_diff( const T a, const T b )
 {
-  const T s = add_rn(a, -b);
-  const T z = add_rn(a, -s);
-  const T err = add_rn(z, -b);
-  return{s, err} ;
+   const T s = add_rn( a, -b );
+   const T z = add_rn( a, -s );
+   const T err = add_rn( z, -b );
+   return { s, err };
 }
-
 
 template< XDWReal T >
 XDW_CUDA_CALLABLE
 constexpr XDW_INLINE rne< T >
 two_sum( const T a, const T b )
 {
-  const T s = add_rn(a, b);
-  const T aa = add_rn(s, -b);
-  const T bb = add_rn(s, -aa);
-  const T da = add_rn(a, -aa);
-  const T db = add_rn(b, -bb);
-  const T err = add_rn(da, db);
-  return {s, err};
+   const T s = add_rn( a, b );
+   const T aa = add_rn( s, -b );
+   const T bb = add_rn( s, -aa );
+   const T da = add_rn( a, -aa );
+   const T db = add_rn( b, -bb );
+   const T err = add_rn( da, db );
+   return { s, err };
 }
-
 
 template< XDWReal T >
 XDW_CUDA_CALLABLE
 constexpr XDW_INLINE rne< T >
 two_diff( const T a, const T b )
 {
-   const T s  = add_rn(a, -b);
-   const T bb = add_rn(s, -a);
-   const T aa = add_rn(s, -bb);
-   const T da = add_rn(a, -aa);
-   const T db = add_rn(b, bb);
-   const T err = add_rn(da, -db);
-   return {s, err};
+   const T s = add_rn( a, -b );
+   const T bb = add_rn( s, -a );
+   const T aa = add_rn( s, -bb );
+   const T da = add_rn( a, -aa );
+   const T db = add_rn( b, bb );
+   const T err = add_rn( da, -db );
+   return { s, err };
 }
 
 template< XDWReal T >
@@ -151,19 +149,19 @@ two_prod( const T a, const T b )
       const auto sp2 = split< T, T >( b );
       const T b_hi = sp2.sum;
       const T b_lo = sp2.error;
-      const T ab_hh = mul_rn(a_hi, b_hi);           // a_hi * b_hi
-      const T tmp1 = add_rn(ab_hh, -p);             // (a_hi * b_hi - p)
-      const T ab_hl = mul_rn(a_hi, b_lo);           // a_hi * b_lo
-      const T tmp2 = add_rn(tmp1, ab_hl);           // (a_hi * b_hi - p) + a_hi * b_lo
-      const T ab_lh = mul_rn(a_lo, b_hi);           // a_lo * b_hi
-      const T tmp3 = add_rn(tmp2, ab_lh);           // ((a_hi * b_hi - p) + a_hi * b_lo + a_lo * b_hi)
-      const T ab_ll = mul_rn(a_lo, b_lo);           // a_lo * b_lo
-      const T err = add_rn(tmp3, ab_ll);            // ((a_hi * b_hi - p) + a_hi * b_lo + a_lo * b_hi) + a_lo * b_lo
+      const T ab_hh = mul_rn( a_hi, b_hi );  // a_hi * b_hi
+      const T tmp1 = add_rn( ab_hh, -p );    // (a_hi * b_hi - p)
+      const T ab_hl = mul_rn( a_hi, b_lo );  // a_hi * b_lo
+      const T tmp2 = add_rn( tmp1, ab_hl );  // (a_hi * b_hi - p) + a_hi * b_lo
+      const T ab_lh = mul_rn( a_lo, b_hi );  // a_lo * b_hi
+      const T tmp3 = add_rn( tmp2, ab_lh );  // ((a_hi * b_hi - p) + a_hi * b_lo + a_lo * b_hi)
+      const T ab_ll = mul_rn( a_lo, b_lo );  // a_lo * b_lo
+      const T err = add_rn( tmp3, ab_ll );   // ((a_hi * b_hi - p) + a_hi * b_lo + a_lo * b_hi) + a_lo * b_lo
       return { p, err };
    }
 #endif
 }
 
-}
+}  //namespace XDW_ARTH
 
 #endif  //ERRORFREEOPS.H
