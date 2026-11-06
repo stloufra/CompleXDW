@@ -14,7 +14,7 @@ using namespace XDW_ARTH;
 
 constexpr int SAMPLES_CX = 50000;
 
-// A host code's own complex type, as MadGraph's cxsmpl.
+// A host code's own complex type.
 struct HostComplex
 {
    double re, im;

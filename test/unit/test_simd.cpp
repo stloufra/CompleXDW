@@ -1,6 +1,6 @@
 // DW<V> and XDW<V> with V a SIMD vector of float/double must give, in every lane, bit for bit what
 // DW<lane> and XDW<lane> give on that lane's inputs. V is ext_vector_type on clang and vector_size on
-// g++, as in MadGraph (clang mangles both kinds alike, so one translation unit can't mix them).
+// g++ (clang mangles both kinds alike, so one translation unit can't mix them).
 
 #include <cmath>
 #include <limits>
