@@ -1,4 +1,4 @@
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24080235.svg)](https://doi.org/10.5281/zenodo.24080235)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24082120.svg)](https://doi.org/10.5281/zenodo.24082120)
 
 # CompleXDW
 
