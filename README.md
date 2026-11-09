@@ -1,4 +1,4 @@
-[![CI](https://github.com/stloufra/CompleXDW/actions/workflows/ci.yml/badge.svg)](https://github.com/stloufra/CompleXDW/actions/workflows/ci.yml)
+[![Unit Tests](https://github.com/stloufra/CompleXDW/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/stloufra/CompleXDW/actions/workflows/unit-tests.yml)
 [![License](https://img.shields.io/github/license/stloufra/CompleXDW)](LICENSE)
 ![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24082120.svg)](https://doi.org/10.5281/zenodo.24082120)
