@@ -55,6 +55,11 @@ public:
    XDW_CUDA_CALLABLE
    explicit constexpr DW( const DW< U >& x );
 
+   // Plain vector lane by lane as a plain number, exact from same lanes, split from wider ones.
+   template< typename V >
+      requires XDW_ARTH::LanesOf< V, T >
+   constexpr DW( const V& x );
+
    // A scalar DW in every lane.
    template< typename S >
       requires XDW_ARTH::XDWVector< T > && std::same_as< S, XDW_ARTH::lane_t< T > >
@@ -89,6 +94,11 @@ public:
       requires std::is_floating_point_v< U > && std::floating_point< T >
    XDW_CUDA_CALLABLE
    explicit constexpr operator U() const;
+
+   // Lane by lane as above, into a plain vector.
+   template< typename V >
+      requires XDW_ARTH::LanesOf< V, T >
+   explicit constexpr operator V() const;
 
    XDW_CUDA_CALLABLE
    constexpr static DW< T > add( const DW< T >& a, const DW< T >& b );
@@ -316,6 +326,33 @@ operator U() const
       return static_cast< U >( data[ 0 ] ) + static_cast< U >( data[ 1 ] );
    else
       return static_cast< U >( data[ 0 ] );
+}
+
+template< typename T >
+template< typename V >
+   requires XDW_ARTH::LanesOf< V, T >
+constexpr DW< T >::DW( const V& x )
+{
+   if constexpr( std::same_as< XDW_ARTH::lane_t< V >, Lane > ) {
+      data[ 0 ] = x;
+      data[ 1 ] = T{};
+   }
+   else {
+      data[ 0 ] = __builtin_convertvector( x, T );
+      data[ 1 ] = __builtin_convertvector( x - __builtin_convertvector( data[ 0 ], V ), T );
+   }
+}
+
+template< typename T >
+template< typename V >
+   requires XDW_ARTH::LanesOf< V, T >
+constexpr DW< T >::
+operator V() const
+{
+   if constexpr( sizeof( XDW_ARTH::lane_t< V > ) > sizeof( Lane ) )
+      return __builtin_convertvector( data[ 0 ], V ) + __builtin_convertvector( data[ 1 ], V );
+   else
+      return __builtin_convertvector( data[ 0 ], V );
 }
 
 template< typename T >

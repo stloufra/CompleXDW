@@ -288,6 +288,29 @@ run( const char* name )
                   }
                } );
 
+   group< V >( "plain vectors",
+               "same or wider lanes, both ways",
+               []( const Trial< V >& c, int, Tally& tally )
+               {
+                  using W = vec< double, lanes< V > >;
+                  V same_lanes;
+                  W wide;
+                  for( int i = 0; i < lanes< V >; ++i ) {
+                     same_lanes[ i ] = c.xs[ i ].hi();
+                     wide[ i ] = double( c.xs[ i ] ) + double( c.ys[ i ].hi() ) * 0x1p-30;
+                  }
+                  const DW< V > from_same = same_lanes, from_wide = wide;
+                  const V to_same = static_cast< V >( c.x );
+                  const W to_wide = static_cast< W >( c.x );
+
+                  for( int i = 0; i < lanes< V >; ++i ) {
+                     tally( same( from_same, i, DW< S >( same_lanes[ i ] ) ) );
+                     tally( same( from_wide, i, DW< S >( wide[ i ] ) ) );
+                     tally( to_same[ i ] == static_cast< S >( c.xs[ i ] ) );
+                     tally( to_wide[ i ] == static_cast< double >( c.xs[ i ] ) );
+                  }
+               } );
+
    group< V >( "mixed operands",
                "scalar next to vector, DW / XDW",
                []( const Trial< V >& c, int, Tally& tally )

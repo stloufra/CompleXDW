@@ -173,6 +173,11 @@ using lane_t = typename detail::lane< T >::type;
 template< XDWReal T >
 inline constexpr int lanes = sizeof( T ) / sizeof( lane_t< T > );
 
+// Plain vector V convertible lane by lane to DW<T> without losing bits.
+template< typename V, typename T >
+concept LanesOf =
+   XDWVector< T > && XDWVector< V > && lanes< V > == lanes< T > && sizeof( lane_t< V > ) >= sizeof( lane_t< T > );
+
 // c in every lane.
 template< XDWReal T >
 XDW_CUDA_CALLABLE
