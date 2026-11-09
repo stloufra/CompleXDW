@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24080235.svg)](https://doi.org/10.5281/zenodo.24080235)
+
 # CompleXDW
 
 > *It's the little differences. In Europe they call it double, here it's `DW<float>`.*\
