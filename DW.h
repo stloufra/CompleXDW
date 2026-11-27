@@ -7,6 +7,7 @@
 #include "src/XDWerrorFree.h"
 #include "src/XDWarith.h"
 #include "src/XDWTraits.h"
+#include "src/XDWLazy.h"
 
 // Real DW number hi + lo, |lo| <= ulp(hi)/2.
 // 	+ ,-  	MaddDWPlusDW
@@ -166,7 +167,13 @@ public:
    friend constexpr XDW_INLINE DW< T > operator-( const DW< T >& a, const DW< T >& b ) { return sub( a, b ); }
 
    XDW_CUDA_CALLABLE
-   friend constexpr XDW_INLINE DW< T > operator*( const DW< T >& a, const DW< T >& b ) { return mul( a, b ); }
+   friend constexpr XDW_INLINE auto operator*( const DW< T >& a, const DW< T >& b )
+   {
+      if constexpr( XDW_ARTH::kLazyProducts )
+         return ProductSum< DW< T >, 1 >( a, b );
+      else
+         return mul( a, b );
+   }
 
    XDW_CUDA_CALLABLE
    friend constexpr XDW_INLINE DW< T > operator/( const DW< T >& a, const DW< T >& b ) { return div( a, b ); }

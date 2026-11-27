@@ -302,10 +302,13 @@ operator-( const XDW< T >& a, const XDW< T >& b )
 
 template< typename T >
 XDW_CUDA_CALLABLE
-constexpr XDW_INLINE XDW< T >
+constexpr XDW_INLINE auto
 operator*( const XDW< T >& a, const XDW< T >& b )
 {
-   return XDW< T >::mul( a, b );
+   if constexpr( XDW_ARTH::kLazyProducts )
+      return ProductSum< XDW< T >, 1 >( a, b );
+   else
+      return XDW< T >::mul( a, b );
 }
 
 template< typename T >
