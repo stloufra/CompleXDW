@@ -80,6 +80,9 @@ inline constexpr AddMode kAddMode = XDW_TOKEN_PASTE( XDW_ADD_TAG_, XDW_ADD_MODE 
 inline constexpr NormMode kNormMode = XDW_TOKEN_PASTE( XDW_NORM_TAG_, XDW_NORM_MODE );
 inline constexpr DivMode kDivMode = XDW_TOKEN_PASTE( XDW_DIV_TAG_, XDW_DIV_MODE );
 
+// x*y stays lazy (ProductSum, XDWLazy.h) so a following +/- fuses with the unnormalized products.
+inline constexpr bool kLazyProducts = kNormMode == NormMode::Unnormalized;
+
 }
 
 #undef XDW_TOKEN_PASTE
@@ -240,6 +243,9 @@ class DW;
 template< typename T >
 class XDW;
 
+template< typename V, int N >
+class ProductSum;
+
 // Operand kinds for the mixed DW/XDW operators in XDW.h.
 namespace XDW_ARTH::detail {
 
@@ -263,6 +269,11 @@ struct dw_kind< XDW< T > >
    static constexpr bool dw = false, xdw = true;
    using base = T;
 };
+
+// A lazy product mixes as the DW/XDW it evaluates to.
+template< typename V, int N >
+struct dw_kind< ProductSum< V, N > > : dw_kind< V >
+{};
 
 template< typename A >
 concept DWKind = dw_kind< A >::dw || dw_kind< A >::xdw;

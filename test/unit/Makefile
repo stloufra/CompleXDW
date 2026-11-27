@@ -8,7 +8,7 @@
 #   MPFR_PREFIX=/path make test      MPFR outside Homebrew and the system paths
 # Changing the compiler or any flag rebuilds everything.
 
-TESTS := test_arith test_dw test_xdw test_simd
+TESTS := test_arith test_dw test_xdw test_simd test_lazy
 
 OPT ?= -O2
 ARCH ?= -march=native
