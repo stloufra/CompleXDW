@@ -272,7 +272,8 @@ struct dw_kind< XDW< T > >
 
 // A lazy product mixes as the DW/XDW it evaluates to.
 template< typename V, int N >
-struct dw_kind< ProductSum< V, N > > : dw_kind< V > {};
+struct dw_kind< ProductSum< V, N > > : dw_kind< V >
+{};
 
 template< typename A >
 concept DWKind = dw_kind< A >::dw || dw_kind< A >::xdw;

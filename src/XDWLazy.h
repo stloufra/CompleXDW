@@ -14,7 +14,8 @@ namespace XDW_ARTH::detail {
 
 // Unnormalized pair, only fed into an add.
 template< typename T >
-XDW_CUDA_CALLABLE constexpr XDW_INLINE DW< T >
+XDW_CUDA_CALLABLE
+constexpr XDW_INLINE DW< T >
 unnorm_product( const DW< T >& x, const DW< T >& y )
 {
    T h, l;
@@ -23,7 +24,8 @@ unnorm_product( const DW< T >& x, const DW< T >& y )
 }
 
 template< AddMode Add, typename T >
-XDW_CUDA_CALLABLE constexpr XDW_INLINE DW< T >
+XDW_CUDA_CALLABLE
+constexpr XDW_INLINE DW< T >
 add_unnorm_product( const DW< T >& sum, const DW< T >& x, const DW< T >& y )
 {
    const DW< T > p = unnorm_product( x, y );
@@ -32,7 +34,7 @@ add_unnorm_product( const DW< T >& sum, const DW< T >& x, const DW< T >& y )
    return DW< T >( h, l );
 }
 
-}
+}  //namespace XDW_ARTH::detail
 
 // x_0*y_0 + ... + x_{N-1}*y_{N-1}, V = DW<T> or XDW<T>.
 template< typename V, int N >
@@ -79,17 +81,21 @@ class ProductSum : public V
       }
    }
 
-   public:
+public:
    XDW_CUDA_CALLABLE
    constexpr XDW_INLINE ProductSum( const V& a, const V& b )
-   requires( N == 1 )
-   : V( V::mul( a, b ) ), x{ a }, y{ b } {}
+      requires( N == 1 )
+   : V( V::mul( a, b ) ),
+     x{ a },
+     y{ b }
+   {}
 
    // Generic code that deduced T = ProductSum (T f(T), T acc = 0) stores a value as value * 1.
    template< typename U >
-   requires( !std::is_same_v< U, ProductSum > && std::is_constructible_v< V, const U& > )
+      requires( !std::is_same_v< U, ProductSum > && std::is_constructible_v< V, const U& > )
    XDW_CUDA_CALLABLE
-   constexpr XDW_INLINE ProductSum( const U& value ) : V( value )
+   constexpr XDW_INLINE ProductSum( const U& value )
+   : V( value )
    {
       x[ 0 ] = static_cast< const V& >( *this );
       y[ 0 ] = V( 1 );
@@ -132,10 +138,7 @@ class ProductSum : public V
    }
 
    XDW_CUDA_CALLABLE
-   constexpr XDW_INLINE V plus( const V& addend ) const
-   {
-      return V::add( fused(), addend );
-   }
+   constexpr XDW_INLINE V plus( const V& addend ) const { return V::add( fused(), addend ); }
 
    // Exact: one factor of each product negated.
    XDW_CUDA_CALLABLE

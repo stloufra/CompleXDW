@@ -23,13 +23,15 @@ static_assert( std::is_same_v< decltype( XDW< float >() * XDW< float >() - XDW< 
 static_assert( std::is_same_v< decltype( XDW< double >() * XDW< double >() + XDW< double >() ), XDW< double > > );
 
 template< typename T >
-static XDW< T > random_xdw( Source& src )
+static XDW< T >
+random_xdw( Source& src )
 {
    return XDW< T >( src.dw< T >(), src.dw< T >() );
 }
 
 template< typename T >
-static DW< T > madd_unnorm( const DW< T >& x, const DW< T >& y, const DW< T >& z )
+static DW< T >
+madd_unnorm( const DW< T >& x, const DW< T >& y, const DW< T >& z )
 {
    T ph, pl, h, l;
    DWTimesDW2Unnorm( x.hi(), x.lo(), y.hi(), y.lo(), &ph, &pl );
@@ -38,7 +40,8 @@ static DW< T > madd_unnorm( const DW< T >& x, const DW< T >& y, const DW< T >& z
 }
 
 // (sum |terms|) / |sum terms|.
-static double conditioning( mpfr_srcptr sum, mpfr_srcptr magnitude )
+static double
+conditioning( mpfr_srcptr sum, mpfr_srcptr magnitude )
 {
    Big k;
    mpfr_div( k, magnitude, sum, MPFR_RNDN );
@@ -46,7 +49,8 @@ static double conditioning( mpfr_srcptr sum, mpfr_srcptr magnitude )
 }
 
 // out += sign * a * b, magnitude += |a * b|.
-static void accumulate( mpfr_ptr out, mpfr_ptr magnitude, mpfr_srcptr a, mpfr_srcptr b, int sign )
+static void
+accumulate( mpfr_ptr out, mpfr_ptr magnitude, mpfr_srcptr a, mpfr_srcptr b, int sign )
 {
    Big p;
    mpfr_mul( p, a, b, MPFR_RNDN );
@@ -58,7 +62,8 @@ static void accumulate( mpfr_ptr out, mpfr_ptr magnitude, mpfr_srcptr a, mpfr_sr
 }
 
 template< typename T >
-static void test_dw( Source& src )
+static void
+test_dw( Source& src )
 {
    unit::announce( "DW x*y + z", "DWTimesDW2Unnorm then Madd, bitwise" );
    bool same = true;
@@ -117,7 +122,8 @@ static void test_dw( Source& src )
 }
 
 template< typename T >
-static void test_xdw( Source& src )
+static void
+test_xdw( Source& src )
 {
    unit::announce( "XDW x*y + z", "equals mul<Add, U> + z bitwise" );
    bool same = true;
@@ -155,8 +161,10 @@ static void test_xdw( Source& src )
       for( int k = 0; k < TERMS; ++k )
          eager = XDW< T >::add( eager, XDW< T >::mul( x[ k ], y[ k ] ) );
       const double re_kappa = conditioning( re, re_mag ), im_kappa = conditioning( im, im_mag );
-      worst_fused = std::max( { worst_fused, rel_error( re, real( fused ) ) / re_kappa, rel_error( im, imag( fused ) ) / im_kappa } );
-      worst_eager = std::max( { worst_eager, rel_error( re, real( eager ) ) / re_kappa, rel_error( im, imag( eager ) ) / im_kappa } );
+      worst_fused =
+         std::max( { worst_fused, rel_error( re, real( fused ) ) / re_kappa, rel_error( im, imag( fused ) ) / im_kappa } );
+      worst_eager =
+         std::max( { worst_eager, rel_error( re, real( eager ) ) / re_kappa, rel_error( im, imag( eager ) ) / im_kappa } );
    }
    unit::info( worst_fused / U2< T >, "K u^2" );
    unit::announce( "", "eager, normalized per product" );
@@ -164,13 +172,15 @@ static void test_xdw( Source& src )
 }
 
 template< typename T >
-static T generic_root( T x )
+static T
+generic_root( T x )
 {
    return sqrt( x );
 }
 
 template< typename T >
-static T generic_sum( T a, T b )
+static T
+generic_sum( T a, T b )
 {
    T acc = 0;
    acc += a;
@@ -180,7 +190,8 @@ static T generic_sum( T a, T b )
 
 // Minus only negates factors, so it stays fused; any other operation evaluates the product first.
 template< typename T >
-static void test_pattern( Source& src )
+static void
+test_pattern( Source& src )
 {
    unit::announce( "minus between products", "negated factor, still fused" );
    bool minus = true;
@@ -189,8 +200,8 @@ static void test_pattern( Source& src )
                      w = random_xdw< T >( src ), z = random_xdw< T >( src );
       XDW< T > acc = z;
       acc -= x * y;
-      minus &= x * y - v * w + z == x * y + ( -v ) * w + z && z - x * y == ( -x ) * y + z
-            && x * y - z == x * y + ( -z ) && acc == z - x * y;
+      minus &= x * y - v * w + z == x * y + ( -v ) * w + z && z - x * y == ( -x ) * y + z && x * y - z == x * y + ( -z )
+            && acc == z - x * y;
    }
    unit::verdict( minus );
 
@@ -204,8 +215,8 @@ static void test_pattern( Source& src )
       const DW< T > r = src.dw< T >(), s = src.dw< T >(), t = src.dw< T >();
       const DW< T > q = DW< T >::mul( r, s );
       eager &= stored + z == p + z && -( x * y ) + z == -p + z && ( x * y ) / w + z == p / w + z
-            && conj( x * y ) + z == conj( p ) + z && ( x * y ) * 2.0 + z == p * 2.0 + z
-            && ( x * y ) * t + z == p * t + z && ( r * s ) / t + t == q / t + t && sqrt( abs( r * s ) ) + t == sqrt( abs( q ) ) + t;
+            && conj( x * y ) + z == conj( p ) + z && ( x * y ) * 2.0 + z == p * 2.0 + z && ( x * y ) * t + z == p * t + z
+            && ( r * s ) / t + t == q / t + t && sqrt( abs( r * s ) ) + t == sqrt( abs( q ) ) + t;
    }
    unit::verdict( eager );
 
@@ -235,19 +246,23 @@ static void test_pattern( Source& src )
 }
 
 template< typename T >
-static void run( const char* type, unsigned long seed )
+static void
+run( const char* type, unsigned long seed )
 {
    Source src( seed );
    const std::string t = std::string( "<" ) + type + ">: ";
-   unit::section( std::string( "DW" ) + t + "lazy products", std::to_string( SAMPLES_LAZY ) + " samples per check, relative error vs MPFR" );
+   unit::section( std::string( "DW" ) + t + "lazy products",
+                  std::to_string( SAMPLES_LAZY ) + " samples per check, relative error vs MPFR" );
    test_dw< T >( src );
-   unit::section( std::string( "XDW" ) + t + "lazy products", std::to_string( SAMPLES_LAZY ) + " samples per check, relative error per component vs MPFR" );
+   unit::section( std::string( "XDW" ) + t + "lazy products",
+                  std::to_string( SAMPLES_LAZY ) + " samples per check, relative error per component vs MPFR" );
    test_xdw< T >( src );
    unit::section( std::string( "XDW" ) + t + "pattern", std::to_string( SAMPLES_LAZY ) + " samples per check" );
    test_pattern< T >( src );
 }
 
-int main()
+int
+main()
 {
    mpfr_set_default_prec( MPFR_BITS );
    describe_inputs();
